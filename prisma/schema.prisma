@@ -1,0 +1,235 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  LAWYER
+  SUPPORT
+}
+
+enum MatterStatus {
+  NEW
+  IN_PROGRESS
+  ON_HOLD
+  CLOSED
+}
+
+enum MatterType {
+  CIVIL
+  CRIMINAL
+  CORPORATE
+  LABOR
+  FAMILY
+  OTHER
+}
+
+enum DailyLogStatus {
+  IN_PROGRESS
+  COMPLETED
+  PENDING_APPROVAL
+  REJECTED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_DUE
+  TIMESHEET_APPROVAL
+  GENERAL
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+}
+
+model Department {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  users     User[]
+}
+
+model User {
+  id               String         @id @default(cuid())
+  email            String         @unique
+  password         String
+  name             String
+  role             Role           @default(SUPPORT)
+  departmentId     String?
+  department       Department?    @relation(fields: [departmentId], references: [id])
+  isActive         Boolean        @default(true)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  dailyLogs        DailyLog[]     @relation("DailyLogAuthor")
+  approvedLogs     DailyLog[]     @relation("DailyLogApprover")
+  assignedTasks    Task[]         @relation("AssignedTasks")
+  createdTasks     Task[]         @relation("CreatedTasks")
+  ledMatters       Matter[]       @relation("LeadLawyer")
+  matterMembers    MatterMember[]
+  notifications    Notification[]
+  auditLogs        AuditLog[]
+  uploadedFiles    Attachment[]
+}
+
+model Client {
+  id          String       @id @default(cuid())
+  name        String
+  email       String?
+  phone       String?
+  address     String?
+  notes       String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  matters     Matter[]
+  dailyLogs   DailyLog[]
+  attachments Attachment[]
+}
+
+model Matter {
+  id           String         @id @default(cuid())
+  code         String         @unique
+  title        String
+  description  String?
+  type         MatterType     @default(OTHER)
+  status       MatterStatus   @default(NEW)
+  clientId     String
+  client       Client         @relation(fields: [clientId], references: [id])
+  leadLawyerId String
+  leadLawyer   User           @relation("LeadLawyer", fields: [leadLawyerId], references: [id])
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  members      MatterMember[]
+  dailyLogs    DailyLog[]
+  tasks        Task[]
+  attachments  Attachment[]
+}
+
+model MatterMember {
+  id        String   @id @default(cuid())
+  matterId  String
+  userId    String
+  matter    Matter   @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([matterId, userId])
+}
+
+model WorkType {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  dailyLogs DailyLog[]
+}
+
+model DailyLog {
+  id             String         @id @default(cuid())
+  date           DateTime
+  description    String
+  minutes        Int
+  isBillable     Boolean        @default(true)
+  status         DailyLogStatus @default(IN_PROGRESS)
+  userId         String
+  user           User           @relation("DailyLogAuthor", fields: [userId], references: [id])
+  matterId       String?
+  matter         Matter?        @relation(fields: [matterId], references: [id])
+  clientId       String?
+  client         Client?        @relation(fields: [clientId], references: [id])
+  workTypeId     String?
+  workType       WorkType?      @relation(fields: [workTypeId], references: [id])
+  approvedById   String?
+  approvedBy     User?          @relation("DailyLogApprover", fields: [approvedById], references: [id])
+  approvedAt     DateTime?
+  rejectionNote  String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  attachments    Attachment[]
+}
+
+model Task {
+  id             String       @id @default(cuid())
+  title          String
+  description    String?
+  status         TaskStatus   @default(TODO)
+  priority       TaskPriority @default(MEDIUM)
+  dueDate        DateTime?
+  reminderSentAt DateTime?
+  assigneeId     String
+  assignee       User         @relation("AssignedTasks", fields: [assigneeId], references: [id])
+  createdById    String
+  createdBy      User         @relation("CreatedTasks", fields: [createdById], references: [id])
+  matterId       String?
+  matter         Matter?      @relation(fields: [matterId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  attachments    Attachment[]
+}
+
+model Attachment {
+  id           String    @id @default(cuid())
+  fileName     String
+  mimeType     String
+  sizeBytes    Int
+  storageKey   String
+  matterId     String?
+  matter       Matter?   @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  taskId       String?
+  task         Task?     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  dailyLogId   String?
+  dailyLog     DailyLog? @relation(fields: [dailyLogId], references: [id], onDelete: Cascade)
+  clientId     String?
+  client       Client?   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  uploadedById String
+  uploadedBy   User      @relation(fields: [uploadedById], references: [id])
+  createdAt    DateTime  @default(now())
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType @default(GENERAL)
+  title     String
+  message   String
+  isRead    Boolean          @default(false)
+  link      String?
+  createdAt DateTime         @default(now())
+}
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  userId     String?
+  user       User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     AuditAction
+  entityType String
+  entityId   String?
+  details    String?
+  createdAt  DateTime    @default(now())
+}

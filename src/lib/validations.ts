@@ -14,27 +14,66 @@ export const changePasswordSchema = z.object({
   path: ["confirmPassword"],
 });
 
-export const dailyLogSchema = z.object({
-  date: z.string().min(1),
-  description: z.string().min(1, "Vui lòng nhập nội dung công việc"),
-  hours: z.coerce.number().min(0).max(24),
-  minutes: z.coerce.number().min(0).max(59),
-  isBillable: z.boolean().default(true),
-  status: z.enum(["IN_PROGRESS", "COMPLETED", "PENDING_APPROVAL", "REJECTED"]),
-  matterId: z.string().optional().nullable(),
-  clientId: z.string().optional().nullable(),
-  workTypeId: z.string().optional().nullable(),
-});
-
 export const matterSchema = z.object({
-  code: z.string().min(1, "Vui lòng nhập mã vụ việc"),
   title: z.string().min(1, "Vui lòng nhập tên vụ việc"),
   description: z.string().optional().nullable(),
   type: z.enum(["CIVIL", "CRIMINAL", "CORPORATE", "LABOR", "FAMILY", "OTHER"]),
-  status: z.enum(["NEW", "IN_PROGRESS", "ON_HOLD", "CLOSED"]),
-  clientId: z.string().min(1, "Vui lòng chọn khách hàng"),
+  customTypeLabel: z.string().optional().nullable(),
+  clientMode: z.enum(["existing", "new"]),
+  clientId: z.string().optional().nullable(),
+  clientName: z.string().optional().nullable(),
+  clientPhone: z.string().optional().nullable(),
+  clientAddress: z.string().optional().nullable(),
+  clientCity: z.string().optional().nullable(),
   leadLawyerId: z.string().min(1, "Vui lòng chọn luật sư phụ trách"),
   memberIds: z.array(z.string()).optional(),
+}).superRefine((data, ctx) => {
+  if (data.clientMode === "existing" && !data.clientId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Vui lòng chọn khách hàng",
+      path: ["clientId"],
+    });
+  }
+  if (data.clientMode === "new" && !data.clientName?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Vui lòng nhập họ và tên khách hàng",
+      path: ["clientName"],
+    });
+  }
+  if (data.type === "OTHER" && !data.customTypeLabel?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Vui lòng nhập loại vụ",
+      path: ["customTypeLabel"],
+    });
+  }
+});
+
+export const matterPlanStepSchema = z.object({
+  matterId: z.string().min(1),
+  title: z.string().min(1, "Vui lòng nhập chi tiết công việc"),
+  workTypeId: z.string().optional().nullable(),
+  startedAt: z.string().optional().nullable(),
+  dueAt: z.string().optional().nullable(),
+  status: z
+    .enum(["NOT_STARTED", "IN_PROGRESS", "DONE", "BLOCKED"])
+    .default("NOT_STARTED"),
+});
+
+export const matterPlanStepUpdateSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1).optional(),
+  workTypeId: z.string().optional().nullable(),
+  startedAt: z.string().optional().nullable(),
+  dueAt: z.string().optional().nullable(),
+  status: z.enum(["NOT_STARTED", "IN_PROGRESS", "DONE", "BLOCKED"]).optional(),
+});
+
+export const reorderMatterPlanStepsSchema = z.object({
+  matterId: z.string().min(1),
+  orderedIds: z.array(z.string().min(1)).min(1),
 });
 
 export const clientSchema = z.object({
@@ -42,6 +81,14 @@ export const clientSchema = z.object({
   email: z.string().email().optional().nullable().or(z.literal("")),
   phone: z.string().optional().nullable(),
   address: z.string().optional().nullable(),
+  city: z.string().optional().nullable(),
+  businessType: z.preprocess(
+    (value) => (value === "" || value == null ? null : value),
+    z
+      .enum(["LLC", "JSC", "SOLE_PROPRIETOR", "PARTNERSHIP", "INDIVIDUAL", "OTHER"])
+      .nullable()
+      .optional(),
+  ),
   notes: z.string().optional().nullable(),
 });
 

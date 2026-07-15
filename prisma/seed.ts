@@ -174,63 +174,6 @@ async function main() {
     ],
   });
 
-  await prisma.dailyLog.deleteMany({
-    where: {
-      userId: { in: [lawyer1.id, lawyer2.id, support.id] },
-    },
-  });
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  await prisma.dailyLog.createMany({
-    data: [
-      {
-        date: today,
-        description: "Soạn thảo đơn khởi kiện",
-        minutes: 120,
-        isBillable: true,
-        status: "COMPLETED",
-        userId: lawyer1.id,
-        matterId: matter1.id,
-        clientId: client1.id,
-        workTypeId: workTypes[0].id,
-      },
-      {
-        date: today,
-        description: "Họp trao đổi với khách hàng",
-        minutes: 60,
-        isBillable: true,
-        status: "COMPLETED",
-        userId: lawyer1.id,
-        matterId: matter1.id,
-        clientId: client1.id,
-        workTypeId: workTypes[1].id,
-      },
-      {
-        date: today,
-        description: "Nghiên cứu án lệ liên quan",
-        minutes: 90,
-        isBillable: true,
-        status: "PENDING_APPROVAL",
-        userId: lawyer2.id,
-        matterId: matter2.id,
-        clientId: client2.id,
-        workTypeId: workTypes[2].id,
-      },
-      {
-        date: today,
-        description: "Sắp xếp hồ sơ, scan tài liệu",
-        minutes: 45,
-        isBillable: false,
-        status: "COMPLETED",
-        userId: support.id,
-        matterId: matter1.id,
-        workTypeId: workTypes[4].id,
-      },
-    ],
-  });
-
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
 

@@ -8,13 +8,28 @@ export async function createAuditLog(params: {
   entityId?: string;
   details?: string;
 }) {
-  await prisma.auditLog.create({
-    data: {
-      userId: params.userId,
-      action: params.action,
-      entityType: params.entityType,
-      entityId: params.entityId,
-      details: params.details,
-    },
-  });
+  try {
+    let userId = params.userId ?? null;
+
+    if (userId) {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true },
+      });
+      if (!user) userId = null;
+    }
+
+    await prisma.auditLog.create({
+      data: {
+        userId,
+        action: params.action,
+        entityType: params.entityType,
+        entityId: params.entityId,
+        details: params.details,
+      },
+    });
+  } catch (error) {
+    // Audit must never block the main business action.
+    console.error("createAuditLog failed:", error);
+  }
 }

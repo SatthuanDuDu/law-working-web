@@ -1,4 +1,4 @@
-import { AppShell } from "@/components/layout/app-shell";
+import { PageHeaderSlot } from "@/components/layout/page-header-slot";
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
@@ -13,7 +13,7 @@ const ACTION_LABELS = {
 } as const;
 
 export default async function AdminAuditLogsPage() {
-  const user = await requireRole(["ADMIN"]);
+  await requireRole(["ADMIN"]);
   const logs = await prisma.auditLog.findMany({
     include: { user: true },
     orderBy: { createdAt: "desc" },
@@ -21,11 +21,11 @@ export default async function AdminAuditLogsPage() {
   });
 
   return (
-    <AppShell
-      user={user}
-      title="Nhật ký hệ thống"
-      description="Theo dõi thao tác quan trọng trong hệ thống"
-    >
+    <>
+      <PageHeaderSlot
+        title="Nhật ký hệ thống"
+        description="Theo dõi thao tác quan trọng trong hệ thống"
+      />
       <Card>
         <CardHeader>
           <CardTitle>100 bản ghi gần nhất</CardTitle>
@@ -44,7 +44,7 @@ export default async function AdminAuditLogsPage() {
               </thead>
               <tbody>
                 {logs.map((log) => (
-                  <tr key={log.id} className="border-b">
+                  <tr key={log.id} className="interactive-row border-b">
                     <td className="px-3 py-3">{formatDateTime(log.createdAt)}</td>
                     <td className="px-3 py-3">{log.user?.name ?? "Hệ thống"}</td>
                     <td className="px-3 py-3">
@@ -62,6 +62,6 @@ export default async function AdminAuditLogsPage() {
           </div>
         </CardContent>
       </Card>
-    </AppShell>
+    </>
   );
 }

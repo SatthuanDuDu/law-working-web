@@ -1,22 +1,22 @@
-import { AppShell } from "@/components/layout/app-shell";
+import { PageHeaderSlot } from "@/components/layout/page-header-slot";
 import { DepartmentForm } from "@/components/admin/department-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 
 export default async function AdminDepartmentsPage() {
-  const user = await requireRole(["ADMIN"]);
+  await requireRole(["ADMIN"]);
   const departments = await prisma.department.findMany({
     include: { _count: { select: { users: true } } },
     orderBy: { name: "asc" },
   });
 
   return (
-    <AppShell
-      user={user}
-      title="Phòng ban"
-      description="Cấu hình phòng ban nội bộ"
-    >
+    <>
+      <PageHeaderSlot
+        title="Phòng ban"
+        description="Cấu hình phòng ban nội bộ"
+      />
       <div className="grid gap-8 xl:grid-cols-[360px_1fr]">
         <Card>
           <CardHeader>
@@ -46,6 +46,6 @@ export default async function AdminDepartmentsPage() {
           </CardContent>
         </Card>
       </div>
-    </AppShell>
+    </>
   );
 }

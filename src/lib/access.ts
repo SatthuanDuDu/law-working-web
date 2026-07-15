@@ -2,7 +2,6 @@ import { prisma } from "@/lib/prisma";
 import type { Role } from "@prisma/client";
 import {
   canViewAllClients,
-  canViewAllDailyLogs,
   canViewAllMatters,
 } from "@/lib/permissions";
 
@@ -41,18 +40,12 @@ export async function getAccessibleClientIds(userId: string, role: Role) {
   return Array.from(new Set(matters.map((m) => m.clientId)));
 }
 
-export function buildDailyLogWhere(userId: string, role: Role) {
-  if (canViewAllDailyLogs(role)) return {};
-  return { userId };
-}
-
 export async function canAccessAttachmentTarget(
   userId: string,
   role: Role,
   target: {
     matterId?: string | null;
     taskId?: string | null;
-    dailyLogId?: string | null;
     clientId?: string | null;
   },
 ) {
@@ -73,20 +66,6 @@ export async function canAccessAttachmentTarget(
     if (task.matterId) {
       const matterIds = await getAccessibleMatterIds(userId, role);
       return !!matterIds?.includes(task.matterId);
-    }
-    return false;
-  }
-
-  if (target.dailyLogId) {
-    const log = await prisma.dailyLog.findUnique({
-      where: { id: target.dailyLogId },
-      select: { userId: true, matterId: true },
-    });
-    if (!log) return false;
-    if (log.userId === userId || canViewAllDailyLogs(role)) return true;
-    if (log.matterId) {
-      const matterIds = await getAccessibleMatterIds(userId, role);
-      return !!matterIds?.includes(log.matterId);
     }
     return false;
   }

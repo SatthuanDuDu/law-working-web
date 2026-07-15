@@ -30,6 +30,7 @@ function createClient(endpoint: string) {
   return new S3Client({
     region: config.region,
     endpoint,
+    // Required for MinIO and Cloudflare R2 path-style URLs
     forcePathStyle: true,
     credentials: {
       accessKeyId: config.accessKeyId,

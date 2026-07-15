@@ -14,17 +14,15 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const matterId = searchParams.get("matterId") || undefined;
   const taskId = searchParams.get("taskId") || undefined;
-  const dailyLogId = searchParams.get("dailyLogId") || undefined;
   const clientId = searchParams.get("clientId") || undefined;
 
-  if (!matterId && !taskId && !dailyLogId && !clientId) {
+  if (!matterId && !taskId && !clientId) {
     return NextResponse.json({ error: "Thiếu tham chiếu entity" }, { status: 400 });
   }
 
   const allowed = await canAccessAttachmentTarget(user.id, user.role, {
     matterId,
     taskId,
-    dailyLogId,
     clientId,
   });
   if (!allowed) {
@@ -35,7 +33,6 @@ export async function GET(request: Request) {
     where: {
       ...(matterId ? { matterId } : {}),
       ...(taskId ? { taskId } : {}),
-      ...(dailyLogId ? { dailyLogId } : {}),
       ...(clientId ? { clientId } : {}),
     },
     include: { uploadedBy: { select: { id: true, name: true } } },
@@ -54,21 +51,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Payload không hợp lệ" }, { status: 400 });
   }
 
-  const {
-    fileName,
-    mimeType,
-    sizeBytes,
-    matterId,
-    taskId,
-    dailyLogId,
-    clientId,
-  } = body as {
+  const { fileName, mimeType, sizeBytes, matterId, taskId, clientId } = body as {
     fileName?: string;
     mimeType?: string;
     sizeBytes?: number;
     matterId?: string | null;
     taskId?: string | null;
-    dailyLogId?: string | null;
     clientId?: string | null;
   };
 
@@ -83,14 +71,13 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!matterId && !taskId && !dailyLogId && !clientId) {
+  if (!matterId && !taskId && !clientId) {
     return NextResponse.json({ error: "Thiếu tham chiếu entity" }, { status: 400 });
   }
 
   const allowed = await canAccessAttachmentTarget(user.id, user.role, {
     matterId,
     taskId,
-    dailyLogId,
     clientId,
   });
   if (!allowed) {
@@ -108,7 +95,6 @@ export async function POST(request: Request) {
       storageKey,
       matterId: matterId || null,
       taskId: taskId || null,
-      dailyLogId: dailyLogId || null,
       clientId: clientId || null,
       uploadedById: user.id,
     },

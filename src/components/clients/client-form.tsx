@@ -6,7 +6,16 @@ import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Label, Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  OutlinedField,
+  outlinedFieldControlClass,
+} from "@/components/ui/outlined-field";
+import {
+  CLIENT_BUSINESS_TYPE_LABELS,
+  VIETNAM_CITY_SUGGESTIONS,
+} from "@/lib/constants";
+import { cn } from "@/lib/utils";
 
 export function ClientForm() {
   const [error, setError] = useState("");
@@ -43,31 +52,77 @@ export function ClientForm() {
     <>
       {dialog}
       <Card>
-        <CardHeader>
-          <CardTitle>Thêm khách hàng</CardTitle>
+        <CardHeader className="pb-5">
+          <CardTitle className="mb-1">Khách hàng mới</CardTitle>
         </CardHeader>
-        <CardContent>
-          <form id="client-form" onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Tên khách hàng</Label>
-              <Input id="name" name="name" required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" type="email" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone">Điện thoại</Label>
-              <Input id="phone" name="phone" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="address">Địa chỉ</Label>
-              <Input id="address" name="address" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="notes">Ghi chú</Label>
-              <Textarea id="notes" name="notes" rows={3} />
-            </div>
+        <CardContent className="pt-1">
+          <form id="client-form" onSubmit={handleSubmit} className="space-y-5">
+            <OutlinedField label="Tên khách hàng" htmlFor="name" className="mt-1">
+              <Input
+                id="name"
+                name="name"
+                required
+                className={cn(outlinedFieldControlClass, "h-auto")}
+              />
+            </OutlinedField>
+            <OutlinedField label="Email" htmlFor="email">
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                className={cn(outlinedFieldControlClass, "h-auto")}
+              />
+            </OutlinedField>
+            <OutlinedField label="Điện thoại" htmlFor="phone">
+              <Input
+                id="phone"
+                name="phone"
+                className={cn(outlinedFieldControlClass, "h-auto")}
+              />
+            </OutlinedField>
+            <OutlinedField label="Thành phố" htmlFor="city">
+              <Input
+                id="city"
+                name="city"
+                list="client-city-suggestions"
+                className={cn(outlinedFieldControlClass, "h-auto")}
+              />
+              <datalist id="client-city-suggestions">
+                {VIETNAM_CITY_SUGGESTIONS.map((city) => (
+                  <option key={city} value={city} />
+                ))}
+              </datalist>
+            </OutlinedField>
+            <OutlinedField label="Địa chỉ" htmlFor="address">
+              <Input
+                id="address"
+                name="address"
+                className={cn(outlinedFieldControlClass, "h-auto")}
+              />
+            </OutlinedField>
+            <OutlinedField label="Loại doanh nghiệp" htmlFor="businessType">
+              <Select
+                id="businessType"
+                name="businessType"
+                defaultValue=""
+                className={cn(outlinedFieldControlClass, "h-auto")}
+              >
+                <option value="">— Chọn loại —</option>
+                {Object.entries(CLIENT_BUSINESS_TYPE_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
+            </OutlinedField>
+            <OutlinedField label="Ghi chú" htmlFor="notes">
+              <Textarea
+                id="notes"
+                name="notes"
+                rows={3}
+                className={cn(outlinedFieldControlClass, "min-h-[5.5rem]")}
+              />
+            </OutlinedField>
             {error && <p className="text-sm text-red-600">{error}</p>}
             {success && <p className="text-sm text-emerald-600">{success}</p>}
             <Button type="submit" disabled={isPending} className="w-full">

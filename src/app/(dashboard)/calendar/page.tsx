@@ -1,4 +1,4 @@
-import { AppShell } from "@/components/layout/app-shell";
+import { PageHeaderSlot } from "@/components/layout/page-header-slot";
 import { CalendarMonth } from "@/components/calendar/calendar-month";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
@@ -22,32 +22,60 @@ export default async function CalendarPage({
     },
     include: {
       assignee: { select: { name: true } },
-      matter: { select: { code: true } },
+      matter: {
+        select: {
+          id: true,
+          code: true,
+          title: true,
+          client: { select: { name: true } },
+          leadLawyer: { select: { id: true, name: true } },
+          members: {
+            select: {
+              user: { select: { id: true, name: true } },
+            },
+          },
+        },
+      },
     },
     orderBy: { dueDate: "asc" },
   });
 
-  const serialized = tasks.map((task) => ({
-    id: task.id,
-    title: task.title,
-    dueDate: task.dueDate!.toISOString(),
-    status: task.status,
-    priority: task.priority,
-    assigneeName: task.assignee.name,
-    matterCode: task.matter?.code ?? null,
-  }));
+  const serialized = tasks.map((task) => {
+    const leadLawyerId = task.matter?.leadLawyer.id ?? null;
+    const collaborators =
+      task.matter?.members
+        .map((m) => m.user)
+        .filter((u) => u.id !== leadLawyerId)
+        .map((u) => u.name) ?? [];
+
+    return {
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      dueDate: task.dueDate!.toISOString(),
+      status: task.status,
+      priority: task.priority,
+      assigneeName: task.assignee.name,
+      matterId: task.matter?.id ?? null,
+      matterCode: task.matter?.code ?? null,
+      matterTitle: task.matter?.title ?? null,
+      clientName: task.matter?.client.name ?? null,
+      leadLawyerName: task.matter?.leadLawyer.name ?? null,
+      collaboratorNames: collaborators,
+    };
+  });
 
   return (
-    <AppShell
-      user={user}
-      title="Lịch & hạn"
-      description="Theo dõi deadline task và hạn công việc"
-    >
+    <>
+      <PageHeaderSlot
+        title="Lịch & hạn"
+        description="Theo dõi deadline task và hạn công việc"
+      />
       <CalendarMonth
         tasks={serialized}
         showAllFilter={canViewAll}
         scope={scope}
       />
-    </AppShell>
+    </>
   );
 }

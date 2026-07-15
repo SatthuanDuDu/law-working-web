@@ -30,11 +30,13 @@ enum MatterType {
   OTHER
 }
 
-enum DailyLogStatus {
-  IN_PROGRESS
-  COMPLETED
-  PENDING_APPROVAL
-  REJECTED
+enum ClientBusinessType {
+  LLC
+  JSC
+  SOLE_PROPRIETOR
+  PARTNERSHIP
+  INDIVIDUAL
+  OTHER
 }
 
 enum TaskStatus {
@@ -42,6 +44,13 @@ enum TaskStatus {
   IN_PROGRESS
   DONE
   CANCELLED
+}
+
+enum MatterPlanStepStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  DONE
+  BLOCKED
 }
 
 enum TaskPriority {
@@ -54,7 +63,6 @@ enum TaskPriority {
 enum NotificationType {
   TASK_ASSIGNED
   TASK_DUE
-  TIMESHEET_APPROVAL
   GENERAL
 }
 
@@ -85,8 +93,6 @@ model User {
   isActive         Boolean        @default(true)
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
-  dailyLogs        DailyLog[]     @relation("DailyLogAuthor")
-  approvedLogs     DailyLog[]     @relation("DailyLogApprover")
   assignedTasks    Task[]         @relation("AssignedTasks")
   createdTasks     Task[]         @relation("CreatedTasks")
   ledMatters       Matter[]       @relation("LeadLawyer")
@@ -97,17 +103,18 @@ model User {
 }
 
 model Client {
-  id          String       @id @default(cuid())
-  name        String
-  email       String?
-  phone       String?
-  address     String?
-  notes       String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  matters     Matter[]
-  dailyLogs   DailyLog[]
-  attachments Attachment[]
+  id           String              @id @default(cuid())
+  name         String
+  email        String?
+  phone        String?
+  address      String?
+  city         String?
+  businessType ClientBusinessType?
+  notes        String?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  matters      Matter[]
+  attachments  Attachment[]
 }
 
 model Matter {
@@ -115,8 +122,9 @@ model Matter {
   code         String         @unique
   title        String
   description  String?
-  type         MatterType     @default(OTHER)
-  status       MatterStatus   @default(NEW)
+  type            MatterType     @default(OTHER)
+  customTypeLabel String?
+  status          MatterStatus   @default(NEW)
   clientId     String
   client       Client         @relation(fields: [clientId], references: [id])
   leadLawyerId String
@@ -124,9 +132,27 @@ model Matter {
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   members      MatterMember[]
-  dailyLogs    DailyLog[]
+  planSteps    MatterPlanStep[]
   tasks        Task[]
   attachments  Attachment[]
+}
+
+model MatterPlanStep {
+  id              String                @id @default(cuid())
+  matterId        String
+  matter          Matter                @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  title           String
+  workTypeId      String?
+  workType        WorkType?             @relation(fields: [workTypeId], references: [id], onDelete: SetNull)
+  startedAt       DateTime?
+  dueAt           DateTime?
+  status          MatterPlanStepStatus  @default(NOT_STARTED)
+  statusChangedAt DateTime?
+  sortOrder       Int                   @default(0)
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  @@index([matterId, sortOrder])
 }
 
 model MatterMember {
@@ -146,31 +172,7 @@ model WorkType {
   isActive  Boolean    @default(true)
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
-  dailyLogs DailyLog[]
-}
-
-model DailyLog {
-  id             String         @id @default(cuid())
-  date           DateTime
-  description    String
-  minutes        Int
-  isBillable     Boolean        @default(true)
-  status         DailyLogStatus @default(IN_PROGRESS)
-  userId         String
-  user           User           @relation("DailyLogAuthor", fields: [userId], references: [id])
-  matterId       String?
-  matter         Matter?        @relation(fields: [matterId], references: [id])
-  clientId       String?
-  client         Client?        @relation(fields: [clientId], references: [id])
-  workTypeId     String?
-  workType       WorkType?      @relation(fields: [workTypeId], references: [id])
-  approvedById   String?
-  approvedBy     User?          @relation("DailyLogApprover", fields: [approvedById], references: [id])
-  approvedAt     DateTime?
-  rejectionNote  String?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  attachments    Attachment[]
+  planSteps MatterPlanStep[]
 }
 
 model Task {
@@ -202,8 +204,6 @@ model Attachment {
   matter       Matter?   @relation(fields: [matterId], references: [id], onDelete: Cascade)
   taskId       String?
   task         Task?     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  dailyLogId   String?
-  dailyLog     DailyLog? @relation(fields: [dailyLogId], references: [id], onDelete: Cascade)
   clientId     String?
   client       Client?   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   uploadedById String

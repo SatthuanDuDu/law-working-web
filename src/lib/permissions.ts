@@ -27,14 +27,6 @@ export function canViewAllClients(role: Role) {
   return role === "ADMIN" || role === "MANAGER";
 }
 
-export function canViewAllDailyLogs(role: Role) {
-  return role === "ADMIN" || role === "MANAGER";
-}
-
-export function canViewReports(role: Role) {
-  return role === "ADMIN" || role === "MANAGER" || role === "LAWYER";
-}
-
 export function canAccessAdmin(role: Role) {
   return role === "ADMIN";
 }

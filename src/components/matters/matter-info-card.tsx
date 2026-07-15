@@ -1,0 +1,92 @@
+import { MatterStatusControl } from "@/components/matters/matter-status-control";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getMatterTypeDisplay } from "@/lib/matter-code";
+import { cn, formatDateTime } from "@/lib/utils";
+import type { MatterStatus, MatterType } from "@prisma/client";
+
+export function MatterInfoCard({
+  matter,
+  canEditStatus,
+  stickyHeader = false,
+  className,
+}: {
+  matter: {
+    id: string;
+    code: string;
+    title: string;
+    description: string | null;
+    type: MatterType;
+    customTypeLabel: string | null;
+    status: MatterStatus;
+    createdAt: Date;
+    client: {
+      name: string;
+      phone: string | null;
+      address: string | null;
+      city: string | null;
+    };
+    leadLawyer: { name: string };
+    members: { user: { name: string } }[];
+  };
+  canEditStatus: boolean;
+  stickyHeader?: boolean;
+  className?: string;
+}) {
+  return (
+    <Card className={cn("rounded-[5px]", className)}>
+      <CardHeader
+        className={cn(
+          "flex flex-row items-start justify-between gap-3 space-y-0",
+          stickyHeader &&
+            "sticky top-32 z-10 rounded-t-[5px] border-b border-slate-100 bg-white/95 backdrop-blur-sm",
+        )}
+      >
+        <CardTitle className="pr-2">Thông tin vụ việc</CardTitle>
+        <MatterStatusControl
+          matterId={matter.id}
+          status={matter.status}
+          canEdit={canEditStatus}
+          className="shrink-0"
+        />
+      </CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        <p>
+          <span className="font-medium">Mã:</span> {matter.code}
+        </p>
+        <p>
+          <span className="font-medium">Loại:</span>{" "}
+          {getMatterTypeDisplay(matter.type, matter.customTypeLabel)}
+        </p>
+        <p>
+          <span className="font-medium">Tạo lúc:</span> {formatDateTime(matter.createdAt)}
+        </p>
+        <p>
+          <span className="font-medium">Khách hàng:</span> {matter.client.name}
+        </p>
+        {matter.client.phone ? (
+          <p>
+            <span className="font-medium">SĐT:</span> {matter.client.phone}
+          </p>
+        ) : null}
+        {matter.client.address || matter.client.city ? (
+          <p>
+            <span className="font-medium">Địa chỉ:</span>{" "}
+            {[matter.client.address, matter.client.city].filter(Boolean).join(", ")}
+          </p>
+        ) : null}
+        <p>
+          <span className="font-medium">Luật sư phụ trách:</span> {matter.leadLawyer.name}
+        </p>
+        <p>
+          <span className="font-medium">Thành viên:</span>{" "}
+          {matter.members.map((member) => member.user.name).join(", ") || "—"}
+        </p>
+        {matter.description ? (
+          <p>
+            <span className="font-medium">Mô tả:</span> {matter.description}
+          </p>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}

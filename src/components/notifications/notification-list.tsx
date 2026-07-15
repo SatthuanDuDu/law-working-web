@@ -57,7 +57,7 @@ export function NotificationList({
                   {notification.link && (
                     <Link
                       href={notification.link}
-                      className="mt-2 inline-block text-sm text-primary hover:underline"
+                      className="interactive-link mt-2 inline-block text-sm text-primary"
                       onClick={() => markRead(notification.id)}
                     >
                       Xem chi tiết

@@ -1,22 +1,22 @@
-import { AppShell } from "@/components/layout/app-shell";
+import { PageHeaderSlot } from "@/components/layout/page-header-slot";
 import { WorkTypeForm } from "@/components/admin/work-type-form";
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 
 export default async function AdminWorkTypesPage() {
-  const user = await requireRole(["ADMIN"]);
+  await requireRole(["ADMIN"]);
   const workTypes = await prisma.workType.findMany({
-    include: { _count: { select: { dailyLogs: true } } },
+    include: { _count: { select: { planSteps: true } } },
     orderBy: { name: "asc" },
   });
 
   return (
-    <AppShell
-      user={user}
-      title="Loại công việc"
-      description="Cấu hình danh mục loại công việc hàng ngày"
-    >
+    <>
+      <PageHeaderSlot
+        title="Loại công việc"
+        description="Cấu hình danh mục loại công việc trong kế hoạch vụ việc"
+      />
       <div className="grid gap-8 xl:grid-cols-[360px_1fr]">
         <Card>
           <CardHeader>
@@ -40,7 +40,7 @@ export default async function AdminWorkTypesPage() {
                 <div>
                   <p className="font-medium">{item.name}</p>
                   <p className="text-sm text-slate-500">
-                    {item._count.dailyLogs} bản ghi sử dụng
+                    {item._count.planSteps} bước kế hoạch sử dụng
                   </p>
                 </div>
                 <Badge variant={item.isActive ? "success" : "danger"}>
@@ -51,6 +51,6 @@ export default async function AdminWorkTypesPage() {
           </CardContent>
         </Card>
       </div>
-    </AppShell>
+    </>
   );
 }

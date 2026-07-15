@@ -25,7 +25,6 @@ function formatBytes(bytes: number) {
 export function AttachmentPanel({
   matterId,
   taskId,
-  dailyLogId,
   clientId,
   currentUserId,
   canDeleteAll = false,
@@ -33,7 +32,6 @@ export function AttachmentPanel({
 }: {
   matterId?: string;
   taskId?: string;
-  dailyLogId?: string;
   clientId?: string;
   currentUserId: string;
   canDeleteAll?: boolean;
@@ -47,7 +45,6 @@ export function AttachmentPanel({
   const query = new URLSearchParams({
     ...(matterId ? { matterId } : {}),
     ...(taskId ? { taskId } : {}),
-    ...(dailyLogId ? { dailyLogId } : {}),
     ...(clientId ? { clientId } : {}),
   }).toString();
 
@@ -80,7 +77,6 @@ export function AttachmentPanel({
               sizeBytes: file.size,
               matterId,
               taskId,
-              dailyLogId,
               clientId,
             }),
           });
@@ -144,7 +140,7 @@ export function AttachmentPanel({
   return (
     <>
       {dialog}
-    <Card>
+    <Card className="rounded-[5px]">
       <CardHeader className="flex flex-row items-center justify-between gap-3">
         <CardTitle className="flex items-center gap-2">
           <Paperclip className="h-5 w-5 text-primary" />
@@ -161,7 +157,7 @@ export function AttachmentPanel({
               e.target.value = "";
             }}
           />
-          <span className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-white hover:bg-primary-hover">
+          <span className="interactive-press inline-flex h-9 items-center gap-2 rounded-[5px] bg-primary px-3 text-sm font-medium text-white hover:bg-primary-hover">
             <FileUp className="h-4 w-4" />
             Tải lên
           </span>
@@ -169,7 +165,7 @@ export function AttachmentPanel({
       </CardHeader>
       <CardContent className="space-y-3">
         {error && (
-          <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+          <p className="rounded-[5px] bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
         )}
         {attachments.length === 0 ? (
           <p className="text-sm text-slate-500">Chưa có tài liệu nào.</p>
@@ -179,7 +175,7 @@ export function AttachmentPanel({
             return (
               <div
                 key={item.id}
-                className="flex items-start justify-between gap-3 rounded-lg border border-border p-3"
+                className="flex items-start justify-between gap-3 rounded-[5px] border border-border p-3"
               >
                 <div>
                   <p className="font-medium">{item.fileName}</p>
@@ -194,6 +190,8 @@ export function AttachmentPanel({
                     size="sm"
                     disabled={isPending}
                     onClick={() => handleDownload(item.id)}
+                    className="hover:bg-slate-100 hover:text-primary"
+                    aria-label="Tải xuống"
                   >
                     <Download className="h-4 w-4" />
                   </Button>
@@ -203,8 +201,10 @@ export function AttachmentPanel({
                       size="sm"
                       disabled={isPending}
                       onClick={() => handleDelete(item.id, item.fileName)}
+                      className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                      aria-label="Xóa tài liệu"
                     >
-                      <Trash2 className="h-4 w-4 text-red-600" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   )}
                 </div>

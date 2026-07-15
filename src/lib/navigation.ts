@@ -6,14 +6,11 @@ export type NavItem = { href: string; label: string };
 
 const ROUTE_LABELS: Record<string, string> = {
   "/dashboard": "Dashboard",
-  "/daily-logs": "Công việc hàng ngày",
   "/matters": "Vụ việc",
   "/clients": "Khách hàng",
   "/tasks": "Giao việc",
   "/calendar": "Lịch & hạn",
-  "/reports": "Báo cáo",
   "/settings": "Cài đặt",
-  "/approvals": "Phê duyệt timesheet",
   "/workload": "Workload",
   "/admin/users": "Nhân viên",
   "/admin/work-types": "Loại công việc",
@@ -98,8 +95,22 @@ export function getBreadcrumbs(pathname: string): { label: string; href?: string
       continue;
     }
 
-    if (segments[i - 1] === "matters" && isLast) {
-      crumbs.push({ label: "Chi tiết vụ việc" });
+    if (segments[i - 1] === "matters") {
+      const matterPath = `/matters/${segments[i]}`;
+      if (isLast) {
+        crumbs.push({ label: "Chi tiết vụ việc" });
+      } else {
+        crumbs.push({ label: "Chi tiết vụ việc", href: matterPath });
+      }
+      continue;
+    }
+
+    if (segments[i - 2] === "matters") {
+      const labels: Record<string, string> = {
+        plan: "Lên kế hoạch",
+        report: "Báo cáo",
+      };
+      crumbs.push({ label: labels[segments[i]] ?? segments[i] });
     }
   }
 

@@ -23,12 +23,39 @@ export const MATTER_TYPE_LABELS = {
   OTHER: "Khác",
 } as const;
 
-export const DAILY_LOG_STATUS_LABELS = {
-  IN_PROGRESS: "Đang làm",
-  COMPLETED: "Hoàn thành",
-  PENDING_APPROVAL: "Chờ duyệt",
-  REJECTED: "Từ chối",
+export const CLIENT_BUSINESS_TYPE_LABELS = {
+  LLC: "Công ty TNHH",
+  JSC: "Công ty cổ phần",
+  SOLE_PROPRIETOR: "Doanh nghiệp tư nhân",
+  PARTNERSHIP: "Công ty hợp danh",
+  INDIVIDUAL: "Cá nhân",
+  OTHER: "Khác",
 } as const;
+
+export const MATTER_PLAN_STEP_STATUS_LABELS = {
+  NOT_STARTED: "Chưa thực hiện",
+  IN_PROGRESS: "Đang thực hiện",
+  DONE: "Hoàn thành",
+  BLOCKED: "Bị chặn",
+} as const;
+
+export const VIETNAM_CITY_SUGGESTIONS = [
+  "Hà Nội",
+  "TP. Hồ Chí Minh",
+  "Đà Nẵng",
+  "Hải Phòng",
+  "Cần Thơ",
+  "Huế",
+  "Nha Trang",
+  "Vũng Tàu",
+  "Biên Hòa",
+  "Bình Dương",
+  "Long An",
+  "Đồng Nai",
+  "Quảng Ninh",
+  "Bắc Ninh",
+  "Hải Dương",
+] as const;
 
 export const TASK_STATUS_LABELS = {
   TODO: "Chưa làm",
@@ -39,7 +66,7 @@ export const TASK_STATUS_LABELS = {
 
 export const TASK_PRIORITY_LABELS = {
   LOW: "Thấp",
-  MEDIUM: "Trung bình",
+  MEDIUM: "Vừa",
   HIGH: "Cao",
   URGENT: "Khẩn cấp",
 } as const;
@@ -47,23 +74,17 @@ export const TASK_PRIORITY_LABELS = {
 export const NOTIFICATION_TYPE_LABELS = {
   TASK_ASSIGNED: "Giao việc",
   TASK_DUE: "Hạn công việc",
-  TIMESHEET_APPROVAL: "Phê duyệt timesheet",
   GENERAL: "Chung",
 } as const;
 
 export const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
-  { href: "/daily-logs", label: "Công việc hàng ngày", icon: "ClipboardList" },
   { href: "/matters", label: "Vụ việc", icon: "Briefcase" },
   { href: "/clients", label: "Khách hàng", icon: "Users" },
-  { href: "/tasks", label: "Giao việc", icon: "CheckSquare" },
   { href: "/calendar", label: "Lịch & hạn", icon: "CalendarDays" },
-  { href: "/reports", label: "Báo cáo", icon: "BarChart3" },
-  { href: "/settings", label: "Cài đặt", icon: "Settings" },
 ] as const;
 
 export const MANAGER_NAV_ITEMS = [
-  { href: "/approvals", label: "Phê duyệt timesheet", icon: "ClipboardCheck" },
   { href: "/workload", label: "Workload", icon: "Gauge" },
 ] as const;
 

@@ -1,4 +1,4 @@
-import { AppShell } from "@/components/layout/app-shell";
+import { PageHeaderSlot } from "@/components/layout/page-header-slot";
 import { TaskForm } from "@/components/tasks/task-form";
 import { TaskList } from "@/components/tasks/task-list";
 import { prisma } from "@/lib/prisma";
@@ -33,15 +33,15 @@ export default async function TasksPage() {
   ]);
 
   return (
-    <AppShell
-      user={user}
-      title="Giao việc"
-      description="Tạo và theo dõi công việc nội bộ"
-    >
+    <>
+      <PageHeaderSlot
+        title="Giao việc"
+        description="Tạo và theo dõi công việc nội bộ"
+      />
       <div className="grid gap-8 xl:grid-cols-[380px_1fr]">
         <TaskForm users={users} matters={matters} />
         <TaskList tasks={tasks} currentUserId={user.id} canManage={canViewAll} />
       </div>
-    </AppShell>
+    </>
   );
 }

@@ -1,4 +1,4 @@
-import { AppShell } from "@/components/layout/app-shell";
+import { PageHeaderSlot } from "@/components/layout/page-header-slot";
 import { UserForm } from "@/components/admin/user-form";
 import { ResetPasswordButton } from "@/components/admin/reset-password-button";
 import { DeleteUserButton } from "@/components/admin/delete-user-button";
@@ -20,11 +20,11 @@ export default async function AdminUsersPage() {
   ]);
 
   return (
-    <AppShell
-      user={user}
-      title="Quản lý nhân viên"
-      description="Tạo tài khoản và đặt lại mật khẩu khi nhân viên quên"
-    >
+    <>
+      <PageHeaderSlot
+        title="Quản lý nhân viên"
+        description="Tạo tài khoản và đặt lại mật khẩu khi nhân viên quên"
+      />
       <div className="grid gap-8 xl:grid-cols-[360px_1fr]">
         <Card>
           <CardHeader>
@@ -55,7 +55,7 @@ export default async function AdminUsersPage() {
                 </thead>
                 <tbody>
                   {users.map((item) => (
-                    <tr key={item.id} className="border-b">
+                    <tr key={item.id} className="interactive-row border-b">
                       <td className="px-3 py-3 font-medium">{item.name}</td>
                       <td className="px-3 py-3">{item.email}</td>
                       <td className="px-3 py-3">{ROLE_LABELS[item.role]}</td>
@@ -84,6 +84,6 @@ export default async function AdminUsersPage() {
           </CardContent>
         </Card>
       </div>
-    </AppShell>
+    </>
   );
 }

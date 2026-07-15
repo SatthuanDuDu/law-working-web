@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { createPortal } from "react-dom";
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import {
   LayoutDashboard,
-  ClipboardList,
   Briefcase,
   Users,
-  CheckSquare,
-  BarChart3,
   Settings,
   UserCog,
   Tags,
@@ -18,23 +17,23 @@ import {
   LogOut,
   CalendarDays,
   Gauge,
-  ClipboardCheck,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  UserRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ADMIN_NAV_ITEMS, MANAGER_NAV_ITEMS, NAV_ITEMS, ROLE_LABELS } from "@/lib/constants";
 import { canAccessAdmin, isManagerOrAbove } from "@/lib/permissions";
 import type { Role } from "@prisma/client";
 import { signOut } from "next-auth/react";
-import { Button } from "@/components/ui/button";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
+import { useSidebar } from "@/contexts/sidebar-context";
 
 const iconMap = {
   LayoutDashboard,
-  ClipboardList,
   Briefcase,
   Users,
-  CheckSquare,
-  BarChart3,
   Settings,
   UserCog,
   Tags,
@@ -42,16 +41,352 @@ const iconMap = {
   ScrollText,
   CalendarDays,
   Gauge,
-  ClipboardCheck,
 };
+
+function SidebarTooltip({
+  label,
+  show,
+  children,
+}: {
+  label: string;
+  show: boolean;
+  children: ReactNode;
+}) {
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+
+  function showTooltip() {
+    const rect = anchorRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setPosition({
+      top: rect.top + rect.height / 2,
+      left: rect.right + 1,
+    });
+    setVisible(true);
+  }
+
+  function hideTooltip() {
+    setVisible(false);
+  }
+
+  if (!show) {
+    return <>{children}</>;
+  }
+
+  return (
+    <>
+      <div
+        ref={anchorRef}
+        className="relative"
+        onMouseEnter={showTooltip}
+        onMouseLeave={hideTooltip}
+        onFocus={showTooltip}
+        onBlur={hideTooltip}
+      >
+        {children}
+      </div>
+      {visible &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            role="tooltip"
+            className="pointer-events-none fixed z-[9999] -translate-y-1/2"
+            style={{ top: position.top, left: position.left }}
+          >
+            <div className="relative rounded-lg bg-slate-900/95 px-3 py-1.5 text-xs font-medium text-white shadow-lg backdrop-blur-sm">
+              <span
+                aria-hidden
+                className="absolute left-0 top-1/2 -translate-x-full -translate-y-1/2 border-y-[5px] border-r-[6px] border-y-transparent border-r-slate-900/95"
+              />
+              {label}
+            </div>
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
+
+function SidebarEdgeToggle({
+  collapsed,
+  onToggle,
+}: {
+  collapsed: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={collapsed ? "Mở rộng sidebar" : "Thu gọn sidebar"}
+      onClick={onToggle}
+      className="group/rail absolute top-20 right-0 bottom-28 z-20 hidden w-5 cursor-pointer border-0 bg-transparent p-0 lg:block"
+    >
+      <span
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute top-1/2 right-0 flex h-40 w-5 -translate-y-1/2 items-center justify-end",
+          "opacity-0 transition-opacity duration-200 ease-out delay-0",
+          "group-hover/rail:opacity-100 group-hover/rail:delay-500",
+          "group-focus-visible/rail:opacity-100 group-focus-visible/rail:delay-0",
+        )}
+      >
+        <span className="absolute top-1/2 right-0 h-36 w-1.5 -translate-y-1/2 rounded-full bg-white/85" />
+        <span className="relative z-[1] mr-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/40 text-white">
+          {collapsed ? (
+            <ChevronRight className="h-4 w-4" strokeWidth={2.5} />
+          ) : (
+            <ChevronLeft className="h-4 w-4" strokeWidth={2.5} />
+          )}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+function NavLink({
+  href,
+  label,
+  icon,
+  active,
+  collapsed,
+  onNavigate,
+}: {
+  href: string;
+  label: string;
+  icon: keyof typeof iconMap;
+  active: boolean;
+  collapsed: boolean;
+  onNavigate?: () => void;
+}) {
+  const Icon = iconMap[icon];
+
+  return (
+    <SidebarTooltip label={label} show={collapsed}>
+      <Link
+        href={href}
+        onClick={onNavigate}
+        className={cn(
+          "interactive-press flex min-h-10 items-center rounded-xl text-sm",
+          collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2.5",
+          active
+            ? "bg-white text-primary font-medium shadow-sm"
+            : "text-white/80 hover:bg-white/10 hover:text-white",
+        )}
+      >
+        <Icon className="h-4 w-4 shrink-0" />
+        {!collapsed && <span className="flex-1 truncate">{label}</span>}
+      </Link>
+    </SidebarTooltip>
+  );
+}
+
+function AccountMenu({
+  user,
+  collapsed,
+  onSignOut,
+}: {
+  user: { name: string; role: Role };
+  collapsed: boolean;
+  onSignOut: () => void;
+}) {
+  const pathname = usePathname();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [menuBox, setMenuBox] = useState<{
+    mode: "collapsed" | "expanded";
+    top?: number;
+    bottom?: number;
+    left: number;
+    width: number;
+  } | null>(null);
+  const menuId = useId();
+  const settingsActive =
+    pathname === "/settings" || pathname.startsWith("/settings/");
+
+  const measureMenu = useCallback(() => {
+    const rect = rootRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+
+    if (collapsed) {
+      return {
+        mode: "collapsed" as const,
+        top: Math.max(8, rect.bottom - 148),
+        left: rect.right + 8,
+        width: 220,
+      };
+    }
+
+    return {
+      mode: "expanded" as const,
+      bottom: Math.max(8, window.innerHeight - rect.top + 4),
+      left: rect.left,
+      width: rect.width,
+    };
+  }, [collapsed]);
+
+  function openMenu() {
+    const next = measureMenu();
+    if (next) setMenuBox(next);
+    setOpen(true);
+  }
+
+  function closeMenu() {
+    setOpen(false);
+    setMenuBox(null);
+  }
+
+  useEffect(() => {
+    if (!open) return;
+
+    function onPointerDown(event: MouseEvent) {
+      const target = event.target as Node;
+      if (rootRef.current?.contains(target) || menuRef.current?.contains(target)) {
+        return;
+      }
+      setOpen(false);
+      setMenuBox(null);
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+        setMenuBox(null);
+      }
+    }
+
+    function onReposition() {
+      const next = measureMenu();
+      if (next) setMenuBox(next);
+    }
+
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    window.addEventListener("resize", onReposition);
+    window.addEventListener("scroll", onReposition, true);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("resize", onReposition);
+      window.removeEventListener("scroll", onReposition, true);
+    };
+  }, [open, measureMenu]);
+
+  const menu =
+    open && menuBox
+      ? createPortal(
+          <div
+            ref={menuRef}
+            id={menuId}
+            role="menu"
+            aria-label="Quản lý tài khoản"
+            style={
+              menuBox.mode === "collapsed"
+                ? {
+                    top: menuBox.top,
+                    left: menuBox.left,
+                    width: menuBox.width,
+                  }
+                : {
+                    bottom: menuBox.bottom,
+                    left: menuBox.left,
+                    width: menuBox.width,
+                  }
+            }
+            className="fixed z-[60] overflow-hidden rounded-[5px] border border-slate-200/80 bg-white py-1"
+            onMouseEnter={openMenu}
+            onMouseLeave={closeMenu}
+          >
+            <div className="border-b border-slate-100 px-3 py-2">
+              <p className="truncate text-sm font-medium text-slate-900">{user.name}</p>
+              <p className="text-xs text-slate-500">{ROLE_LABELS[user.role]}</p>
+            </div>
+            <Link
+              href="/settings"
+              role="menuitem"
+              onClick={closeMenu}
+              className={cn(
+                "interactive-press flex w-full items-center gap-2.5 px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50",
+                settingsActive && "bg-slate-50 font-medium text-slate-900",
+              )}
+            >
+              <Settings className="h-4 w-4 shrink-0 text-slate-500" />
+              Cài đặt
+            </Link>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                closeMenu();
+                onSignOut();
+              }}
+              className="interactive-press flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50"
+            >
+              <LogOut className="h-4 w-4 shrink-0" />
+              Đăng xuất
+            </button>
+          </div>,
+          document.body,
+        )
+      : null;
+
+  return (
+    <>
+      <div
+        ref={rootRef}
+        className="relative"
+        onMouseEnter={openMenu}
+        onMouseLeave={closeMenu}
+      >
+        <button
+          type="button"
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-controls={menuId}
+          onClick={() => (open ? closeMenu() : openMenu())}
+          className={cn(
+            "interactive-press flex w-full items-center rounded-xl transition-colors",
+            collapsed
+              ? "justify-center px-2 py-2.5 text-white/80 hover:bg-white/10 hover:text-white"
+              : "gap-3 bg-white/10 px-3 py-3 text-left hover:bg-white/15",
+            open && (collapsed ? "bg-white/10 text-white" : "bg-white/15"),
+          )}
+        >
+          {collapsed ? (
+            <UserRound className="h-4 w-4 shrink-0" />
+          ) : (
+            <>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{user.name}</p>
+                <p className="text-xs text-white/60">{ROLE_LABELS[user.role]}</p>
+              </div>
+              <ChevronUp
+                className={cn(
+                  "h-4 w-4 shrink-0 text-white/50 transition-transform",
+                  open && "rotate-180",
+                )}
+                aria-hidden
+              />
+            </>
+          )}
+        </button>
+      </div>
+      {menu}
+    </>
+  );
+}
 
 export function Sidebar({
   user,
+  variant = "desktop",
 }: {
   user: { name: string; role: Role };
+  variant?: "desktop" | "mobile";
 }) {
   const pathname = usePathname();
   const { confirm, dialog } = useConfirmDialog();
+  const { collapsed, toggleCollapsed, mobileOpen, closeMobile } = useSidebar();
 
   function handleSignOut() {
     confirm({
@@ -62,114 +397,188 @@ export function Sidebar({
     });
   }
 
+  useEffect(() => {
+    if (variant !== "mobile" || !mobileOpen) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") closeMobile();
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [variant, mobileOpen, closeMobile]);
+
+  if (variant === "mobile") {
+    return (
+      <>
+        {dialog}
+        {mobileOpen ? (
+          <button
+            type="button"
+            aria-label="Đóng menu"
+            className="fixed inset-0 z-40 bg-slate-900/40 lg:hidden"
+            onClick={closeMobile}
+          />
+        ) : null}
+        <aside
+          className={cn(
+            "fixed inset-y-0 left-0 z-50 flex w-[min(20rem,86vw)] flex-col overflow-hidden border-r border-primary/20 bg-primary text-white shadow-xl transition-transform duration-300 ease-out lg:hidden",
+            mobileOpen ? "translate-x-0" : "-translate-x-full pointer-events-none",
+          )}
+          aria-hidden={!mobileOpen}
+        >
+          <SidebarContent
+            user={user}
+            pathname={pathname}
+            collapsed={false}
+            onToggleCollapsed={toggleCollapsed}
+            onNavigate={closeMobile}
+            onSignOut={handleSignOut}
+            showEdgeToggle={false}
+          />
+        </aside>
+      </>
+    );
+  }
+
   return (
     <>
       {dialog}
-      <aside className="flex h-full w-64 flex-col border-r border-primary/20 bg-primary text-white">
-        <div className="flex items-center gap-3 border-b border-white/10 px-6 py-5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-primary">
-            <Scale className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold">Luật Work</p>
+      <aside
+        className={cn(
+          "relative flex h-full flex-col overflow-visible border-r border-primary/20 bg-primary text-white transition-all duration-300 ease-in-out",
+          collapsed ? "w-[4.75rem]" : "w-64",
+        )}
+      >
+        <SidebarContent
+          user={user}
+          pathname={pathname}
+          collapsed={collapsed}
+          onToggleCollapsed={toggleCollapsed}
+          onSignOut={handleSignOut}
+          showEdgeToggle
+        />
+      </aside>
+    </>
+  );
+}
+
+function SidebarContent({
+  user,
+  pathname,
+  collapsed,
+  onToggleCollapsed,
+  onNavigate,
+  onSignOut,
+  showEdgeToggle,
+}: {
+  user: { name: string; role: Role };
+  pathname: string;
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
+  onNavigate?: () => void;
+  onSignOut: () => void;
+  showEdgeToggle: boolean;
+}) {
+  return (
+    <>
+      {showEdgeToggle ? (
+        <SidebarEdgeToggle collapsed={collapsed} onToggle={onToggleCollapsed} />
+      ) : null}
+
+      <div
+        className={cn(
+          "flex items-center border-b border-white/10 py-5",
+          collapsed ? "justify-center px-3" : "gap-3 px-6",
+        )}
+      >
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-primary">
+          <Scale className="h-5 w-5" />
+        </div>
+        {!collapsed && (
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold">Luật Work</p>
             <p className="text-xs text-white/60">Quản lý nội bộ</p>
           </div>
-        </div>
+        )}
+      </div>
 
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-          {NAV_ITEMS.map((item) => {
-            const Icon = iconMap[item.icon as keyof typeof iconMap];
-            const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+        {NAV_ITEMS.map((item) => {
+          const active =
+            pathname === item.href || pathname.startsWith(`${item.href}/`);
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
-                  active
-                    ? "bg-white text-primary font-medium"
-                    : "text-white/80 hover:bg-white/10 hover:text-white",
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                <span className="flex-1">{item.label}</span>
-              </Link>
-            );
-          })}
+          return (
+            <NavLink
+              key={item.href}
+              href={item.href}
+              label={item.label}
+              icon={item.icon as keyof typeof iconMap}
+              active={active}
+              collapsed={collapsed}
+              onNavigate={onNavigate}
+            />
+          );
+        })}
 
-          {isManagerOrAbove(user.role) && (
-            <div className="pt-4">
+        {isManagerOrAbove(user.role) && (
+          <div className="pt-4">
+            {!collapsed && (
               <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-white/40">
                 Quản lý
               </p>
-              {MANAGER_NAV_ITEMS.map((item) => {
-                const Icon = iconMap[item.icon as keyof typeof iconMap];
-                const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            )}
+            {MANAGER_NAV_ITEMS.map((item) => {
+              const active =
+                pathname === item.href || pathname.startsWith(`${item.href}/`);
 
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
-                      active
-                        ? "bg-white text-primary font-medium"
-                        : "text-white/80 hover:bg-white/10 hover:text-white",
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span>{item.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
+              return (
+                <NavLink
+                  key={item.href}
+                  href={item.href}
+                  label={item.label}
+                  icon={item.icon as keyof typeof iconMap}
+                  active={active}
+                  collapsed={collapsed}
+                  onNavigate={onNavigate}
+                />
+              );
+            })}
+          </div>
+        )}
 
-          {canAccessAdmin(user.role) && (
-            <div className="pt-4">
+        {canAccessAdmin(user.role) && (
+          <div className="pt-4">
+            {!collapsed && (
               <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-white/40">
                 Quản trị
               </p>
-              {ADMIN_NAV_ITEMS.map((item) => {
-                const Icon = iconMap[item.icon as keyof typeof iconMap];
-                const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            )}
+            {ADMIN_NAV_ITEMS.map((item) => {
+              const active =
+                pathname === item.href || pathname.startsWith(`${item.href}/`);
 
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
-                      active
-                        ? "bg-white text-primary font-medium"
-                        : "text-white/80 hover:bg-white/10 hover:text-white",
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span>{item.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </nav>
-
-        <div className="border-t border-white/10 px-4 py-4">
-          <div className="mb-3 rounded-lg bg-white/10 px-3 py-3">
-            <p className="text-sm font-medium">{user.name}</p>
-            <p className="text-xs text-white/60">{ROLE_LABELS[user.role]}</p>
+              return (
+                <NavLink
+                  key={item.href}
+                  href={item.href}
+                  label={item.label}
+                  icon={item.icon as keyof typeof iconMap}
+                  active={active}
+                  collapsed={collapsed}
+                  onNavigate={onNavigate}
+                />
+              );
+            })}
           </div>
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-white/80 hover:bg-white/10 hover:text-white"
-            onClick={handleSignOut}
-          >
-            <LogOut className="h-4 w-4" />
-            Đăng xuất
-          </Button>
-        </div>
-      </aside>
+        )}
+      </nav>
+
+      <div className="relative z-40 border-t border-white/10 px-3 py-4">
+        <AccountMenu
+          user={user}
+          collapsed={collapsed}
+          onSignOut={onSignOut}
+        />
+      </div>
     </>
   );
 }

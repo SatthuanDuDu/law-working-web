@@ -1,5 +1,6 @@
-import type { ReactNode } from "react";
-import { Label } from "@/components/ui/card";
+import type { ReactNode, SelectHTMLAttributes } from "react";
+import { ChevronDown } from "lucide-react";
+import { Label, Select } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 export const outlinedFieldLabelClass =
@@ -26,5 +27,39 @@ export function OutlinedField({
         {label}
       </Label>
     </div>
+  );
+}
+
+export function OutlinedSelect({
+  label,
+  id,
+  className,
+  children,
+  ...props
+}: {
+  label: string;
+  id: string;
+  children: ReactNode;
+} & Omit<SelectHTMLAttributes<HTMLSelectElement>, "id">) {
+  return (
+    <OutlinedField label={label} htmlFor={id}>
+      <div className="relative">
+        <Select
+          id={id}
+          className={cn(
+            outlinedFieldControlClass,
+            "h-auto appearance-none pr-10",
+            className,
+          )}
+          {...props}
+        >
+          {children}
+        </Select>
+        <ChevronDown
+          className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
+          aria-hidden
+        />
+      </div>
+    </OutlinedField>
   );
 }

@@ -6,7 +6,13 @@ import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Label, Card, CardContent, CardHeader, CardTitle, Select } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  OutlinedField,
+  OutlinedSelect,
+  outlinedFieldControlClass,
+} from "@/components/ui/outlined-field";
+import { cn } from "@/lib/utils";
 import { TASK_PRIORITY_LABELS, TASK_STATUS_LABELS } from "@/lib/constants";
 
 export function TaskForm({
@@ -54,53 +60,53 @@ export function TaskForm({
           <CardTitle>Giao việc mới</CardTitle>
         </CardHeader>
         <CardContent>
-          <form id="task-form" onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="title">Tiêu đề</Label>
-              <Input id="title" name="title" required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Mô tả</Label>
-              <Textarea id="description" name="description" rows={3} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="assigneeId">Người nhận</Label>
-              <Select id="assigneeId" name="assigneeId" required>
-                <option value="">-- Chọn nhân viên --</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
-                ))}
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="matterId">Vụ việc</Label>
-              <Select id="matterId" name="matterId">
-                <option value="">-- Không gắn vụ việc --</option>
-                {matters.map((m) => (
-                  <option key={m.id} value={m.id}>{m.code} - {m.title}</option>
-                ))}
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="priority">Ưu tiên</Label>
-              <Select id="priority" name="priority" defaultValue="MEDIUM">
-                {Object.entries(TASK_PRIORITY_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="status">Trạng thái</Label>
-              <Select id="status" name="status" defaultValue="TODO">
-                {Object.entries(TASK_STATUS_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="dueDate">Hạn hoàn thành</Label>
-              <Input id="dueDate" name="dueDate" type="date" />
-            </div>
+          <form id="task-form" onSubmit={handleSubmit} className="space-y-5">
+            <OutlinedField label="Tiêu đề" htmlFor="title" className="mt-1">
+              <Input
+                id="title"
+                name="title"
+                required
+                className={cn(outlinedFieldControlClass, "h-auto")}
+              />
+            </OutlinedField>
+            <OutlinedField label="Mô tả" htmlFor="description">
+              <Textarea
+                id="description"
+                name="description"
+                rows={3}
+                className={cn(outlinedFieldControlClass, "min-h-[5.5rem]")}
+              />
+            </OutlinedField>
+            <OutlinedSelect id="assigneeId" name="assigneeId" label="Người nhận" required>
+              <option value="">-- Chọn nhân viên --</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
+            </OutlinedSelect>
+            <OutlinedSelect id="matterId" name="matterId" label="Vụ việc">
+              <option value="">-- Không gắn vụ việc --</option>
+              {matters.map((m) => (
+                <option key={m.id} value={m.id}>{m.code} - {m.title}</option>
+              ))}
+            </OutlinedSelect>
+            <OutlinedSelect id="priority" name="priority" label="Ưu tiên" defaultValue="MEDIUM">
+              {Object.entries(TASK_PRIORITY_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </OutlinedSelect>
+            <OutlinedSelect id="status" name="status" label="Trạng thái" defaultValue="TODO">
+              {Object.entries(TASK_STATUS_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </OutlinedSelect>
+            <OutlinedField label="Hạn hoàn thành" htmlFor="dueDate">
+              <Input
+                id="dueDate"
+                name="dueDate"
+                type="date"
+                className={cn(outlinedFieldControlClass, "h-auto")}
+              />
+            </OutlinedField>
             {error && <p className="text-sm text-red-600">{error}</p>}
             {success && <p className="text-sm text-emerald-600">{success}</p>}
             <Button type="submit" disabled={isPending} className="w-full">

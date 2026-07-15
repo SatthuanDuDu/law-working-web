@@ -5,7 +5,12 @@ import { createUserAction } from "@/lib/actions";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label, Select } from "@/components/ui/card";
+import {
+  OutlinedField,
+  OutlinedSelect,
+  outlinedFieldControlClass,
+} from "@/components/ui/outlined-field";
+import { cn } from "@/lib/utils";
 import { ROLE_LABELS } from "@/lib/constants";
 
 export function UserForm({
@@ -46,40 +51,49 @@ export function UserForm({
   return (
     <>
       {dialog}
-      <form id="user-form" onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="name">Họ tên</Label>
-          <Input id="name" name="name" required />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <Input id="email" name="email" type="email" required />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="password">Mật khẩu</Label>
-          <Input id="password" name="password" type="password" required minLength={6} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="role">Vai trò</Label>
-          <Select id="role" name="role" defaultValue="SUPPORT">
-            {Object.entries(ROLE_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="departmentId">Phòng ban</Label>
-          <Select id="departmentId" name="departmentId">
-            <option value="">-- Không chọn --</option>
-            {departments.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </Select>
-        </div>
+      <form id="user-form" onSubmit={handleSubmit} className="space-y-5">
+        <OutlinedField label="Họ tên" htmlFor="name" className="mt-1">
+          <Input
+            id="name"
+            name="name"
+            required
+            className={cn(outlinedFieldControlClass, "h-auto")}
+          />
+        </OutlinedField>
+        <OutlinedField label="Email" htmlFor="email">
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            required
+            className={cn(outlinedFieldControlClass, "h-auto")}
+          />
+        </OutlinedField>
+        <OutlinedField label="Mật khẩu" htmlFor="password">
+          <Input
+            id="password"
+            name="password"
+            type="password"
+            required
+            minLength={6}
+            className={cn(outlinedFieldControlClass, "h-auto")}
+          />
+        </OutlinedField>
+        <OutlinedSelect id="role" name="role" label="Vai trò" defaultValue="SUPPORT">
+          {Object.entries(ROLE_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </OutlinedSelect>
+        <OutlinedSelect id="departmentId" name="departmentId" label="Phòng ban">
+          <option value="">-- Không chọn --</option>
+          {departments.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.name}
+            </option>
+          ))}
+        </OutlinedSelect>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="isActive" defaultChecked className="rounded" />
           Đang hoạt động

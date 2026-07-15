@@ -5,7 +5,12 @@ import { changePasswordAction } from "@/lib/actions";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label, Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  OutlinedField,
+  outlinedFieldControlClass,
+} from "@/components/ui/outlined-field";
+import { cn } from "@/lib/utils";
 import type { SessionUser } from "@/lib/permissions";
 import { ROLE_LABELS } from "@/lib/constants";
 
@@ -65,32 +70,37 @@ export function SettingsPageClient({ user }: { user: SessionUser }) {
           <CardTitle>Đổi mật khẩu</CardTitle>
         </CardHeader>
         <CardContent>
-          <form id="password-form" onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="currentPassword">Mật khẩu hiện tại</Label>
+          <form id="password-form" onSubmit={handleSubmit} className="space-y-5">
+            <OutlinedField label="Mật khẩu hiện tại" htmlFor="currentPassword" className="mt-1">
               <Input
                 id="currentPassword"
                 name="currentPassword"
                 type="password"
                 required
+                className={cn(outlinedFieldControlClass, "h-auto")}
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="newPassword">Mật khẩu mới</Label>
-              <Input id="newPassword" name="newPassword" type="password" required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Xác nhận mật khẩu mới</Label>
+            </OutlinedField>
+            <OutlinedField label="Mật khẩu mới" htmlFor="newPassword">
+              <Input
+                id="newPassword"
+                name="newPassword"
+                type="password"
+                required
+                className={cn(outlinedFieldControlClass, "h-auto")}
+              />
+            </OutlinedField>
+            <OutlinedField label="Xác nhận mật khẩu mới" htmlFor="confirmPassword">
               <Input
                 id="confirmPassword"
                 name="confirmPassword"
                 type="password"
                 required
+                className={cn(outlinedFieldControlClass, "h-auto")}
               />
-            </div>
+            </OutlinedField>
             {error && <p className="text-sm text-red-600">{error}</p>}
             {success && <p className="text-sm text-emerald-600">{success}</p>}
-            <Button type="submit" disabled={isPending}>
+            <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
               {isPending ? "Đang lưu..." : "Đổi mật khẩu"}
             </Button>
           </form>

@@ -81,10 +81,14 @@ export default function LoginPage() {
             </Button>
           </form>
           <div className="mt-6 rounded-lg bg-muted p-4 text-xs text-slate-500">
-            <p className="font-medium text-primary">Tài khoản demo:</p>
-            <p>admin@luat.vn / password123</p>
-            <p>luatsu1@luat.vn / password123</p>
-            <p className="mt-2">
+            {process.env.NODE_ENV === "development" && (
+              <>
+                <p className="font-medium text-primary">Tài khoản demo (local seed):</p>
+                <p>admin@luat.vn / password123</p>
+                <p>luatsu1@luat.vn / password123</p>
+              </>
+            )}
+            <p className={process.env.NODE_ENV === "development" ? "mt-2" : undefined}>
               Quên mật khẩu? Liên hệ quản trị viên để được đặt lại, hoặc đăng nhập
               rồi đổi mật khẩu trong mục Cài đặt.
             </p>

@@ -554,14 +554,14 @@ export function CalendarMonth({
         </CardHeader>
         <CardContent>
           <div className="-mx-1 overflow-x-auto sm:mx-0">
-          <div className="grid min-w-[560px] grid-cols-7 gap-1 text-center text-[10px] font-semibold uppercase text-slate-500 sm:min-w-0 sm:gap-2 sm:text-xs">
+          <div className="grid min-w-0 grid-cols-7 gap-0.5 text-center text-[10px] font-semibold uppercase text-slate-500 sm:gap-2 sm:text-xs">
             {["T2", "T3", "T4", "T5", "T6", "T7", "CN"].map((d) => (
               <div key={d} className="py-1 sm:py-2">
                 {d}
               </div>
             ))}
           </div>
-          <div className="mt-1 grid min-w-[560px] grid-cols-7 gap-1 sm:mt-0 sm:min-w-0 sm:gap-2">
+          <div className="mt-1 grid min-w-0 grid-cols-7 gap-0.5 sm:mt-0 sm:gap-2">
             {days.map((day) => {
               const key = format(day, "yyyy-MM-dd");
               const dayTasks = tasksByDay.get(key) ?? [];
@@ -571,7 +571,7 @@ export function CalendarMonth({
                 <div
                   key={key}
                   className={cn(
-                    "min-h-20 rounded-lg border p-1 text-left transition-colors duration-200 sm:min-h-28 sm:p-2",
+                    "min-h-16 rounded-md border p-0.5 text-left transition-colors duration-200 sm:min-h-28 sm:rounded-lg sm:p-2",
                     inMonth
                       ? "border-border bg-white hover:border-sky-200 hover:bg-sky-50/80"
                       : "border-transparent bg-muted/50 text-slate-400 hover:bg-sky-50/40",
@@ -579,7 +579,7 @@ export function CalendarMonth({
                   )}
                 >
                   <p className="text-[10px] font-semibold sm:text-xs">{format(day, "d")}</p>
-                  <div className="mt-1 space-y-1">
+                  <div className="mt-0.5 space-y-0.5 sm:mt-1 sm:space-y-1">
                     {dayTasks.slice(0, 3).map((task) => (
                       <TaskPreviewChip key={task.id} task={task} />
                     ))}

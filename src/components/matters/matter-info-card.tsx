@@ -36,7 +36,7 @@ export function MatterInfoCard({
     <Card className={cn("rounded-[5px]", className)}>
       <CardHeader
         className={cn(
-          "flex flex-row items-start justify-between gap-3 space-y-0",
+          "flex flex-col items-start gap-3 space-y-0 sm:flex-row sm:justify-between",
           stickyHeader &&
             "sticky top-32 z-10 rounded-t-[5px] border-b border-slate-100 bg-white/95 backdrop-blur-sm",
         )}
@@ -46,7 +46,7 @@ export function MatterInfoCard({
           matterId={matter.id}
           status={matter.status}
           canEdit={canEditStatus}
-          className="shrink-0"
+          className="w-full justify-start sm:w-auto sm:shrink-0 sm:justify-end"
         />
       </CardHeader>
       <CardContent className="space-y-3 text-sm">

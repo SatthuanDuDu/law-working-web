@@ -119,26 +119,28 @@ export function NotificationPanel({ unreadCount }: { unreadCount: number }) {
       {panelMounted && (
         <aside
           className={cn(
-            "floating-panel fixed inset-x-0 bottom-0 top-12 z-50 flex h-auto max-h-[calc(100dvh-3rem)] w-full min-w-0 flex-col sm:inset-auto sm:top-[5px] sm:right-6 sm:bottom-auto sm:h-[66vh] sm:w-[min(33vw,28rem)] sm:min-w-[320px]",
+            "floating-panel fixed inset-x-0 bottom-0 top-14 z-50 flex h-auto max-h-[calc(100dvh-3.5rem)] w-full min-w-0 flex-col sm:inset-auto sm:top-[5px] sm:right-6 sm:bottom-auto sm:h-[66vh] sm:w-[min(33vw,28rem)] sm:min-w-[320px]",
             "overflow-hidden rounded-t-2xl border border-slate-200 bg-white shadow-[0_20px_50px_-12px_rgba(15,23,42,0.28)] sm:rounded-2xl",
             panelActive && "is-active",
           )}
         >
-            <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
-              <div>
+            <div className="flex items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-3">
+              <div className="min-w-0">
                 <h2 className="font-semibold text-slate-900">Thông báo</h2>
                 {displayedUnread > 0 && (
                   <p className="text-xs text-slate-500">{displayedUnread} chưa đọc</p>
                 )}
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex shrink-0 items-center gap-1">
                 <Button
                   variant="outline"
                   size="sm"
                   disabled={isPending || displayedUnread === 0}
                   onClick={markAllRead}
+                  aria-label="Đánh dấu đã đọc"
                 >
-                  Đánh dấu đã đọc
+                  <span className="sm:hidden">Đã đọc</span>
+                  <span className="hidden sm:inline">Đánh dấu đã đọc</span>
                 </Button>
                 <Button
                   variant="ghost"
@@ -151,11 +153,11 @@ export function NotificationPanel({ unreadCount }: { unreadCount: number }) {
               </div>
             </div>
 
-            <div className="flex gap-1 border-b border-slate-200 bg-white px-4 py-2">
+            <div className="flex gap-1 overflow-x-auto border-b border-slate-200 bg-white px-4 py-2">
               <button
                 type="button"
                 className={cn(
-                  "interactive-press rounded-md px-3 py-1.5 text-sm",
+                  "interactive-press shrink-0 rounded-md px-3 py-1.5 text-sm",
                   tab === "unread"
                     ? "bg-primary text-white hover:bg-primary-hover"
                     : "text-slate-600 hover:bg-slate-100",
@@ -167,7 +169,7 @@ export function NotificationPanel({ unreadCount }: { unreadCount: number }) {
               <button
                 type="button"
                 className={cn(
-                  "interactive-press rounded-md px-3 py-1.5 text-sm",
+                  "interactive-press shrink-0 rounded-md px-3 py-1.5 text-sm",
                   tab === "read"
                     ? "bg-primary text-white hover:bg-primary-hover"
                     : "text-slate-600 hover:bg-slate-100",
@@ -178,7 +180,7 @@ export function NotificationPanel({ unreadCount }: { unreadCount: number }) {
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 border-b border-slate-200 bg-white px-4 py-3">
+            <div className="grid grid-cols-1 gap-2 border-b border-slate-200 bg-white px-4 py-3 sm:grid-cols-2">
               <div className="space-y-1">
                 <Label htmlFor="filter-date" className="text-xs">
                   Lọc theo ngày

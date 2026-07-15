@@ -112,10 +112,12 @@ function MultiSelectFilter({
   function measureMenuBox() {
     const rect = fieldRef.current?.getBoundingClientRect();
     if (!rect) return null;
+    const width = Math.min(Math.max(rect.width, 200), window.innerWidth - 16);
+    const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
     return {
       top: rect.bottom + 6,
-      left: rect.left,
-      width: Math.max(rect.width, 200),
+      left,
+      width,
     };
   }
 
@@ -186,7 +188,7 @@ function MultiSelectFilter({
         : `${values.length} đã chọn`;
 
   return (
-    <div ref={rootRef} className="relative min-w-[calc(50%-0.25rem)] flex-1 basis-[9.5rem] sm:min-w-[9.5rem]">
+    <div className="relative min-w-0 w-full basis-full sm:min-w-[9.5rem] sm:flex-1 sm:basis-[9.5rem]" ref={rootRef}>
       <p className="mb-1 truncate text-xs text-slate-500">{label}</p>
       <div
         ref={fieldRef}
@@ -317,7 +319,7 @@ export function MattersFiltersBar({
 
   return (
     <div className="rounded-xl border border-slate-200/80 bg-white px-3 py-3">
-      <div className="flex flex-wrap items-end gap-2">
+      <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-end">
         <MultiSelectFilter
           label="Loại hình"
           values={filters.types}
@@ -366,7 +368,7 @@ export function MattersFiltersBar({
           sortDir={filters.sortDir}
           onToggleSort={() => onChange(toggleSort(filters, "client"))}
         />
-        <div className="min-w-[9rem] flex-1">
+        <div className="min-w-0 w-full basis-full sm:min-w-[9rem] sm:flex-1 sm:basis-auto">
           <label
             htmlFor="matter-filter-from"
             className="mb-1 block truncate text-xs text-slate-500"
@@ -381,7 +383,7 @@ export function MattersFiltersBar({
             className="cursor-pointer hover:border-primary/35 hover:bg-slate-50/90"
           />
         </div>
-        <div className="min-w-[10.5rem] flex-1">
+        <div className="min-w-0 w-full basis-full sm:min-w-[10.5rem] sm:flex-1 sm:basis-auto">
           <label
             htmlFor="matter-filter-to"
             className="mb-1 block truncate text-xs text-slate-500"
@@ -412,8 +414,9 @@ export function MattersFiltersBar({
           tabIndex={hasActiveFilters ? 0 : -1}
           aria-hidden={!hasActiveFilters}
           aria-disabled={!hasActiveFilters}
+          aria-label="Xóa lọc"
           className={cn(
-            "mb-0.5 shrink-0 text-red-600 transition-[opacity,background-color,color] duration-500 ease-out hover:bg-red-50 hover:text-red-700",
+            "mb-0.5 w-full shrink-0 text-red-600 transition-[opacity,background-color,color] duration-500 ease-out hover:bg-red-50 hover:text-red-700 sm:w-auto",
             hasActiveFilters ? "opacity-100" : "pointer-events-none opacity-0",
           )}
           onClick={() => {
@@ -426,7 +429,7 @@ export function MattersFiltersBar({
           }}
         >
           <X className="h-3.5 w-3.5" />
-          Xóa lọc
+          <span className="sm:inline">Xóa lọc</span>
         </Button>
       </div>
     </div>

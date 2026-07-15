@@ -219,7 +219,7 @@ export function MattersList({
           visibleMatters.map((matter) => (
             <Card key={matter.id}>
               <CardHeader>
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <CardTitle className="min-w-0">
@@ -229,13 +229,13 @@ export function MattersList({
                       </CardTitle>
                       <MatterStatusBadge status={matter.status} />
                     </div>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="mt-1 break-all text-sm text-slate-500 sm:break-normal">
                       {matter.code} • {matter.client.name}
                     </p>
                   </div>
-                  <div className="flex shrink-0 flex-col items-stretch gap-2">
+                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:shrink-0 sm:items-stretch">
                     {canManage ? (
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center gap-2 sm:justify-end">
                         <Button
                           type="button"
                           variant="outline"
@@ -243,9 +243,10 @@ export function MattersList({
                           disabled={isPending}
                           onClick={() => openEdit(matter)}
                           aria-label="Sửa vụ việc"
+                          className="flex-1 sm:flex-none"
                         >
                           <Pencil className="h-3.5 w-3.5" />
-                          Sửa
+                          <span className="sm:inline">Sửa</span>
                         </Button>
                         <Button
                           type="button"
@@ -253,18 +254,19 @@ export function MattersList({
                           size="sm"
                           disabled={isPending}
                           onClick={() => handleDelete(matter)}
-                          className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                          className="flex-1 text-red-600 hover:bg-red-50 hover:text-red-700 sm:flex-none"
                           aria-label="Xóa vụ việc"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
-                          Xóa
+                          <span className="sm:inline">Xóa</span>
                         </Button>
                       </div>
                     ) : null}
                     <Button asChild size="sm" className="w-full">
                       <Link href={`/matters/${matter.id}/plan`}>
                         <ClipboardList className="h-3.5 w-3.5" />
-                        Thiết lập kế hoạch
+                        <span className="sm:hidden">Kế hoạch</span>
+                        <span className="hidden sm:inline">Thiết lập kế hoạch</span>
                       </Link>
                     </Button>
                   </div>

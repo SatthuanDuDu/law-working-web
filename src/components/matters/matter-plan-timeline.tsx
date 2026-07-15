@@ -306,7 +306,7 @@ export function MatterPlanTimeline({
             Chưa có bước kế hoạch. {canEdit ? "Thêm hạng mục phía trên để bắt đầu." : ""}
           </p>
         ) : (
-          <ol className="relative ml-3 space-y-0 border-l-2 border-slate-200 pl-8">
+          <ol className="relative ml-1 space-y-0 border-l-2 border-slate-200 pl-5 sm:ml-3 sm:pl-8">
             {orderedSteps.map((step, index) => {
               const isDragging = draggingId === step.id;
               const isDropTarget = dropTargetId === step.id && draggingId !== step.id;
@@ -325,7 +325,7 @@ export function MatterPlanTimeline({
                   <span
                     aria-hidden
                     className={cn(
-                      "absolute -left-[2.55rem] top-1.5 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-white",
+                      "absolute -left-[1.4rem] top-1.5 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-white sm:-left-[2.55rem]",
                       STATUS_DOT_CLASS[step.status],
                     )}
                   />
@@ -390,10 +390,10 @@ export function MatterPlanTimeline({
                       {canEdit ? (
                         <div
                           data-no-drag
-                          className="flex flex-wrap items-center gap-2"
+                          className="flex w-full flex-wrap items-center gap-2 sm:w-auto"
                           onMouseDown={(event) => event.stopPropagation()}
                         >
-                          <div className="relative">
+                          <div className="relative w-full sm:w-auto">
                             <Select
                               value={step.status}
                               disabled={isUpdatingStep}
@@ -403,7 +403,7 @@ export function MatterPlanTimeline({
                                   event.target.value as MatterPlanStepStatus,
                                 )
                               }
-                              className="h-9 w-auto min-w-[10rem] appearance-none rounded-[5px] py-0 pl-3 pr-9 text-center"
+                              className="h-9 w-full min-w-0 appearance-none rounded-[5px] py-0 pl-3 pr-9 text-center sm:w-auto sm:min-w-[10rem]"
                               aria-label="Trạng thái bước kế hoạch"
                             >
                               {(

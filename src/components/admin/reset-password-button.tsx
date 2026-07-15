@@ -52,7 +52,7 @@ export function ResetPasswordButton({ userId, userName }: { userId: string; user
   return (
     <>
       {dialog}
-      <form onSubmit={handleSubmit} className="flex min-w-[220px] flex-col gap-2">
+      <form onSubmit={handleSubmit} className="flex w-full min-w-0 flex-col gap-2 sm:min-w-[220px]">
         <p className="text-xs text-slate-500">Đặt lại MK cho {userName}</p>
         <Input
           name="newPassword"

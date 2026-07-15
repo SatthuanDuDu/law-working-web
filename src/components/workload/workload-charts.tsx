@@ -25,23 +25,38 @@ export function WorkloadCharts({ rows }: { rows: WorkloadRow[] }) {
     open: row.openTasks,
     overdue: row.overdueTasks,
   }));
+  const chartMinWidth = Math.max(320, taskData.length * 56);
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Số việc đang mở / quá hạn</CardTitle>
       </CardHeader>
-      <CardContent className="h-80">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={taskData}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-            <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-            <Tooltip />
-            <Bar dataKey="open" fill="#152D4F" name="Đang mở" radius={4} />
-            <Bar dataKey="overdue" fill="#ef4444" name="Quá hạn" radius={4} />
-          </BarChart>
-        </ResponsiveContainer>
+      <CardContent className="min-h-80 h-[22rem] sm:h-80">
+        <div className="-mx-2 overflow-x-auto px-2">
+          <div style={{ minWidth: chartMinWidth, height: "100%" }} className="h-72 sm:h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={taskData}
+                margin={{ top: 8, right: 8, left: 0, bottom: 48 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis
+                  dataKey="name"
+                  interval={0}
+                  angle={-35}
+                  textAnchor="end"
+                  height={60}
+                  tick={{ fontSize: 10 }}
+                />
+                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} width={28} />
+                <Tooltip />
+                <Bar dataKey="open" fill="#152D4F" name="Đang mở" radius={4} />
+                <Bar dataKey="overdue" fill="#ef4444" name="Quá hạn" radius={4} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

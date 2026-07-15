@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  useSyncExternalStore,
+} from "react";
 
 type SidebarContextValue = {
   collapsed: boolean;
@@ -14,23 +21,42 @@ type SidebarContextValue = {
 
 const SidebarContext = createContext<SidebarContextValue | null>(null);
 
+const COLLAPSED_KEY = "sidebar-collapsed";
+const COLLAPSED_EVENT = "sidebar-collapsed-change";
+
 function readCollapsedState() {
-  if (typeof window === "undefined") return false;
-  return localStorage.getItem("sidebar-collapsed") === "true";
+  return localStorage.getItem(COLLAPSED_KEY) === "true";
+}
+
+function subscribeCollapsed(onStoreChange: () => void) {
+  window.addEventListener("storage", onStoreChange);
+  window.addEventListener(COLLAPSED_EVENT, onStoreChange);
+  return () => {
+    window.removeEventListener("storage", onStoreChange);
+    window.removeEventListener(COLLAPSED_EVENT, onStoreChange);
+  };
+}
+
+function writeCollapsed(value: boolean) {
+  localStorage.setItem(COLLAPSED_KEY, String(value));
+  window.dispatchEvent(new Event(COLLAPSED_EVENT));
 }
 
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
-  const [collapsed, setCollapsedState] = useState(readCollapsedState);
+  const collapsed = useSyncExternalStore(
+    subscribeCollapsed,
+    readCollapsedState,
+    () => false,
+  );
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  function setCollapsed(value: boolean) {
-    setCollapsedState(value);
-    localStorage.setItem("sidebar-collapsed", String(value));
-  }
+  const setCollapsed = useCallback((value: boolean) => {
+    writeCollapsed(value);
+  }, []);
 
-  function toggleCollapsed() {
-    setCollapsed(!collapsed);
-  }
+  const toggleCollapsed = useCallback(() => {
+    writeCollapsed(!readCollapsedState());
+  }, []);
 
   const openMobile = useCallback(() => setMobileOpen(true), []);
   const closeMobile = useCallback(() => setMobileOpen(false), []);

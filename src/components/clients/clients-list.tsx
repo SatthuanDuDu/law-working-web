@@ -117,10 +117,12 @@ function MultiSelectFilter({
   function measureMenuBox() {
     const rect = fieldRef.current?.getBoundingClientRect();
     if (!rect) return null;
+    const width = Math.min(Math.max(rect.width, 200), window.innerWidth - 16);
+    const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
     return {
       top: rect.bottom + 6,
-      left: rect.left,
-      width: Math.max(rect.width, 200),
+      left,
+      width,
     };
   }
 
@@ -191,7 +193,7 @@ function MultiSelectFilter({
         : `${values.length} đã chọn`;
 
   return (
-    <div ref={rootRef} className="relative min-w-[9.5rem] flex-1">
+    <div ref={rootRef} className="relative min-w-0 w-full">
       <p className="mb-1 truncate text-xs text-slate-500">{label}</p>
       <div
         ref={fieldRef}
@@ -425,7 +427,7 @@ export function ClientsList({
       {dialog}
       <div className="flex h-full min-h-0 min-w-0 flex-col gap-4">
       <div className="shrink-0 rounded-xl border border-slate-200/80 bg-white px-3 py-3">
-        <div className="flex items-end gap-2 overflow-x-auto pb-0.5">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-end">
           <MultiSelectFilter
             label="Tên khách hàng"
             values={filters.names}
@@ -458,7 +460,7 @@ export function ClientsList({
             sortDir={filters.sortDir}
             onToggleSort={() => setFilters(toggleSort(filters, "businessType"))}
           />
-          <div className="min-w-[10.5rem] flex-1">
+          <div className="min-w-0 w-full">
             <p className="mb-1 truncate text-xs text-slate-500">Số vụ việc</p>
             <div
               className={cn(
@@ -495,7 +497,7 @@ export function ClientsList({
             aria-hidden={!hasActiveFilters}
             aria-disabled={!hasActiveFilters}
             className={cn(
-              "mb-0.5 shrink-0 text-red-600 transition-opacity duration-500 ease-out hover:bg-red-50 hover:text-red-700",
+              "mb-0.5 w-full shrink-0 text-red-600 transition-opacity duration-500 ease-out hover:bg-red-50 hover:text-red-700 sm:w-auto",
               hasActiveFilters ? "opacity-100" : "pointer-events-none opacity-0",
             )}
             onClick={() => {
@@ -517,7 +519,7 @@ export function ClientsList({
         {clients.length === 0 ? (
           <Card>
             <CardContent className="py-10 text-center text-sm text-slate-500">
-              Chưa có khách hàng nào. Thêm khách hàng ở form bên trái để bắt đầu.
+              Chưa có khách hàng nào. Thêm khách hàng ở form phía trên để bắt đầu.
             </CardContent>
           </Card>
         ) : visibleClients.length === 0 ? (
@@ -552,7 +554,7 @@ export function ClientsList({
                       aria-label={`Xóa ${client.name}`}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
-                      Xóa
+                      <span className="hidden sm:inline">Xóa</span>
                     </Button>
                   ) : null}
                 </div>

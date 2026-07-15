@@ -36,8 +36,8 @@ export function PageHeader({
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
-                className="lg:hidden"
+                size="icon"
+                className="h-8 w-8 lg:hidden"
                 onClick={openMobile}
                 aria-label="Mở menu"
                 title="Mở menu"
@@ -47,7 +47,8 @@ export function PageHeader({
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
+                size="icon"
+                className="h-8 w-8"
                 disabled={!canGoBack}
                 onClick={goBack}
                 aria-label="Quay lại trang trước"
@@ -58,7 +59,8 @@ export function PageHeader({
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
+                size="icon"
+                className="h-8 w-8"
                 disabled={!canGoForward}
                 onClick={goForward}
                 aria-label="Tới trang tiếp theo"
@@ -85,7 +87,9 @@ export function PageHeader({
               ))}
             </nav>
           </div>
-          <h1 className="mt-2 text-xl font-bold text-primary sm:text-2xl">{meta.title}</h1>
+          <h1 className="mt-2 truncate text-xl font-bold text-primary sm:whitespace-normal sm:text-2xl">
+            {meta.title}
+          </h1>
           {meta.description && (
             <p className="mt-1 text-sm text-slate-500">{meta.description}</p>
           )}

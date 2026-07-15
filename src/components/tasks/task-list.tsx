@@ -72,8 +72,8 @@ export function TaskList({
 
               return (
                 <div key={task.id} className="rounded-lg border border-slate-200 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
                       <p className="font-medium">{task.title}</p>
                       {task.description && (
                         <p className="mt-1 text-sm text-slate-500">{task.description}</p>
@@ -89,7 +89,7 @@ export function TaskList({
                         </p>
                       )}
                     </div>
-                    <Badge variant={priorityVariant[task.priority]}>
+                    <Badge variant={priorityVariant[task.priority]} className="w-fit shrink-0">
                       {TASK_PRIORITY_LABELS[task.priority]}
                     </Badge>
                   </div>
@@ -101,6 +101,7 @@ export function TaskList({
                         onChange={(e) =>
                           handleStatusChange(task.id, e.target.value, task.title)
                         }
+                        className="w-full min-w-0 sm:max-w-xs"
                       >
                         {Object.entries(TASK_STATUS_LABELS).map(([value, label]) => (
                           <option key={value} value={value}>{label}</option>

@@ -41,16 +41,16 @@ export default async function AdminUsersPage() {
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
+              <table className="w-full min-w-[44rem] text-sm">
                 <thead>
                   <tr className="border-b text-left text-slate-500">
-                    <th className="px-3 py-2">Họ tên</th>
-                    <th className="px-3 py-2">Email</th>
-                    <th className="px-3 py-2">Vai trò</th>
-                    <th className="px-3 py-2">Phòng ban</th>
-                    <th className="px-3 py-2">Trạng thái</th>
-                    <th className="px-3 py-2">Ngày tạo</th>
-                    <th className="px-3 py-2">Thao tác</th>
+                    <th className="whitespace-nowrap px-3 py-2">Họ tên</th>
+                    <th className="whitespace-nowrap px-3 py-2">Email</th>
+                    <th className="whitespace-nowrap px-3 py-2">Vai trò</th>
+                    <th className="whitespace-nowrap px-3 py-2">Phòng ban</th>
+                    <th className="whitespace-nowrap px-3 py-2">Trạng thái</th>
+                    <th className="whitespace-nowrap px-3 py-2">Ngày tạo</th>
+                    <th className="whitespace-nowrap px-3 py-2">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>

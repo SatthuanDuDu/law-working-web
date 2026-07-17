@@ -16,6 +16,35 @@ export type MatterFormData = {
   members: { id: string; name: string; role: SessionUser["role"] }[];
 };
 
+export type MatterFilterOptions = Pick<MatterFormData, "clients" | "lawyers" | "members">;
+
+export async function getMatterFilterOptions(): Promise<MatterFilterOptions> {
+  const [clients, lawyers, members] = await Promise.all([
+    prisma.client.findMany({
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        address: true,
+        city: true,
+      },
+      orderBy: { name: "asc" },
+    }),
+    prisma.user.findMany({
+      where: { role: { in: ["LAWYER", "MANAGER", "ADMIN"] }, isActive: true },
+      select: { id: true, name: true, role: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.user.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, role: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
+
+  return { clients, lawyers, members };
+}
+
 export async function getMatterFormData(user: SessionUser): Promise<MatterFormData> {
   const [clients, lawyers, members, todayMatterCount] = await Promise.all([
     prisma.client.findMany({

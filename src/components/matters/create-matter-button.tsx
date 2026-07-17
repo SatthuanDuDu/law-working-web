@@ -1,30 +1,51 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { MatterFormData } from "@/lib/matter-form-data";
-import { CreateMatterModal } from "@/components/matters/create-matter-modal";
+import { useMatterFormData } from "@/hooks/use-matter-form-data";
 
-export function CreateMatterButton({ formData }: { formData: MatterFormData }) {
+const CreateMatterModal = dynamic(
+  () =>
+    import("@/components/matters/create-matter-modal").then((mod) => ({
+      default: mod.CreateMatterModal,
+    })),
+  { ssr: false },
+);
+
+export function CreateMatterButton() {
   const [open, setOpen] = useState(false);
+  const { formData, loading, ensureLoaded } = useMatterFormData();
+
+  async function handleOpen() {
+    const data = await ensureLoaded();
+    if (data) setOpen(true);
+  }
 
   return (
     <>
       <Button
         type="button"
         className="shrink-0"
-        onClick={() => setOpen(true)}
+        onClick={() => void handleOpen()}
+        disabled={loading}
         aria-label="Tạo vụ việc"
       >
-        <Plus className="h-4 w-4" />
+        {loading ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Plus className="h-4 w-4" />
+        )}
         <span className="hidden sm:inline">Tạo vụ việc</span>
       </Button>
-      <CreateMatterModal
-        open={open}
-        formData={formData}
-        onClose={() => setOpen(false)}
-      />
+      {open && formData ? (
+        <CreateMatterModal
+          open={open}
+          formData={formData}
+          onClose={() => setOpen(false)}
+        />
+      ) : null}
     </>
   );
 }

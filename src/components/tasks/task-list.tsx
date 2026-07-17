@@ -5,16 +5,24 @@ import { updateTaskStatusAction } from "@/lib/actions";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { Badge, Card, CardContent, CardHeader, CardTitle, Select } from "@/components/ui/card";
 import { formatDate } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import {
   TASK_PRIORITY_LABELS,
   TASK_STATUS_LABELS,
 } from "@/lib/constants";
-import type { Task, User, Matter } from "@prisma/client";
+import type { TaskPriority, TaskStatus } from "@prisma/client";
 
-type TaskWithRelations = Task & {
-  assignee: User;
-  createdBy: User;
-  matter: Matter | null;
+type TaskListItem = {
+  id: string;
+  title: string;
+  description: string | null;
+  status: TaskStatus;
+  priority: TaskPriority;
+  dueDate: Date | null;
+  assigneeId: string;
+  createdById: string;
+  assignee: { id: string; name: string };
+  matter: { id: string; code: string; title: string } | null;
 };
 
 export function TaskList({
@@ -22,7 +30,7 @@ export function TaskList({
   currentUserId,
   canManage,
 }: {
-  tasks: TaskWithRelations[];
+  tasks: TaskListItem[];
   currentUserId: string;
   canManage: boolean;
 }) {
@@ -56,7 +64,7 @@ export function TaskList({
         <CardHeader>
           <CardTitle>Danh sách công việc</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className={cn("space-y-3", isPending && "pointer-events-none opacity-60")}>
           {tasks.length === 0 ? (
             <p className="text-sm text-slate-500">Chưa có công việc nào.</p>
           ) : (

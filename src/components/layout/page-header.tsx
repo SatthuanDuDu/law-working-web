@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronLeft, ChevronRight, Menu } from "lucide-react";
-import type { Role } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { getBreadcrumbs } from "@/lib/navigation";
 import { NotificationPanel } from "@/components/notifications/notification-panel";
@@ -11,16 +10,8 @@ import { CreateMatterButton } from "@/components/matters/create-matter-button";
 import { usePageMeta } from "@/contexts/page-meta-context";
 import { useSidebar } from "@/contexts/sidebar-context";
 import { useVisitHistoryNav } from "@/hooks/use-visit-history-nav";
-import type { MatterFormData } from "@/lib/matter-form-data";
 
-export function PageHeader({
-  unreadCount,
-  matterFormData,
-}: {
-  userRole: Role;
-  unreadCount: number;
-  matterFormData: MatterFormData;
-}) {
+export function PageHeader({ unreadCount }: { unreadCount: number }) {
   const pathname = usePathname();
   const { meta } = usePageMeta();
   const breadcrumbs = getBreadcrumbs(pathname);
@@ -95,7 +86,7 @@ export function PageHeader({
           )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <CreateMatterButton formData={matterFormData} />
+          <CreateMatterButton />
           <NotificationPanel unreadCount={unreadCount} />
         </div>
       </div>

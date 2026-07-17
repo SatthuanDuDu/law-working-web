@@ -1,3 +1,4 @@
+import { addMonths, endOfMonth, startOfMonth, subMonths } from "date-fns";
 import { PageHeaderSlot } from "@/components/layout/page-header-slot";
 import { CalendarMonth } from "@/components/calendar/calendar-month";
 import { prisma } from "@/lib/prisma";
@@ -14,13 +15,23 @@ export default async function CalendarPage({
   const canViewAll = isManagerOrAbove(user.role);
   const scope = canViewAll && params.scope === "all" ? "all" : "mine";
 
+  const now = new Date();
+  const rangeStart = startOfMonth(subMonths(now, 3));
+  const rangeEnd = endOfMonth(addMonths(now, 12));
+
   const tasks = await prisma.task.findMany({
     where: {
-      dueDate: { not: null },
+      dueDate: { gte: rangeStart, lte: rangeEnd },
       status: { in: ["TODO", "IN_PROGRESS"] },
       ...(scope === "mine" ? { assigneeId: user.id } : {}),
     },
-    include: {
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      dueDate: true,
+      status: true,
+      priority: true,
       assignee: { select: { name: true } },
       matter: {
         select: {

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import type { Role } from "@prisma/client";
 import {
@@ -5,18 +6,19 @@ import {
   canViewAllMatters,
 } from "@/lib/permissions";
 
-export async function getAccessibleMatterIds(userId: string, role: Role) {
+export const getAccessibleMatterIds = cache(async (userId: string, role: Role) => {
   if (canViewAllMatters(role)) return null;
 
-  const memberships = await prisma.matterMember.findMany({
-    where: { userId },
-    select: { matterId: true },
-  });
-
-  const ledMatters = await prisma.matter.findMany({
-    where: { leadLawyerId: userId },
-    select: { id: true },
-  });
+  const [memberships, ledMatters] = await Promise.all([
+    prisma.matterMember.findMany({
+      where: { userId },
+      select: { matterId: true },
+    }),
+    prisma.matter.findMany({
+      where: { leadLawyerId: userId },
+      select: { id: true },
+    }),
+  ]);
 
   return Array.from(
     new Set([
@@ -24,7 +26,7 @@ export async function getAccessibleMatterIds(userId: string, role: Role) {
       ...ledMatters.map((m) => m.id),
     ]),
   );
-}
+});
 
 export async function getAccessibleClientIds(userId: string, role: Role) {
   if (canViewAllClients(role)) return null;
@@ -51,8 +53,9 @@ export async function canAccessAttachmentTarget(
 ) {
   if (canViewAllMatters(role)) return true;
 
+  const matterIds = await getAccessibleMatterIds(userId, role);
+
   if (target.matterId) {
-    const matterIds = await getAccessibleMatterIds(userId, role);
     return !!matterIds?.includes(target.matterId);
   }
 
@@ -64,7 +67,6 @@ export async function canAccessAttachmentTarget(
     if (!task) return false;
     if (task.assigneeId === userId || task.createdById === userId) return true;
     if (task.matterId) {
-      const matterIds = await getAccessibleMatterIds(userId, role);
       return !!matterIds?.includes(task.matterId);
     }
     return false;

@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { ClipboardList, Pencil, Trash2 } from "lucide-react";
 import { deleteMatterAction } from "@/lib/actions";
-import type { MatterFormData } from "@/lib/matter-form-data";
+import { useMatterFormData } from "@/hooks/use-matter-form-data";
+import type { MatterFilterOptions } from "@/lib/matter-form-data";
 import { getMatterTypeDisplay } from "@/lib/matter-code";
 import { MATTER_TYPE_LABELS } from "@/lib/constants";
 import { formatDateTime } from "@/lib/utils";
@@ -127,16 +128,17 @@ function applyMattersFilters(matters: MatterListItem[], filters: MattersFilterSt
 
 export function MattersList({
   matters,
-  formData,
+  filterOptions,
   canManage,
 }: {
   matters: MatterListItem[];
-  formData: MatterFormData;
+  filterOptions: MatterFilterOptions;
   canManage: boolean;
 }) {
   const router = useRouter();
   const { confirm, dialog } = useConfirmDialog();
   const [isPending, startTransition] = useTransition();
+  const { formData, loading: formDataLoading, ensureLoaded } = useMatterFormData();
   const [editMatter, setEditMatter] = useState<MatterEditInitial | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [filters, setFilters] = useState<MattersFilterState>(DEFAULT_MATTERS_FILTERS);
@@ -146,7 +148,7 @@ export function MattersList({
     [matters, filters],
   );
 
-  function openEdit(matter: MatterListItem) {
+  async function openEdit(matter: MatterListItem) {
     setEditMatter({
       id: matter.id,
       code: matter.code,
@@ -162,7 +164,8 @@ export function MattersList({
       leadLawyerId: matter.leadLawyer.id,
       memberIds: matter.members.map((member) => member.userId),
     });
-    setEditOpen(true);
+    const data = await ensureLoaded();
+    if (data) setEditOpen(true);
   }
 
   function handleDelete(matter: MatterListItem) {
@@ -198,9 +201,9 @@ export function MattersList({
           filters={filters}
           onChange={setFilters}
           typeOptions={Object.keys(MATTER_TYPE_LABELS) as MatterType[]}
-          lawyers={formData.lawyers}
-          members={formData.members}
-          clients={formData.clients}
+          lawyers={filterOptions.lawyers}
+          members={filterOptions.members}
+          clients={filterOptions.clients}
         />
 
         {matters.length === 0 ? (
@@ -240,8 +243,8 @@ export function MattersList({
                           type="button"
                           variant="outline"
                           size="sm"
-                          disabled={isPending}
-                          onClick={() => openEdit(matter)}
+                          disabled={isPending || formDataLoading}
+                          onClick={() => void openEdit(matter)}
                           aria-label="Sửa vụ việc"
                           className="flex-1 sm:flex-none"
                         >
@@ -291,15 +294,17 @@ export function MattersList({
         )}
       </div>
 
-      <CreateMatterModal
-        open={editOpen}
-        formData={formData}
-        editMatter={editMatter}
-        onClose={() => {
-          setEditOpen(false);
-          setEditMatter(null);
-        }}
-      />
+      {editOpen && formData ? (
+        <CreateMatterModal
+          open={editOpen}
+          formData={formData}
+          editMatter={editMatter}
+          onClose={() => {
+            setEditOpen(false);
+            setEditMatter(null);
+          }}
+        />
+      ) : null}
     </>
   );
 }

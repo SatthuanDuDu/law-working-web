@@ -3,24 +3,50 @@ import { MattersList } from "@/components/matters/matters-list";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
 import { getAccessibleMatterIds } from "@/lib/access";
-import { getMatterFormData } from "@/lib/matter-form-data";
+import { getMatterFilterOptions } from "@/lib/matter-form-data";
 import { isManagerOrAbove } from "@/lib/permissions";
+import { MATTERS_LIST_LIMIT } from "@/lib/list-limits";
 
 export default async function MattersPage() {
   const user = await requireAuth();
   const matterIds = await getAccessibleMatterIds(user.id, user.role);
-  const formData = await getMatterFormData(user);
 
-  const matters = await prisma.matter.findMany({
-    where: matterIds ? { id: { in: matterIds } } : {},
-    include: {
-      client: true,
-      leadLawyer: true,
-      members: { include: { user: true } },
-      _count: { select: { tasks: true } },
-    },
-    orderBy: { updatedAt: "desc" },
-  });
+  const [filterOptions, matters] = await Promise.all([
+    getMatterFilterOptions(),
+    prisma.matter.findMany({
+      where: matterIds ? { id: { in: matterIds } } : {},
+      select: {
+        id: true,
+        code: true,
+        title: true,
+        description: true,
+        type: true,
+        customTypeLabel: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        client: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            address: true,
+            city: true,
+          },
+        },
+        leadLawyer: { select: { id: true, name: true } },
+        members: {
+          select: {
+            userId: true,
+            user: { select: { id: true, name: true } },
+          },
+        },
+        _count: { select: { tasks: true } },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: MATTERS_LIST_LIMIT,
+    }),
+  ]);
 
   const listItems = matters.map((matter) => ({
     id: matter.id,
@@ -32,21 +58,9 @@ export default async function MattersPage() {
     status: matter.status,
     createdAt: matter.createdAt.toISOString(),
     updatedAt: matter.updatedAt.toISOString(),
-    client: {
-      id: matter.client.id,
-      name: matter.client.name,
-      phone: matter.client.phone,
-      address: matter.client.address,
-      city: matter.client.city,
-    },
-    leadLawyer: {
-      id: matter.leadLawyer.id,
-      name: matter.leadLawyer.name,
-    },
-    members: matter.members.map((member) => ({
-      userId: member.userId,
-      user: { id: member.user.id, name: member.user.name },
-    })),
+    client: matter.client,
+    leadLawyer: matter.leadLawyer,
+    members: matter.members,
     _count: matter._count,
   }));
 
@@ -58,7 +72,7 @@ export default async function MattersPage() {
       />
       <MattersList
         matters={listItems}
-        formData={formData}
+        filterOptions={filterOptions}
         canManage={isManagerOrAbove(user.role)}
       />
     </>

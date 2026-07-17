@@ -22,14 +22,22 @@ import { generateMatterCode } from "@/lib/matter-code";
 import { getAccessibleClientIds, getAccessibleMatterIds } from "@/lib/access";
 import type { MatterPlanStepStatus } from "@prisma/client";
 
-function revalidateApp() {
-  revalidatePath("/dashboard");
-  revalidatePath("/matters");
+function revalidateClients() {
   revalidatePath("/clients");
+  revalidatePath("/matters");
+  revalidatePath("/dashboard");
+}
+
+function revalidateMatters() {
+  revalidatePath("/matters");
+  revalidatePath("/dashboard");
+  revalidatePath("/workload");
+}
+
+function revalidateTasks() {
   revalidatePath("/tasks");
   revalidatePath("/calendar");
-  revalidatePath("/workload");
-  revalidatePath("/notifications");
+  revalidatePath("/dashboard");
 }
 
 export async function changePasswordAction(formData: FormData) {
@@ -103,7 +111,7 @@ export async function createClientAction(formData: FormData) {
     details: client.name,
   });
 
-  revalidateApp();
+  revalidateClients();
   return { success: true };
 }
 
@@ -145,7 +153,7 @@ export async function deleteClientAction(clientId: string) {
       details: client.name,
     });
 
-    revalidateApp();
+    revalidateClients();
     return { success: true };
   } catch (error) {
     console.error("deleteClientAction failed:", error);
@@ -273,7 +281,10 @@ export async function createMatterAction(formData: FormData) {
       details: matter.code,
     });
 
-    revalidateApp();
+    revalidateMatters();
+    if (parsed.data.clientMode === "new") {
+      revalidatePath("/clients");
+    }
     return { success: true, matterId: matter.id, code: matter.code };
   } catch (error) {
     console.error("createMatterAction failed:", error);
@@ -413,7 +424,7 @@ export async function updateMatterAction(matterId: string, formData: FormData) {
       details: existing.code,
     });
 
-    revalidateApp();
+    revalidateMatters();
     revalidatePath(`/matters/${matterId}`);
     return { success: true, matterId };
   } catch (error) {
@@ -451,7 +462,7 @@ export async function deleteMatterAction(matterId: string) {
       details: `${matter.code} — ${matter.title}`,
     });
 
-    revalidateApp();
+    revalidateMatters();
     return { success: true };
   } catch (error) {
     console.error("deleteMatterAction failed:", error);
@@ -684,7 +695,7 @@ export async function updateMatterStatusAction(matterId: string, status: string)
     }
   }
 
-  revalidateApp();
+  revalidateMatters();
   revalidatePath(`/matters/${matterId}`);
   revalidatePath(`/matters/${matterId}/plan`);
   revalidatePath(`/matters/${matterId}/report`);
@@ -738,7 +749,7 @@ export async function createTaskAction(formData: FormData) {
     details: task.title,
   });
 
-  revalidateApp();
+  revalidateTasks();
   return { success: true };
 }
 
@@ -761,7 +772,7 @@ export async function updateTaskStatusAction(id: string, status: string) {
     data: { status: status as "TODO" | "IN_PROGRESS" | "DONE" | "CANCELLED" },
   });
 
-  revalidateApp();
+  revalidateTasks();
   return { success: true };
 }
 
@@ -771,7 +782,6 @@ export async function markNotificationReadAction(id: string) {
     where: { id, userId: user.id },
     data: { isRead: true },
   });
-  revalidateApp();
   return { success: true };
 }
 
@@ -781,7 +791,6 @@ export async function markAllNotificationsReadAction() {
     where: { userId: user.id, isRead: false },
     data: { isRead: true },
   });
-  revalidateApp();
   return { success: true };
 }
 

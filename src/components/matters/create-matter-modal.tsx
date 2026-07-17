@@ -13,6 +13,7 @@ import {
   ROLE_LABELS,
   VIETNAM_CITY_SUGGESTIONS,
 } from "@/lib/constants";
+import { invalidateMatterFormDataCache } from "@/hooks/use-matter-form-data";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { useOverlayAnimation } from "@/hooks/use-overlay-animation";
 import { Button } from "@/components/ui/button";
@@ -644,6 +645,7 @@ export function CreateMatterModal({
             return;
           }
           handleClose();
+          invalidateMatterFormDataCache();
           if (!isEdit && "matterId" in result && result.matterId) {
             router.push(`/matters/${result.matterId}`);
           }

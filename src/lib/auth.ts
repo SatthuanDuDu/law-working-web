@@ -5,6 +5,7 @@ import type { Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit";
 import { authConfig } from "@/lib/auth.config";
+import { resolveLoginEmail } from "@/lib/demo-admin";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -15,10 +16,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const email = credentials?.email as string | undefined;
+        const login = credentials?.email as string | undefined;
         const password = credentials?.password as string | undefined;
 
-        if (!email || !password) return null;
+        if (!login || !password) return null;
+
+        const email = resolveLoginEmail(login);
 
         const user = await prisma.user.findUnique({
           where: { email },

@@ -47,7 +47,7 @@ async function createSampleMatter(input: {
 
 async function main() {
   const admin = await prisma.user.findFirst({
-    where: { email: "admin@luat.vn", isActive: true },
+    where: { email: "admin@admin.com", isActive: true },
   });
   const lawyer =
     (await prisma.user.findFirst({

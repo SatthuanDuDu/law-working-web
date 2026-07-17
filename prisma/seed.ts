@@ -2,9 +2,13 @@ import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 
+const DEMO_ADMIN_EMAIL = "admin@admin.com";
+const DEMO_ADMIN_PASSWORD = "admin";
+
 const prisma = new PrismaClient();
 
 async function main() {
+  const demoPassword = await bcrypt.hash(DEMO_ADMIN_PASSWORD, 10);
   const password = await bcrypt.hash("password123", 10);
 
   const departments = await Promise.all([
@@ -48,12 +52,16 @@ async function main() {
   );
 
   const admin = await prisma.user.upsert({
-    where: { email: "admin@luat.vn" },
-    update: {},
+    where: { email: DEMO_ADMIN_EMAIL },
+    update: {
+      password: demoPassword,
+      role: "ADMIN",
+      isActive: true,
+    },
     create: {
-      email: "admin@luat.vn",
-      password,
-      name: "Nguyễn Văn Admin",
+      email: DEMO_ADMIN_EMAIL,
+      password: demoPassword,
+      name: "Quản trị viên",
       role: "ADMIN",
       departmentId: departments[3].id,
     },
@@ -243,8 +251,8 @@ async function main() {
   });
 
   console.log("Seed completed.");
-  console.log("Demo accounts (password: password123):");
-  console.log("- admin@luat.vn (Admin)");
+  console.log(`Demo admin: admin / ${DEMO_ADMIN_PASSWORD}`);
+  console.log("Other demo accounts (password: password123):");
   console.log("- quanly@luat.vn (Quản lý)");
   console.log("- luatsu1@luat.vn (Luật sư)");
   console.log("- luatsu2@luat.vn (Luật sư)");

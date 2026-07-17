@@ -2,15 +2,18 @@ import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 
+const DEMO_ADMIN_EMAIL = "admin@admin.com";
+const DEMO_ADMIN_PASSWORD = "admin";
+
 const prisma = new PrismaClient();
 
 async function main() {
-  const email = (process.env.ADMIN_EMAIL ?? "admin@luat.vn").trim().toLowerCase();
-  const password = process.env.ADMIN_PASSWORD ?? "password123";
+  const email = (process.env.ADMIN_EMAIL ?? DEMO_ADMIN_EMAIL).trim().toLowerCase();
+  const password = process.env.ADMIN_PASSWORD ?? DEMO_ADMIN_PASSWORD;
   const name = process.env.ADMIN_NAME ?? "Quản trị viên";
 
-  if (password.length < 6) {
-    throw new Error("ADMIN_PASSWORD phải có ít nhất 6 ký tự");
+  if (password.length < 5) {
+    throw new Error("ADMIN_PASSWORD phải có ít nhất 5 ký tự");
   }
 
   const hashed = await bcrypt.hash(password, 10);
@@ -32,7 +35,7 @@ async function main() {
     },
   });
 
-  console.log(`Admin ready: ${user.email} (${user.id})`);
+  console.log(`Admin ready: login "admin" hoặc ${user.email} / ${password}`);
 }
 
 main()

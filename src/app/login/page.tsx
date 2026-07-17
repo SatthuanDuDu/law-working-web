@@ -29,7 +29,7 @@ export default function LoginPage() {
     setLoading(false);
 
     if (result?.error) {
-      setError("Email hoặc mật khẩu không đúng");
+      setError("Tên đăng nhập hoặc mật khẩu không đúng");
       return;
     }
 
@@ -59,12 +59,13 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Tên đăng nhập</Label>
               <Input
                 id="email"
                 name="email"
-                type="email"
-                placeholder="admin@luat.vn"
+                type="text"
+                autoComplete="username"
+                placeholder="admin"
                 required
               />
             </div>
@@ -91,8 +92,7 @@ export default function LoginPage() {
             {process.env.NODE_ENV === "development" && (
               <>
                 <p className="font-medium text-primary">Tài khoản demo (local seed):</p>
-                <p>admin@luat.vn / password123</p>
-                <p>luatsu1@luat.vn / password123</p>
+                <p>admin / admin</p>
               </>
             )}
             <p className={process.env.NODE_ENV === "development" ? "mt-2" : undefined}>

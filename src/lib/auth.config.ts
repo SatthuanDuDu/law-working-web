@@ -25,5 +25,20 @@ export const authConfig = {
 
       return isLoggedIn;
     },
+    redirect({ url, baseUrl }) {
+      if (url.startsWith("/")) return `${baseUrl}${url}`;
+
+      try {
+        const target = new URL(url);
+        // Logout must land on /login on the host the user is actually using
+        // (AUTH_URL on Vercel may point at a stale deployment alias).
+        if (target.pathname === "/login") return target.toString();
+        if (target.origin === baseUrl) return target.toString();
+      } catch {
+        // fall through
+      }
+
+      return baseUrl;
+    },
   },
 } satisfies NextAuthConfig;

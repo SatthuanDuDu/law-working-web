@@ -417,7 +417,10 @@ export function Sidebar({
       title: "Đăng xuất",
       message: "Bạn có chắc muốn đăng xuất khỏi hệ thống?",
       confirmLabel: "Đăng xuất",
-      onConfirm: () => signOut({ callbackUrl: "/login" }),
+      onConfirm: () =>
+        signOut({
+          callbackUrl: `${window.location.origin}/login`,
+        }),
     });
   }
 

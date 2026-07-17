@@ -63,8 +63,8 @@ export default async function MatterPlanPage({
         description={`${matter.code} • ${matter.title}`}
       />
 
-      <div className="grid items-start gap-6 xl:grid-cols-3">
-        <aside className="xl:sticky xl:top-32 xl:z-10 xl:self-start">
+      <div className="grid min-w-0 items-start gap-6 xl:grid-cols-3">
+        <aside className="min-w-0 xl:sticky xl:top-32 xl:z-10 xl:self-start">
           <MatterInfoCard
             matter={matter}
             canEditStatus={canEdit}
@@ -72,7 +72,7 @@ export default async function MatterPlanPage({
           />
         </aside>
 
-        <Card className="rounded-[5px] xl:col-span-2">
+        <Card className="min-w-0 overflow-hidden rounded-[5px] xl:col-span-2">
           <CardHeader>
             <CardTitle>Kế hoạch hoàn thành</CardTitle>
           </CardHeader>

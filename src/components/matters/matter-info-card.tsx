@@ -38,7 +38,7 @@ export function MatterInfoCard({
         className={cn(
           "flex flex-col items-start gap-3 space-y-0 sm:flex-row sm:justify-between",
           stickyHeader &&
-            "sticky top-32 z-10 rounded-t-[5px] border-b border-slate-100 bg-white/95 backdrop-blur-sm",
+            "xl:sticky xl:top-32 xl:z-10 xl:rounded-t-[5px] xl:border-b xl:border-slate-100 xl:bg-white/95 xl:backdrop-blur-sm",
         )}
       >
         <CardTitle className="pr-2">Thông tin vụ việc</CardTitle>

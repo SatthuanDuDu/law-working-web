@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Bell, X } from "lucide-react";
 import type { Notification, NotificationType } from "@prisma/client";
@@ -29,6 +30,12 @@ export function NotificationPanel({ unreadCount }: { unreadCount: number }) {
   const [readLocally, setReadLocally] = useState(0);
   const [isPending, startTransition] = useTransition();
   const rootRef = useRef<HTMLDivElement>(null);
+  const [panelAnchor, setPanelAnchor] = useState<{
+    top: number;
+    right: number;
+    width: number;
+  } | null>(null);
+  const [isDesktopPanel, setIsDesktopPanel] = useState(false);
   const { mounted: panelMounted, active: panelActive } = useOverlayAnimation(open);
 
   const displayedUnread = Math.max(0, unreadCount - readLocally);
@@ -38,6 +45,8 @@ export function NotificationPanel({ unreadCount }: { unreadCount: number }) {
 
     function handlePointerDown(event: MouseEvent) {
       if (!rootRef.current?.contains(event.target as Node)) {
+        const target = event.target as HTMLElement | null;
+        if (target?.closest("[data-notification-panel]")) return;
         setOpen(false);
       }
     }
@@ -53,6 +62,41 @@ export function NotificationPanel({ unreadCount }: { unreadCount: number }) {
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [open]);
+
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 640px)");
+    function sync() {
+      setIsDesktopPanel(media.matches);
+    }
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(() => {
+    if (!open || !isDesktopPanel) {
+      setPanelAnchor(null);
+      return;
+    }
+
+    function measurePanel() {
+      const rect = rootRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setPanelAnchor({
+        top: rect.bottom + 6,
+        right: Math.max(16, window.innerWidth - rect.right),
+        width: Math.min(448, Math.max(320, window.innerWidth - 32)),
+      });
+    }
+
+    measurePanel();
+    window.addEventListener("resize", measurePanel);
+    window.addEventListener("scroll", measurePanel, true);
+    return () => {
+      window.removeEventListener("resize", measurePanel);
+      window.removeEventListener("scroll", measurePanel, true);
+    };
+  }, [open, isDesktopPanel]);
 
   function loadNotifications() {
     setLoading(true);
@@ -116,22 +160,44 @@ export function NotificationPanel({ unreadCount }: { unreadCount: number }) {
         )}
       </button>
 
-      {panelMounted && (
-        <aside
-          className={cn(
-            "floating-panel fixed inset-x-0 bottom-0 top-14 z-50 flex h-auto max-h-[calc(100dvh-3.5rem)] w-full min-w-0 flex-col sm:inset-auto sm:top-[5px] sm:right-6 sm:bottom-auto sm:h-[66vh] sm:w-[min(33vw,28rem)] sm:min-w-[320px]",
-            "overflow-hidden rounded-t-lg border border-slate-200 bg-white shadow-[var(--shadow-overlay)] sm:rounded-lg",
-            panelActive && "is-active",
-          )}
-        >
-            <div className="flex items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-3">
-              <div className="min-w-0">
+      {panelMounted &&
+        createPortal(
+          <>
+            <button
+              type="button"
+              aria-label="Đóng thông báo"
+              data-notification-panel
+              className={cn(
+                "overlay-backdrop fixed inset-0 z-40 bg-slate-900/25 sm:hidden",
+                panelActive && "is-active",
+              )}
+              onClick={() => setOpen(false)}
+            />
+            <aside
+              data-notification-panel
+              style={
+                isDesktopPanel && panelAnchor
+                  ? {
+                      top: panelAnchor.top,
+                      right: panelAnchor.right,
+                      width: panelAnchor.width,
+                    }
+                  : undefined
+              }
+              className={cn(
+                "floating-panel fixed z-50 flex min-w-0 flex-col overflow-hidden border border-slate-200 bg-white shadow-[var(--shadow-overlay)]",
+                "inset-x-0 bottom-0 max-h-[min(88dvh,100%)] w-full rounded-t-lg sm:inset-auto sm:bottom-auto sm:max-h-[min(66vh,32rem)] sm:rounded-lg",
+                panelActive && "is-active",
+              )}
+            >
+            <div className="flex items-start justify-between gap-2 border-b border-slate-200 bg-white px-4 py-3">
+              <div className="min-w-0 flex-1">
                 <h2 className="font-semibold text-slate-900">Thông báo</h2>
                 {displayedUnread > 0 && (
                   <p className="text-xs text-slate-500">{displayedUnread} chưa đọc</p>
                 )}
               </div>
-              <div className="flex shrink-0 items-center gap-1">
+              <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
                 <Button
                   variant="outline"
                   size="sm"
@@ -180,7 +246,7 @@ export function NotificationPanel({ unreadCount }: { unreadCount: number }) {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 gap-2 border-b border-slate-200 bg-white px-4 py-3 sm:grid-cols-2">
+            <div className="grid min-w-0 grid-cols-1 gap-2 border-b border-slate-200 bg-white px-4 py-3 sm:grid-cols-2">
               <div className="space-y-1">
                 <Label htmlFor="filter-date" className="text-xs">
                   Lọc theo ngày
@@ -213,7 +279,7 @@ export function NotificationPanel({ unreadCount }: { unreadCount: number }) {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto bg-white px-4 py-3">
+            <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-white px-4 py-3">
               {loading ? (
                 <p className="text-sm text-slate-500">Đang tải...</p>
               ) : filtered.length === 0 ? (
@@ -230,15 +296,15 @@ export function NotificationPanel({ unreadCount }: { unreadCount: number }) {
                           : "border-primary/20 bg-primary-muted",
                       )}
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="font-medium text-slate-900">
+                      <div className="flex min-w-0 items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="break-words font-medium text-slate-900">
                             {notification.title}
                           </p>
-                          <p className="mt-1 text-sm text-slate-600">
+                          <p className="mt-1 break-words text-sm text-slate-600">
                             {notification.message}
                           </p>
-                          <p className="mt-2 text-xs text-slate-400">
+                          <p className="mt-2 break-words text-xs text-slate-400">
                             {formatDateTime(notification.createdAt)} •{" "}
                             {NOTIFICATION_TYPE_LABELS[notification.type]}
                           </p>
@@ -256,7 +322,9 @@ export function NotificationPanel({ unreadCount }: { unreadCount: number }) {
                           )}
                         </div>
                         {!notification.isRead && (
-                          <Badge variant="warning">Mới</Badge>
+                          <Badge variant="warning" className="shrink-0">
+                            Mới
+                          </Badge>
                         )}
                       </div>
                       {!notification.isRead && (
@@ -275,8 +343,10 @@ export function NotificationPanel({ unreadCount }: { unreadCount: number }) {
                 </div>
               )}
             </div>
-        </aside>
-      )}
+            </aside>
+          </>,
+          document.body,
+        )}
     </div>
   );
 }

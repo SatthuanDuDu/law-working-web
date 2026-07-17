@@ -40,7 +40,7 @@ const outlinedFieldLabelClass =
   "pointer-events-none absolute left-3 top-0 z-[1] -translate-y-1/2 bg-white px-1.5 text-sm font-medium text-slate-700";
 
 const outlinedFieldInputClass =
-  "interactive-field h-11 w-full rounded-[5px] border border-slate-300 bg-white px-3 pb-2.5 pt-3 text-sm";
+  "interactive-field h-11 min-w-0 max-w-full w-full rounded-[5px] border border-slate-300 bg-white px-3 pb-2.5 pt-3 text-sm";
 
 function OutlinedField({
   label,
@@ -227,14 +227,14 @@ export function MatterPlanTimeline({
   return (
     <>
       {dialog}
-      <div className="space-y-6">
+      <div className="min-w-0 space-y-6 overflow-x-hidden">
         {canEdit ? (
           <form
             onSubmit={handleAdd}
-            className="space-y-5 rounded-[5px] border border-slate-200 bg-white p-4"
+            className="min-w-0 space-y-5 rounded-[5px] border border-slate-200 bg-white p-3 sm:p-4"
           >
             <p className="text-sm font-semibold text-slate-800">Thêm bước kế hoạch</p>
-            <div className="grid gap-5 sm:grid-cols-2">
+            <div className="grid min-w-0 gap-5 sm:grid-cols-2">
               <OutlinedField label="Loại công việc" htmlFor="plan-step-work-type">
                 <div className="relative">
                   <Select
@@ -306,7 +306,7 @@ export function MatterPlanTimeline({
             Chưa có bước kế hoạch. {canEdit ? "Thêm hạng mục phía trên để bắt đầu." : ""}
           </p>
         ) : (
-          <ol className="relative ml-1 space-y-0 border-l-2 border-slate-200 pl-5 sm:ml-3 sm:pl-8">
+          <ol className="relative ml-0 min-w-0 space-y-0 border-l-2 border-slate-200 pl-6 sm:ml-1 sm:pl-8">
             {orderedSteps.map((step, index) => {
               const isDragging = draggingId === step.id;
               const isDropTarget = dropTargetId === step.id && draggingId !== step.id;
@@ -325,7 +325,7 @@ export function MatterPlanTimeline({
                   <span
                     aria-hidden
                     className={cn(
-                      "absolute -left-[1.4rem] top-1.5 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-white sm:-left-[2.55rem]",
+                      "absolute -left-[calc(0.75rem+1px)] top-1.5 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-white sm:-left-[calc(1rem+1px)]",
                       STATUS_DOT_CLASS[step.status],
                     )}
                   />
@@ -335,7 +335,7 @@ export function MatterPlanTimeline({
                     onDragEnd={handleDragEnd}
                     title={canEdit ? "Kéo thẻ để đổi thứ tự bước" : undefined}
                     className={cn(
-                      "group rounded-[5px] border border-slate-200 bg-white p-4 shadow-sm transition-colors",
+                      "group min-w-0 overflow-hidden rounded-[5px] border border-slate-200 bg-white p-3 shadow-sm transition-colors sm:p-4",
                       canEdit &&
                         "cursor-grab active:cursor-grabbing hover:border-primary/35 hover:bg-slate-50/60",
                       isDropTarget && "border-primary bg-primary-muted/40",
@@ -359,25 +359,25 @@ export function MatterPlanTimeline({
                           <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
                             Bước {index + 1}
                           </p>
-                          <p className="whitespace-pre-wrap font-semibold text-slate-900">
+                          <p className="break-words whitespace-pre-wrap font-semibold text-slate-900">
                             {step.title}
                           </p>
-                          <div className="grid gap-1 text-sm text-slate-600 sm:grid-cols-2">
-                            <p>
+                          <div className="grid min-w-0 gap-1 text-sm text-slate-600 sm:grid-cols-2">
+                            <p className="break-words">
                               <span className="font-medium text-slate-700">Loại công việc:</span>{" "}
                               {step.workType?.name ?? "—"}
                             </p>
-                            <p>
+                            <p className="break-words">
                               <span className="font-medium text-slate-700">Diễn ra:</span>{" "}
                               {step.startedAt ? formatDateTime(step.startedAt) : "—"}
                             </p>
-                            <p>
+                            <p className="break-words">
                               <span className="font-medium text-slate-700">
                                 Dự kiến hoàn thành:
                               </span>{" "}
                               {step.dueAt ? formatDateTime(step.dueAt) : "—"}
                             </p>
-                            <p>
+                            <p className="break-words sm:col-span-2">
                               <span className="font-medium text-slate-700">Trạng thái:</span>{" "}
                               {MATTER_PLAN_STEP_STATUS_LABELS[step.status]}
                               {step.statusChangedAt

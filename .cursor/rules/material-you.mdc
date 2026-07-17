@@ -1,0 +1,45 @@
+---
+description: Material You / Material Design 3 visual language for the whole app
+alwaysApply: true
+---
+
+# Material You UI
+
+This project follows **Material You (Material Design 3)** for UI.
+
+## Brand palette (NSLAW)
+
+Bảng màu thương hiệu là **xanh lá đậm + gold** (theo logo NSLAW), khai báo tập trung
+bằng CSS vars trong `src/app/globals.css`:
+
+- `--primary: #14532d` (xanh lá đậm) — dùng qua `bg-primary` / `text-primary`...
+- `--accent: #9a7b16` (gold, đủ tương phản để làm chữ) + `--accent-muted: #f6edcf`
+- Radius phẳng/sharp: `--radius-md: 0.375rem` (6px) là mặc định; ưu tiên `rounded-md`.
+- Shadow overlay thống nhất: `var(--shadow-overlay)` (dùng cho modal/panel/menu nổi).
+
+Không hardcode hex navy cũ (`#152d4f`, `#0f2138`, `#3b82c4`); luôn dùng token/primary.
+Logo đặt tại `public/logo-nslaw.png` (login + header sidebar).
+
+## Do
+
+- Prefer toned surfaces, soft tonal fills, and clear hierarchy over heavy decoration
+- Use color to convey meaning (status, emphasis) with readable contrast
+- Prefer light elevation: thin borders / surface tint; avoid flashy glow and multi-layer colored drop shadows
+- Keep interactive chrome simple: chips/tags, clean menus, restrained motion
+- Status / chips: flat tonal pill (filled or soft container), no colored outer glow
+- Dropdowns/menus: compact, quiet list — white/surface background, hairline divider optional, soft hover, no loud option background blocks
+
+## Don't
+
+- Colored `box-shadow` / neon glow on chips, badges, or buttons (except brief success feedback when explicitly requested)
+- Heavy `shadow-lg` + saturated option rows that fight the rest of the UI
+- Overbuilt cards with multi-layer shadows for decoration
+
+## Status colors (example)
+
+Use saturated fill on the active tag; keep the open menu plain (label + subtle hover):
+
+- NEW — sky / info tonal
+- IN_PROGRESS — amber / caution tonal
+- ON_HOLD — rose / pause tonal  
+- CLOSED — emerald / success tonal

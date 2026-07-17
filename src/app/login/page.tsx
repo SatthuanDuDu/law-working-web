@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/card";
@@ -38,13 +38,20 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary via-primary-hover to-[#0f2138] p-6">
-      <Card className="w-full max-w-md border-border shadow-xl">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary via-primary-hover to-[#0b3a20] p-6">
+      <Card className="w-full max-w-md border-border shadow-[var(--shadow-overlay)]">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-primary">
-            <Scale className="h-7 w-7" />
+          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-white ring-1 ring-border">
+            <Image
+              src="/logo-nslaw.png"
+              alt="NSLAW"
+              width={80}
+              height={80}
+              priority
+              className="h-full w-full object-contain"
+            />
           </div>
-          <CardTitle>Luật Work Manager</CardTitle>
+          <CardTitle>NSLAW Work Manager</CardTitle>
           <CardDescription>
             Hệ thống quản lý công việc nội bộ
           </CardDescription>

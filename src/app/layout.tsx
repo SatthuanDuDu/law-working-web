@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Open_Sans } from "next/font/google";
 import { Providers } from "@/components/providers";
 import "./globals.css";
@@ -10,8 +10,15 @@ const openSans = Open_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Luật Work Manager",
+  title: "NSLAW Work Manager",
   description: "Hệ thống quản lý công việc nội bộ cho công ty luật",
+};
+
+// Keep zoom enabled and layout stable; prevents iOS auto-zoom side effects.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

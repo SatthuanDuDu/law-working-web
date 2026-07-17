@@ -54,7 +54,7 @@ export function ConfirmDialog({
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
         className={cn(
-          "overlay-panel relative z-10 w-full rounded-2xl border border-slate-200 bg-white p-6 shadow-xl",
+          "overlay-panel relative z-10 w-full rounded-lg border border-slate-200 bg-white p-6 shadow-[var(--shadow-overlay)]",
           size === "large" ? "max-w-2xl" : "max-w-md",
           active && "is-active",
         )}

@@ -75,14 +75,14 @@ function StatCard({
   tone: keyof typeof STAT_TONES;
 }) {
   return (
-    <div className="group rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_1px_3px_rgba(15,23,42,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300/80 hover:shadow-md">
+    <div className="group rounded-md border border-slate-200/80 bg-white p-5 transition-colors duration-200 hover:border-slate-300/80">
       <div className="flex items-start justify-between gap-3">
         <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
           {label}
         </span>
         <span
           className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-md",
             STAT_TONES[tone],
           )}
         >
@@ -140,7 +140,7 @@ function ActionLink({ href, children }: { href: string; children: ReactNode }) {
 
 function EmptyState({ children }: { children: ReactNode }) {
   return (
-    <div className="flex items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-4 py-8 text-center text-sm text-slate-500">
+    <div className="flex items-center justify-center rounded-md border border-dashed border-slate-200 bg-slate-50/50 px-4 py-8 text-center text-sm text-slate-500">
       {children}
     </div>
   );
@@ -293,7 +293,7 @@ export default async function DashboardPage() {
               {upcomingDeadlines.map((task) => (
                 <div
                   key={task.id}
-                  className="rounded-xl border border-slate-200/80 px-4 py-3 transition-colors hover:border-slate-300 hover:bg-slate-50/70"
+                  className="rounded-md border border-slate-200/80 px-4 py-3 transition-colors hover:border-slate-300 hover:bg-slate-50/70"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="min-w-0 truncate font-medium text-slate-900">
@@ -379,7 +379,7 @@ export default async function DashboardPage() {
                 <Link
                   key={matter.id}
                   href={`/matters/${matter.id}`}
-                  className="group flex items-center justify-between gap-3 rounded-xl border border-slate-200/80 px-4 py-3 transition-colors hover:border-slate-300 hover:bg-slate-50/70"
+                  className="group flex items-center justify-between gap-3 rounded-md border border-slate-200/80 px-4 py-3 transition-colors hover:border-slate-300 hover:bg-slate-50/70"
                 >
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
@@ -407,7 +407,7 @@ export default async function DashboardPage() {
               {recentTasks.map((task) => (
                 <div
                   key={task.id}
-                  className="rounded-xl border border-slate-200/80 px-4 py-3 transition-colors hover:border-slate-300 hover:bg-slate-50/70"
+                  className="rounded-md border border-slate-200/80 px-4 py-3 transition-colors hover:border-slate-300 hover:bg-slate-50/70"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="min-w-0 truncate font-medium text-slate-900">
@@ -435,7 +435,7 @@ export default async function DashboardPage() {
               {recentTasks.map((task) => (
                 <div
                   key={task.id}
-                  className="rounded-xl border border-slate-200/80 px-4 py-3"
+                  className="rounded-md border border-slate-200/80 px-4 py-3"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="min-w-0 font-medium text-slate-900">{task.title}</p>

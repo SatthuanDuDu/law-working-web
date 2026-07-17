@@ -1,0 +1,37 @@
+---
+description: Desktop + mobile parity, no input zoom, gentle tap animation
+alwaysApply: true
+---
+
+# Desktop & Mobile parity (bắt buộc)
+
+Mọi thay đổi UI phải chạy ổn định trên **cả desktop lẫn mobile**. Trước khi bàn giao,
+phải mô phỏng lại ở cả 2 kích thước (desktop và mobile ~390x844).
+
+## Do
+
+- Layout responsive: `grid`/`flex` stack gọn trên mobile, mở rộng ở `sm:`/`lg:`.
+  Không để tràn ngang (horizontal overflow), không lệch, không thưa/thiếu phần tử.
+- Giữ chiều rộng ổn định: `html { scrollbar-gutter: stable; }` (đã có trong globals.css)
+  để không bị xê dịch khi chuyển trang.
+- Form control (`input`, `textarea`, `select`) phải có **font-size >= 16px trên mobile**
+  để iOS Safari **không tự phóng to khi focus**. Đã xử lý global trong
+  `src/app/globals.css` (media `max-width: 640px`). Không đặt `text-sm` cứng đè lại 16px
+  cho control trên mobile; nếu cần nhỏ hơn thì chỉ nhỏ từ `sm:` trở lên.
+- Viewport chuẩn trong `src/app/layout.tsx`: `width=device-width, initialScale=1`.
+  **Không** dùng `maximum-scale`/`user-scalable=no` (chặn zoom = lỗi a11y và gây lệch).
+- Animation khi bấm: dùng class `interactive-press` (scale nhẹ + brightness ~150ms) cho
+  button/tab/nav/thẻ bấm được. Tôn trọng `prefers-reduced-motion` (đã tắt animation ở đó).
+
+## Don't
+
+- Không tạo layout chỉ chạy đúng ở 1 trong 2 giao diện.
+- Không để input `font-size < 16px` trên mobile.
+- Không chặn/khóa zoom của người dùng.
+- Không thêm animation nặng/giật; chỉ animation nhẹ nhàng khi tương tác.
+
+## Checklist trước khi bàn giao
+
+1. Xem desktop: không tràn, spacing đều, radius/shadow đồng nhất.
+2. Xem mobile 390px: không tràn ngang, không lệch, bấm vào input **không bị zoom**.
+3. Bấm thử button/tab/nav: có phản hồi animation nhẹ.

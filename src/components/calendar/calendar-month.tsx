@@ -257,7 +257,7 @@ function TaskPreviewChip({ task }: { task: CalendarTask }) {
                 role="dialog"
                 aria-label="Tổng quan nhiệm vụ"
                 className={cn(
-                  "relative z-[1] max-h-[80dvh] w-full overflow-y-auto rounded-t-2xl border border-slate-200 bg-white p-4 shadow-xl transition-all duration-200",
+                  "relative z-[1] max-h-[80dvh] w-full overflow-y-auto rounded-t-lg border border-slate-200 bg-white p-4 shadow-[var(--shadow-overlay)] transition-all duration-200",
                   visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
                 )}
               >

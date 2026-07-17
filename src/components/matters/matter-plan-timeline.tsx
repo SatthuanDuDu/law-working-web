@@ -32,7 +32,7 @@ export type MatterPlanStepItem = {
 const STATUS_DOT_CLASS: Record<MatterPlanStepStatus, string> = {
   NOT_STARTED: "bg-slate-400",
   IN_PROGRESS: "bg-sky-500",
-  DONE: "plan-step-dot-done bg-[#39ff14]",
+  DONE: "plan-step-dot-done bg-primary",
   BLOCKED: "bg-red-500",
 };
 

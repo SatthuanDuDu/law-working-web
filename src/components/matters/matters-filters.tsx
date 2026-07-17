@@ -318,7 +318,7 @@ export function MattersFiltersBar({
     Boolean(filters.dateTo);
 
   return (
-    <div className="rounded-xl border border-slate-200/80 bg-white px-3 py-3">
+    <div className="rounded-md border border-slate-200/80 bg-white px-3 py-3">
       <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-end">
         <MultiSelectFilter
           label="Loại hình"

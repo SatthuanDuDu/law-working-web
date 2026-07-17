@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { createPortal } from "react-dom";
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
@@ -13,7 +14,6 @@ import {
   Tags,
   Building2,
   ScrollText,
-  Scale,
   LogOut,
   CalendarDays,
   Gauge,
@@ -167,7 +167,7 @@ function NavLink({
         href={href}
         onClick={onNavigate}
         className={cn(
-          "interactive-press flex min-h-10 items-center rounded-xl text-sm",
+          "interactive-press flex min-h-10 items-center rounded-md text-sm",
           collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2.5",
           active
             ? "bg-white text-primary font-medium shadow-sm"
@@ -346,7 +346,7 @@ function AccountMenu({
           aria-controls={menuId}
           onClick={() => (open ? closeMenu() : openMenu())}
           className={cn(
-            "interactive-press flex w-full items-center rounded-xl transition-colors",
+            "interactive-press flex w-full items-center rounded-md transition-colors",
             collapsed
               ? "justify-center px-2 py-2.5 text-white/80 hover:bg-white/10 hover:text-white"
               : "gap-3 bg-white/10 px-3 py-3 text-left hover:bg-white/15",
@@ -490,12 +490,18 @@ function SidebarContent({
           collapsed ? "justify-center px-3" : "gap-3 px-6",
         )}
       >
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-primary">
-          <Scale className="h-5 w-5" />
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white ring-1 ring-white/20">
+          <Image
+            src="/logo-nslaw.png"
+            alt="NSLAW"
+            width={40}
+            height={40}
+            className="h-full w-full object-contain"
+          />
         </div>
         {!collapsed && (
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">Luật Work</p>
+            <p className="truncate text-sm font-semibold">NSLAW</p>
             <p className="text-xs text-white/60">Quản lý nội bộ</p>
           </div>
         )}

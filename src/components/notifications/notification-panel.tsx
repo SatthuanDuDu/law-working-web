@@ -104,7 +104,7 @@ export function NotificationPanel({ unreadCount }: { unreadCount: number }) {
         type="button"
         aria-label="Thông báo"
         aria-expanded={open}
-        className="interactive-press relative rounded-xl p-2 text-slate-600 hover:bg-slate-100 hover:text-primary"
+        className="interactive-press relative rounded-md p-2 text-slate-600 hover:bg-slate-100 hover:text-primary"
         onClick={() => (open ? setOpen(false) : openPanel())}
       >
         <Bell className="h-5 w-5" />
@@ -120,7 +120,7 @@ export function NotificationPanel({ unreadCount }: { unreadCount: number }) {
         <aside
           className={cn(
             "floating-panel fixed inset-x-0 bottom-0 top-14 z-50 flex h-auto max-h-[calc(100dvh-3.5rem)] w-full min-w-0 flex-col sm:inset-auto sm:top-[5px] sm:right-6 sm:bottom-auto sm:h-[66vh] sm:w-[min(33vw,28rem)] sm:min-w-[320px]",
-            "overflow-hidden rounded-t-2xl border border-slate-200 bg-white shadow-[0_20px_50px_-12px_rgba(15,23,42,0.28)] sm:rounded-2xl",
+            "overflow-hidden rounded-t-lg border border-slate-200 bg-white shadow-[var(--shadow-overlay)] sm:rounded-lg",
             panelActive && "is-active",
           )}
         >
@@ -224,7 +224,7 @@ export function NotificationPanel({ unreadCount }: { unreadCount: number }) {
                     <div
                       key={notification.id}
                       className={cn(
-                        "rounded-xl border p-3",
+                        "rounded-md border p-3",
                         notification.isRead
                           ? "border-slate-200 bg-slate-50"
                           : "border-primary/20 bg-primary-muted",

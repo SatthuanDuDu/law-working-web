@@ -426,7 +426,7 @@ export function ClientsList({
     <>
       {dialog}
       <div className="flex h-full min-h-0 min-w-0 flex-col gap-4">
-      <div className="shrink-0 rounded-xl border border-slate-200/80 bg-white px-3 py-3">
+      <div className="shrink-0 rounded-md border border-slate-200/80 bg-white px-3 py-3">
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-end">
           <MultiSelectFilter
             label="Tên khách hàng"

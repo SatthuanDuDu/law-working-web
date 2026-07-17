@@ -671,7 +671,7 @@ export function CreateMatterModal({
           aria-modal="true"
           aria-labelledby="create-matter-title"
           className={cn(
-            "overlay-panel relative z-10 flex h-dvh max-h-none w-full max-w-none flex-col overflow-hidden rounded-none border-0 bg-white shadow-2xl sm:h-auto sm:max-h-[min(90dvh,900px)] sm:max-w-2xl sm:rounded-2xl sm:border sm:border-slate-200",
+            "overlay-panel relative z-10 flex h-dvh max-h-none w-full max-w-none flex-col overflow-hidden rounded-none border-0 bg-white shadow-[var(--shadow-overlay)] sm:h-auto sm:max-h-[min(90dvh,900px)] sm:max-w-2xl sm:rounded-lg sm:border sm:border-slate-200",
             active && "is-active",
           )}
         >
@@ -818,25 +818,23 @@ export function CreateMatterModal({
                 </Label>
               </div>
 
-              <div className="relative rounded-[5px] border border-slate-300 px-4 pb-5 pt-8">
-                <div className="absolute left-3 top-0 -translate-y-1/2">
+              <div className="relative rounded-[5px] border border-slate-300 p-4">
+                <div className="mb-6 flex items-center gap-2 text-sm font-semibold text-slate-700">
+                  <Users className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                  Khách hàng
+                </div>
+
+                <div className="mb-6">
                   <div
                     ref={clientToggleRef}
-                    className="relative inline-flex items-center rounded-[5px] bg-primary py-1 pl-2 pr-1 text-white shadow-sm"
+                    className="relative flex w-full items-center gap-1 rounded-md bg-primary-muted p-1"
                     role="tablist"
-                    aria-label="Khách hàng"
+                    aria-label="Loại khách hàng"
                   >
-                    <div className="flex shrink-0 items-center gap-2 px-2 py-1 text-base font-semibold">
-                      <Users className="h-4 w-4 shrink-0" aria-hidden />
-                      Khách hàng
-                    </div>
-
-                    <span className="mx-0.5 h-5 w-px shrink-0 bg-white/25" aria-hidden />
-
                     <span
                       aria-hidden
                       className={cn(
-                        "absolute inset-y-1 rounded-[4px] bg-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] transition-[left,width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+                        "absolute bottom-1 top-1 rounded-[4px] bg-primary shadow-sm transition-[left,width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
                         clientToggleIndicator.ready ? "opacity-100" : "opacity-0",
                       )}
                       style={{
@@ -850,10 +848,10 @@ export function CreateMatterModal({
                       role="tab"
                       aria-selected={clientMode === "new"}
                       className={cn(
-                        "interactive-press relative z-[1] whitespace-nowrap rounded-[4px] px-3 py-1.5 text-sm transition-all duration-300",
+                        "interactive-press relative z-[1] flex-1 whitespace-nowrap rounded-[4px] px-3 py-2 text-sm transition-colors duration-300",
                         clientMode === "new"
                           ? "font-semibold text-white"
-                          : "font-normal text-white/40 hover:bg-white/10 hover:text-white/80",
+                          : "font-medium text-primary/70 hover:text-primary",
                       )}
                       onClick={() => {
                         setClientMode("new");
@@ -868,10 +866,10 @@ export function CreateMatterModal({
                       role="tab"
                       aria-selected={clientMode === "existing"}
                       className={cn(
-                        "interactive-press relative z-[1] whitespace-nowrap rounded-[4px] px-3 py-1.5 text-sm transition-all duration-300",
+                        "interactive-press relative z-[1] flex-1 whitespace-nowrap rounded-[4px] px-3 py-2 text-sm transition-colors duration-300",
                         clientMode === "existing"
                           ? "font-semibold text-white"
-                          : "font-normal text-white/40 hover:bg-white/10 hover:text-white/80",
+                          : "font-medium text-primary/70 hover:text-primary",
                       )}
                       onClick={() => {
                         setClientMode("existing");

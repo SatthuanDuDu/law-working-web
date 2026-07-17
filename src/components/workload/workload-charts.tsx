@@ -51,7 +51,7 @@ export function WorkloadCharts({ rows }: { rows: WorkloadRow[] }) {
                 />
                 <YAxis allowDecimals={false} tick={{ fontSize: 12 }} width={28} />
                 <Tooltip />
-                <Bar dataKey="open" fill="#152D4F" name="Đang mở" radius={4} />
+                <Bar dataKey="open" fill="#14532d" name="Đang mở" radius={4} />
                 <Bar dataKey="overdue" fill="#ef4444" name="Quá hạn" radius={4} />
               </BarChart>
             </ResponsiveContainer>

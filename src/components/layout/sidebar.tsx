@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useLinkStatus } from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { createPortal } from "react-dom";
@@ -21,6 +22,7 @@ import {
   ChevronRight,
   ChevronUp,
   UserRound,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ADMIN_NAV_ITEMS, MANAGER_NAV_ITEMS, NAV_ITEMS, ROLE_LABELS } from "@/lib/constants";
@@ -144,6 +146,29 @@ function SidebarEdgeToggle({
   );
 }
 
+function NavLinkContent({
+  Icon,
+  label,
+  collapsed,
+}: {
+  Icon: (typeof iconMap)[keyof typeof iconMap];
+  label: string;
+  collapsed: boolean;
+}) {
+  const { pending } = useLinkStatus();
+
+  return (
+    <>
+      {pending ? (
+        <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+      ) : (
+        <Icon className="h-4 w-4 shrink-0" />
+      )}
+      {!collapsed && <span className="flex-1 truncate">{label}</span>}
+    </>
+  );
+}
+
 function NavLink({
   href,
   label,
@@ -174,8 +199,7 @@ function NavLink({
             : "text-white/80 hover:bg-white/10 hover:text-white",
         )}
       >
-        <Icon className="h-4 w-4 shrink-0" />
-        {!collapsed && <span className="flex-1 truncate">{label}</span>}
+        <NavLinkContent Icon={Icon} label={label} collapsed={collapsed} />
       </Link>
     </SidebarTooltip>
   );

@@ -17,6 +17,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label, Select } from "@/components/ui/card";
+import {
+  CommentThread,
+  type CommentItem,
+  type CommentMentionUser,
+} from "@/components/comments/comment-thread";
 
 export type MatterPlanStepItem = {
   id: string;
@@ -27,6 +32,7 @@ export type MatterPlanStepItem = {
   statusChangedAt: string | null;
   sortOrder: number;
   workType: { id: string; name: string } | null;
+  comments: CommentItem[];
 };
 
 const STATUS_DOT_CLASS: Record<MatterPlanStepStatus, string> = {
@@ -34,6 +40,13 @@ const STATUS_DOT_CLASS: Record<MatterPlanStepStatus, string> = {
   IN_PROGRESS: "bg-sky-500",
   DONE: "plan-step-dot-done bg-primary",
   BLOCKED: "bg-red-500",
+};
+
+const STATUS_DOT_PING_CLASS: Record<MatterPlanStepStatus, string> = {
+  NOT_STARTED: "bg-slate-400/70",
+  IN_PROGRESS: "bg-sky-400/80",
+  DONE: "bg-primary/60",
+  BLOCKED: "bg-red-400/80",
 };
 
 const outlinedFieldLabelClass =
@@ -83,11 +96,17 @@ export function MatterPlanTimeline({
   steps,
   workTypes,
   canEdit,
+  currentUserId,
+  canModerate,
+  mentionUsers,
 }: {
   matterId: string;
   steps: MatterPlanStepItem[];
   workTypes: { id: string; name: string }[];
   canEdit: boolean;
+  currentUserId: string;
+  canModerate: boolean;
+  mentionUsers: CommentMentionUser[];
 }) {
   const router = useRouter();
   const { confirm, dialog } = useConfirmDialog();
@@ -227,7 +246,7 @@ export function MatterPlanTimeline({
   return (
     <>
       {dialog}
-      <div className="min-w-0 space-y-6 overflow-x-hidden">
+      <div className="min-w-0 space-y-6">
         {canEdit ? (
           <form
             onSubmit={handleAdd}
@@ -306,7 +325,7 @@ export function MatterPlanTimeline({
             Chưa có bước kế hoạch. {canEdit ? "Thêm hạng mục phía trên để bắt đầu." : ""}
           </p>
         ) : (
-          <ol className="relative ml-0 min-w-0 space-y-0 border-l-2 border-slate-200 pl-6 sm:ml-1 sm:pl-8">
+          <ol className="relative ml-0 min-w-0 space-y-0 border-l-2 border-slate-200 pl-6 pt-1.5 sm:ml-1 sm:pl-8">
             {orderedSteps.map((step, index) => {
               const isDragging = draggingId === step.id;
               const isDropTarget = dropTargetId === step.id && draggingId !== step.id;
@@ -322,26 +341,36 @@ export function MatterPlanTimeline({
                   onDragLeave={() => handleDragLeave(step.id)}
                   onDrop={(event) => handleDrop(event, step.id)}
                 >
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "absolute -left-[calc(0.75rem+1px)] top-1.5 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-white sm:-left-[calc(1rem+1px)]",
-                      STATUS_DOT_CLASS[step.status],
-                    )}
-                  />
                   <div
                     draggable={canEdit}
                     onDragStart={(event) => handleDragStart(event, step.id)}
                     onDragEnd={handleDragEnd}
                     title={canEdit ? "Kéo thẻ để đổi thứ tự bước" : undefined}
                     className={cn(
-                      "group min-w-0 overflow-hidden rounded-[5px] border border-slate-200 bg-white p-3 shadow-sm transition-colors sm:p-4",
+                      "group relative min-w-0 rounded-[5px] border border-slate-200 bg-white p-3 shadow-sm transition-colors sm:p-4",
                       canEdit &&
                         "cursor-grab active:cursor-grabbing hover:border-primary/35 hover:bg-slate-50/60",
                       isDropTarget && "border-primary bg-primary-muted/40",
                       isDragging && "border-dashed border-primary/50",
                     )}
                   >
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute -left-1.5 -top-1.5 z-10 flex h-3.5 w-3.5 items-center justify-center"
+                    >
+                      <span
+                        className={cn(
+                          "plan-step-dot-ping absolute inset-0 rounded-full",
+                          STATUS_DOT_PING_CLASS[step.status],
+                        )}
+                      />
+                      <span
+                        className={cn(
+                          "relative h-3.5 w-3.5 rounded-full ring-2 ring-white",
+                          STATUS_DOT_CLASS[step.status],
+                        )}
+                      />
+                    </span>
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="flex min-w-0 flex-1 gap-2">
                         {canEdit ? (
@@ -434,6 +463,22 @@ export function MatterPlanTimeline({
                           </Button>
                         </div>
                       ) : null}
+                    </div>
+                    <div
+                      data-no-drag
+                      className="mt-3 border-t border-slate-100 pt-3"
+                      onMouseDown={(event) => event.stopPropagation()}
+                    >
+                      <CommentThread
+                        matterId={matterId}
+                        matterPlanStepId={step.id}
+                        currentUserId={currentUserId}
+                        canModerate={canModerate}
+                        canPost={canEdit}
+                        mentionUsers={mentionUsers}
+                        comments={step.comments}
+                        compact
+                      />
                     </div>
                   </div>
                 </li>

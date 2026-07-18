@@ -1,5 +1,4 @@
 import { PageHeaderSlot } from "@/components/layout/page-header-slot";
-import { ClientForm } from "@/components/clients/client-form";
 import { ClientsList } from "@/components/clients/clients-list";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
@@ -36,17 +35,10 @@ export default async function ClientsPage() {
         title="Khách hàng"
         description="Quản lý thông tin khách hàng"
       />
-      <div className="flex flex-col gap-6 xl:h-[calc(100dvh-11rem)] xl:min-h-0 xl:flex-row xl:items-stretch xl:gap-8 xl:overflow-hidden">
-        <aside className="w-full shrink-0 xl:w-[380px] xl:overflow-y-auto xl:pr-1">
-          <ClientForm />
-        </aside>
-        <div className="min-w-0 flex-1 xl:min-h-0 xl:overflow-hidden">
-          <ClientsList
-            clients={listItems}
-            canDelete={isManagerOrAbove(user.role)}
-          />
-        </div>
-      </div>
+      <ClientsList
+        clients={listItems}
+        canDelete={isManagerOrAbove(user.role)}
+      />
     </>
   );
 }

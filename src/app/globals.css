@@ -222,6 +222,23 @@ body {
   box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary) 30%, transparent);
 }
 
+/* Radiating pulse on plan-step corner marker (warning-signal style) */
+@keyframes plan-step-dot-ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.65;
+  }
+  70%,
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+.plan-step-dot-ping {
+  animation: plan-step-dot-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
 .matter-status-check {
   animation: matter-status-pop 0.35s ease-out;
 }
@@ -252,6 +269,10 @@ body {
   }
 
   .plan-step-dot-done {
+    animation: none;
+  }
+
+  .plan-step-dot-ping {
     animation: none;
   }
 

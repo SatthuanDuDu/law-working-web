@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { PageHeaderSlot } from "@/components/layout/page-header-slot";
 import { AttachmentPanel } from "@/components/attachments/attachment-panel";
 import { MatterInfoCard } from "@/components/matters/matter-info-card";
+import { CommentThread } from "@/components/comments/comment-thread";
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
@@ -38,6 +39,11 @@ export default async function MatterReportPage({
         include: { uploadedBy: { select: { id: true, name: true } } },
         orderBy: { createdAt: "desc" },
       },
+      comments: {
+        where: { matterPlanStepId: null },
+        include: { author: { select: { id: true, name: true } } },
+        orderBy: { createdAt: "asc" },
+      },
     },
   });
 
@@ -47,6 +53,25 @@ export default async function MatterReportPage({
     isManagerOrAbove(user.role) ||
     matter.leadLawyerId === user.id ||
     matter.members.some((member) => member.userId === user.id);
+
+  const mentionUsers = Array.from(
+    new Map(
+      [
+        { id: matter.leadLawyer.id, name: matter.leadLawyer.name },
+        ...matter.members.map((member) => ({
+          id: member.user.id,
+          name: member.user.name,
+        })),
+      ].map((u) => [u.id, u]),
+    ).values(),
+  );
+
+  const matterComments = matter.comments.map((comment) => ({
+    id: comment.id,
+    body: comment.body,
+    createdAt: comment.createdAt.toISOString(),
+    author: comment.author,
+  }));
 
   const initialAttachments = matter.attachments.map((file) => ({
     id: file.id,
@@ -172,6 +197,24 @@ export default async function MatterReportPage({
                 </div>
               ))
             )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="mt-8">
+        <Card className="rounded-[5px]">
+          <CardHeader>
+            <CardTitle>Trao đổi / Bình luận</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CommentThread
+              matterId={matter.id}
+              currentUserId={user.id}
+              canModerate={isManagerOrAbove(user.role)}
+              canPost={canEditStatus}
+              mentionUsers={mentionUsers}
+              comments={matterComments}
+            />
           </CardContent>
         </Card>
       </div>

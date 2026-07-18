@@ -75,6 +75,7 @@ export const NOTIFICATION_TYPE_LABELS = {
   TASK_ASSIGNED: "Giao việc",
   TASK_DUE: "Hạn công việc",
   GENERAL: "Chung",
+  MENTION: "Nhắc đến",
 } as const;
 
 export const NAV_ITEMS = [

@@ -26,7 +26,13 @@ export default async function MatterPlanPage({
         leadLawyer: true,
         members: { include: { user: true } },
         planSteps: {
-          include: { workType: { select: { id: true, name: true } } },
+          include: {
+            workType: { select: { id: true, name: true } },
+            comments: {
+              include: { author: { select: { id: true, name: true } } },
+              orderBy: { createdAt: "asc" },
+            },
+          },
           orderBy: { sortOrder: "asc" },
         },
       },
@@ -54,7 +60,25 @@ export default async function MatterPlanPage({
     statusChangedAt: step.statusChangedAt?.toISOString() ?? null,
     sortOrder: step.sortOrder,
     workType: step.workType,
+    comments: step.comments.map((comment) => ({
+      id: comment.id,
+      body: comment.body,
+      createdAt: comment.createdAt.toISOString(),
+      author: comment.author,
+    })),
   }));
+
+  const mentionUsers = Array.from(
+    new Map(
+      [
+        { id: matter.leadLawyer.id, name: matter.leadLawyer.name },
+        ...matter.members.map((member) => ({
+          id: member.user.id,
+          name: member.user.name,
+        })),
+      ].map((u) => [u.id, u]),
+    ).values(),
+  );
 
   return (
     <>
@@ -72,16 +96,19 @@ export default async function MatterPlanPage({
           />
         </aside>
 
-        <Card className="min-w-0 overflow-hidden rounded-[5px] xl:col-span-2">
+        <Card className="min-w-0 overflow-visible rounded-[5px] xl:col-span-2">
           <CardHeader>
             <CardTitle>Kế hoạch hoàn thành</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-visible">
             <MatterPlanTimeline
               matterId={matter.id}
               steps={planSteps}
               workTypes={workTypes}
               canEdit={canEdit}
+              currentUserId={user.id}
+              canModerate={isManagerOrAbove(user.role)}
+              mentionUsers={mentionUsers}
             />
           </CardContent>
         </Card>

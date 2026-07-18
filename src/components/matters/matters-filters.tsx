@@ -188,7 +188,7 @@ function MultiSelectFilter({
         : `${values.length} đã chọn`;
 
   return (
-    <div className="relative min-w-0 w-full basis-full sm:min-w-[9.5rem] sm:flex-1 sm:basis-[9.5rem]" ref={rootRef}>
+    <div className="relative min-w-0 w-full" ref={rootRef}>
       <p className="mb-1 truncate text-xs text-slate-500">{label}</p>
       <div
         ref={fieldRef}
@@ -319,56 +319,64 @@ export function MattersFiltersBar({
 
   return (
     <div className="rounded-md border border-slate-200/80 bg-white px-3 py-3">
-      <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-end">
-        <MultiSelectFilter
-          label="Loại hình"
-          values={filters.types}
-          onChange={(types) => onChange({ ...filters, types: types as MatterType[] })}
-          options={typeOptions.map((type) => ({
-            value: type,
-            label: MATTER_TYPE_LABELS[type],
-          }))}
-          sortActive={filters.sortBy === "type"}
-          sortDir={filters.sortDir}
-          onToggleSort={() => onChange(toggleSort(filters, "type"))}
-        />
-        <MultiSelectFilter
-          label="Luật sư phụ trách"
-          values={filters.lawyerIds}
-          onChange={(lawyerIds) => onChange({ ...filters, lawyerIds })}
-          options={lawyers.map((lawyer) => ({
-            value: lawyer.id,
-            label: lawyer.name,
-          }))}
-          sortActive={filters.sortBy === "lawyer"}
-          sortDir={filters.sortDir}
-          onToggleSort={() => onChange(toggleSort(filters, "lawyer"))}
-        />
-        <MultiSelectFilter
-          label="Thành viên cộng tác"
-          values={filters.memberIds}
-          onChange={(memberIds) => onChange({ ...filters, memberIds })}
-          options={members.map((member) => ({
-            value: member.id,
-            label: member.name,
-          }))}
-          sortActive={filters.sortBy === "member"}
-          sortDir={filters.sortDir}
-          onToggleSort={() => onChange(toggleSort(filters, "member"))}
-        />
-        <MultiSelectFilter
-          label="Khách hàng (công ty)"
-          values={filters.clientIds}
-          onChange={(clientIds) => onChange({ ...filters, clientIds })}
-          options={clients.map((client) => ({
-            value: client.id,
-            label: client.name,
-          }))}
-          sortActive={filters.sortBy === "client"}
-          sortDir={filters.sortDir}
-          onToggleSort={() => onChange(toggleSort(filters, "client"))}
-        />
-        <div className="min-w-0 w-full basis-full sm:min-w-[9rem] sm:flex-1 sm:basis-auto">
+      <div className="flex items-end gap-2 overflow-x-auto pb-0.5">
+        <div className="min-w-[8.5rem] flex-1">
+          <MultiSelectFilter
+            label="Loại hình"
+            values={filters.types}
+            onChange={(types) => onChange({ ...filters, types: types as MatterType[] })}
+            options={typeOptions.map((type) => ({
+              value: type,
+              label: MATTER_TYPE_LABELS[type],
+            }))}
+            sortActive={filters.sortBy === "type"}
+            sortDir={filters.sortDir}
+            onToggleSort={() => onChange(toggleSort(filters, "type"))}
+          />
+        </div>
+        <div className="min-w-[9rem] flex-1">
+          <MultiSelectFilter
+            label="Luật sư phụ trách"
+            values={filters.lawyerIds}
+            onChange={(lawyerIds) => onChange({ ...filters, lawyerIds })}
+            options={lawyers.map((lawyer) => ({
+              value: lawyer.id,
+              label: lawyer.name,
+            }))}
+            sortActive={filters.sortBy === "lawyer"}
+            sortDir={filters.sortDir}
+            onToggleSort={() => onChange(toggleSort(filters, "lawyer"))}
+          />
+        </div>
+        <div className="min-w-[9rem] flex-1">
+          <MultiSelectFilter
+            label="Thành viên cộng tác"
+            values={filters.memberIds}
+            onChange={(memberIds) => onChange({ ...filters, memberIds })}
+            options={members.map((member) => ({
+              value: member.id,
+              label: member.name,
+            }))}
+            sortActive={filters.sortBy === "member"}
+            sortDir={filters.sortDir}
+            onToggleSort={() => onChange(toggleSort(filters, "member"))}
+          />
+        </div>
+        <div className="min-w-[9rem] flex-1">
+          <MultiSelectFilter
+            label="Khách hàng (công ty)"
+            values={filters.clientIds}
+            onChange={(clientIds) => onChange({ ...filters, clientIds })}
+            options={clients.map((client) => ({
+              value: client.id,
+              label: client.name,
+            }))}
+            sortActive={filters.sortBy === "client"}
+            sortDir={filters.sortDir}
+            onToggleSort={() => onChange(toggleSort(filters, "client"))}
+          />
+        </div>
+        <div className="min-w-[9rem] flex-1 sm:max-w-[11rem]">
           <label
             htmlFor="matter-filter-from"
             className="mb-1 block truncate text-xs text-slate-500"
@@ -383,7 +391,7 @@ export function MattersFiltersBar({
             className="cursor-pointer hover:border-primary/35 hover:bg-slate-50/90"
           />
         </div>
-        <div className="min-w-0 w-full basis-full sm:min-w-[10.5rem] sm:flex-1 sm:basis-auto">
+        <div className="min-w-[10rem] flex-1 sm:max-w-[12rem]">
           <label
             htmlFor="matter-filter-to"
             className="mb-1 block truncate text-xs text-slate-500"
@@ -416,7 +424,7 @@ export function MattersFiltersBar({
           aria-disabled={!hasActiveFilters}
           aria-label="Xóa lọc"
           className={cn(
-            "mb-0.5 w-full shrink-0 text-red-600 transition-[opacity,background-color,color] duration-500 ease-out hover:bg-red-50 hover:text-red-700 sm:w-auto",
+            "h-10 shrink-0 text-red-600 transition-[opacity,background-color,color] duration-500 ease-out hover:bg-red-50 hover:text-red-700",
             hasActiveFilters ? "opacity-100" : "pointer-events-none opacity-0",
           )}
           onClick={() => {
@@ -429,7 +437,7 @@ export function MattersFiltersBar({
           }}
         >
           <X className="h-3.5 w-3.5" />
-          <span className="sm:inline">Xóa lọc</span>
+          Xóa lọc
         </Button>
       </div>
     </div>

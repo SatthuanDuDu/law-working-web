@@ -1,0 +1,17 @@
+---
+description: Verify code changes before handoff / bàn giao
+alwaysApply: true
+---
+
+# Verify before handoff
+
+Mọi thay đổi code cần kiểm tra trước khi bàn giao.
+
+Follow the project skill `.cursor/skills/verify-before-handoff/SKILL.md`.
+
+Before telling the user work is done:
+
+1. Run typecheck / lint on touched files when applicable
+2. After Prisma schema changes: `prisma generate`, `prisma db push`, then **restart `npm run dev`** (PrismaClient is cached on `globalThis` in [src/lib/prisma.ts](src/lib/prisma.ts))
+3. Reproduce the changed user flow and check terminal/browser for errors
+4. Do not claim bàn giao ready until checks that apply have passed

@@ -97,7 +97,7 @@ function CityAutocompleteInput({
   placeholder,
 }: {
   id: string;
-  name: string;
+  name?: string;
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
@@ -383,8 +383,9 @@ export function CreateMatterModal({
   const [type, setType] = useState<MatterType>("CIVIL");
   const [customTypeLabel, setCustomTypeLabel] = useState("");
   const [customTypeInputOpen, setCustomTypeInputOpen] = useState(false);
-  const [clientMode, setClientMode] = useState<"existing" | "new">("new");
+  const [clientMode, setClientMode] = useState<"existing" | "new">("existing");
   const [selectedClientId, setSelectedClientId] = useState("");
+  const [clientName, setClientName] = useState("");
   const [clientPhones, setClientPhones] = useState<string[]>([]);
   const [phoneDraft, setPhoneDraft] = useState("");
   const phoneInputRef = useRef<HTMLInputElement>(null);
@@ -394,14 +395,16 @@ export function CreateMatterModal({
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [formKey, setFormKey] = useState(0);
   const typeSelectRef = useRef<HTMLSelectElement>(null);
-  const clientToggleRef = useRef<HTMLDivElement>(null);
-  const newClientTabRef = useRef<HTMLButtonElement>(null);
-  const existingClientTabRef = useRef<HTMLButtonElement>(null);
-  const [clientToggleIndicator, setClientToggleIndicator] = useState({
-    left: 0,
-    width: 0,
-    ready: false,
-  });
+  const [newClientOpen, setNewClientOpen] = useState(false);
+  const { mounted: newClientMounted, active: newClientActive } =
+    useOverlayAnimation(newClientOpen);
+  const [draftClientName, setDraftClientName] = useState("");
+  const [draftClientPhones, setDraftClientPhones] = useState<string[]>([]);
+  const [draftPhoneDraft, setDraftPhoneDraft] = useState("");
+  const [draftClientAddress, setDraftClientAddress] = useState("");
+  const [draftClientCity, setDraftClientCity] = useState("");
+  const [draftClientError, setDraftClientError] = useState("");
+  const draftPhoneInputRef = useRef<HTMLInputElement>(null);
 
   const applyEditMatter = useCallback((matter: MatterEditInitial) => {
     setType(matter.type);
@@ -409,18 +412,21 @@ export function CreateMatterModal({
     setCustomTypeInputOpen(matter.type === "OTHER");
     setClientMode("existing");
     setSelectedClientId(matter.clientId);
+    setClientName("");
     setClientPhones(parseClientPhones(matter.clientPhone));
     setPhoneDraft("");
     setClientAddress(matter.clientAddress ?? "");
     setClientCity(matter.clientCity ?? "");
     setLeadLawyerId(matter.leadLawyerId);
     setSelectedMembers(matter.memberIds.filter((id) => id !== matter.leadLawyerId));
+    setNewClientOpen(false);
     setFormKey((key) => key + 1);
   }, []);
 
   const resetCreateFields = useCallback(() => {
-    setClientMode("new");
+    setClientMode("existing");
     setSelectedClientId("");
+    setClientName("");
     setClientPhones([]);
     setPhoneDraft("");
     setClientAddress("");
@@ -430,6 +436,7 @@ export function CreateMatterModal({
     setCustomTypeInputOpen(false);
     setType("CIVIL");
     setLeadLawyerId(getDefaultLeadLawyerId(formData));
+    setNewClientOpen(false);
     setFormKey((key) => key + 1);
   }, [formData]);
 
@@ -442,36 +449,6 @@ export function CreateMatterModal({
       resetCreateFields();
     }
   }, [open, editMatter, applyEditMatter, resetCreateFields]);
-
-  const updateClientToggleIndicator = useCallback(() => {
-    const activeTab =
-      clientMode === "new" ? newClientTabRef.current : existingClientTabRef.current;
-
-    if (!activeTab) return;
-
-    setClientToggleIndicator({
-      left: activeTab.offsetLeft,
-      width: activeTab.offsetWidth,
-      ready: true,
-    });
-  }, [clientMode]);
-
-  useEffect(() => {
-    updateClientToggleIndicator();
-
-    const container = clientToggleRef.current;
-    if (!container) return;
-
-    const observer = new ResizeObserver(() => updateClientToggleIndicator());
-    observer.observe(container);
-
-    const newTab = newClientTabRef.current;
-    const existingTab = existingClientTabRef.current;
-    if (newTab) observer.observe(newTab);
-    if (existingTab) observer.observe(existingTab);
-
-    return () => observer.disconnect();
-  }, [updateClientToggleIndicator, mounted, active]);
 
   useEffect(() => {
     setSelectedMembers((current) => current.filter((id) => id !== leadLawyerId));
@@ -505,36 +482,41 @@ export function CreateMatterModal({
 
   const handleClose = useCallback(() => {
     setError("");
+    setNewClientOpen(false);
     resetCreateFields();
     onClose();
   }, [onClose, resetCreateFields]);
+
+  const closeNewClientModal = useCallback(() => {
+    setNewClientOpen(false);
+  }, []);
 
   useEffect(() => {
     if (!mounted) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") handleClose();
+      if (event.key !== "Escape") return;
+      if (newClientOpen) {
+        event.stopPropagation();
+        closeNewClientModal();
+        return;
+      }
+      handleClose();
     }
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [mounted, handleClose]);
+  }, [mounted, handleClose, newClientOpen, closeNewClientModal]);
 
   if (!mounted || typeof document === "undefined") return null;
 
-  function resetClientFieldsForNewMode() {
-    setSelectedClientId("");
-    setClientPhones([]);
-    setPhoneDraft("");
-    setClientAddress("");
-    setClientCity("");
-  }
-
   function handleClientChange(clientId: string) {
+    setClientMode("existing");
     setSelectedClientId(clientId);
+    setClientName("");
     const client = formData.clients.find((item) => item.id === clientId);
     if (!client) {
       setClientPhones([]);
@@ -548,6 +530,50 @@ export function CreateMatterModal({
     setPhoneDraft("");
     setClientAddress(client.address ?? "");
     setClientCity(client.city ?? "");
+  }
+
+  function openNewClientModal() {
+    setDraftClientName(clientMode === "new" ? clientName : "");
+    setDraftClientPhones(clientMode === "new" ? clientPhones : []);
+    setDraftPhoneDraft("");
+    setDraftClientAddress(clientMode === "new" ? clientAddress : "");
+    setDraftClientCity(clientMode === "new" ? clientCity : "");
+    setDraftClientError("");
+    setNewClientOpen(true);
+  }
+
+  function confirmNewClient() {
+    const name = draftClientName.trim();
+    if (!name) {
+      setDraftClientError("Vui lòng nhập họ và tên khách hàng mới");
+      return;
+    }
+
+    const phones = [
+      ...draftClientPhones.map((phone) => phone.trim()).filter(Boolean),
+      ...(draftPhoneDraft.trim() ? [draftPhoneDraft.trim()] : []),
+    ];
+
+    setDraftClientError("");
+    setError("");
+    setClientMode("new");
+    setSelectedClientId("");
+    setClientName(name);
+    setClientPhones(phones);
+    setPhoneDraft("");
+    setClientAddress(draftClientAddress.trim());
+    setClientCity(draftClientCity.trim());
+    setNewClientOpen(false);
+  }
+
+  function clearNewClient() {
+    setClientMode("existing");
+    setClientName("");
+    setSelectedClientId("");
+    setClientPhones([]);
+    setPhoneDraft("");
+    setClientAddress("");
+    setClientCity("");
   }
 
   function commitPhoneDraft() {
@@ -567,6 +593,25 @@ export function CreateMatterModal({
   function removeClientPhone(index: number) {
     setClientPhones((current) => current.filter((_, i) => i !== index));
     phoneInputRef.current?.focus();
+  }
+
+  function commitDraftPhone() {
+    const trimmed = draftPhoneDraft.trim();
+    if (!trimmed) {
+      draftPhoneInputRef.current?.focus();
+      return;
+    }
+
+    setDraftClientPhones((current) =>
+      current.includes(trimmed) ? current : [...current, trimmed],
+    );
+    setDraftPhoneDraft("");
+    draftPhoneInputRef.current?.focus();
+  }
+
+  function removeDraftPhone(index: number) {
+    setDraftClientPhones((current) => current.filter((_, i) => i !== index));
+    draftPhoneInputRef.current?.focus();
   }
 
   const clientFieldsDisabled = clientMode === "existing" && !selectedClientId;
@@ -666,7 +711,10 @@ export function CreateMatterModal({
             "overlay-backdrop absolute inset-0 bg-black/40 backdrop-blur-[1px]",
             active && "is-active",
           )}
-          onClick={handleClose}
+          onClick={() => {
+            if (newClientOpen) return;
+            handleClose();
+          }}
         />
         <div
           role="dialog"
@@ -703,12 +751,7 @@ export function CreateMatterModal({
               <input type="hidden" name="clientMode" value={clientMode} />
               <input type="hidden" name="leadLawyerId" value={leadLawyerId} />
 
-              <div className="sticky top-0 z-10 relative isolate pb-4">
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute -left-6 -right-6 -top-6 bottom-0 z-0 bg-white sm:-left-8 sm:-right-8 sm:-top-7"
-                />
-                <div className="relative z-[1] grid w-full grid-cols-1 gap-4 rounded-[5px] bg-primary px-4 py-4 shadow-md md:grid-cols-2 md:items-center md:gap-6">
+              <div className="grid w-full grid-cols-1 gap-4 rounded-[5px] bg-primary px-4 py-4 shadow-md md:grid-cols-2 md:items-center md:gap-6">
                 <div className="flex flex-col justify-center">
                   <p className="break-all font-mono text-2xl font-bold leading-tight tracking-tight text-white sm:text-3xl">
                     {previewCode}
@@ -789,7 +832,6 @@ export function CreateMatterModal({
                     </button>
                   </div>
                 </div>
-                </div>
               </div>
 
               <div className="relative">
@@ -821,194 +863,195 @@ export function CreateMatterModal({
               </div>
 
               <div className="relative rounded-[5px] border border-slate-300 p-4">
-                <div className="mb-6 flex items-center gap-2 text-sm font-semibold text-slate-700">
-                  <Users className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-                  Khách hàng
-                </div>
-
-                <div className="mb-6">
-                  <div
-                    ref={clientToggleRef}
-                    className="relative flex w-full items-center gap-1 rounded-md bg-primary-muted p-1"
-                    role="tablist"
-                    aria-label="Loại khách hàng"
-                  >
-                    <span
-                      aria-hidden
-                      className={cn(
-                        "absolute bottom-1 top-1 rounded-[4px] bg-primary shadow-sm transition-[left,width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
-                        clientToggleIndicator.ready ? "opacity-100" : "opacity-0",
-                      )}
-                      style={{
-                        left: clientToggleIndicator.left,
-                        width: clientToggleIndicator.width,
-                      }}
-                    />
-                    <button
-                      ref={newClientTabRef}
-                      type="button"
-                      role="tab"
-                      aria-selected={clientMode === "new"}
-                      className={cn(
-                        "interactive-press relative z-[1] flex-1 whitespace-nowrap rounded-[4px] px-3 py-2 text-sm transition-colors duration-300",
-                        clientMode === "new"
-                          ? "font-semibold text-white"
-                          : "font-medium text-primary/70 hover:text-primary",
-                      )}
-                      onClick={() => {
-                        setClientMode("new");
-                        resetClientFieldsForNewMode();
-                      }}
-                    >
-                      Khách hàng mới
-                    </button>
-                    <button
-                      ref={existingClientTabRef}
-                      type="button"
-                      role="tab"
-                      aria-selected={clientMode === "existing"}
-                      className={cn(
-                        "interactive-press relative z-[1] flex-1 whitespace-nowrap rounded-[4px] px-3 py-2 text-sm transition-colors duration-300",
-                        clientMode === "existing"
-                          ? "font-semibold text-white"
-                          : "font-medium text-primary/70 hover:text-primary",
-                      )}
-                      onClick={() => {
-                        setClientMode("existing");
-                        resetClientFieldsForNewMode();
-                      }}
-                    >
-                      Khách hàng có sẵn
-                    </button>
+                <div className="mb-6 flex flex-wrap items-center justify-between gap-2 text-sm font-semibold text-slate-700">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                    Khách hàng
                   </div>
-                </div>
-
-                <div className="space-y-7">
                   {clientMode === "existing" ? (
-                    <OutlinedField label="Chọn khách hàng" htmlFor="clientId">
-                      <Select
-                        id="clientId"
-                        name="clientId"
-                        value={selectedClientId}
-                        onChange={(e) => handleClientChange(e.target.value)}
-                        className={cn(outlinedFieldInputClass, "h-11")}
-                      >
-                        <option value="">-- Chọn khách hàng --</option>
-                        {formData.clients.map((client) => (
-                          <option key={client.id} value={client.id}>
-                            {client.name}
-                          </option>
-                        ))}
-                      </Select>
-                    </OutlinedField>
-                  ) : (
-                    <OutlinedField label="Họ và tên khách hàng" htmlFor="clientName">
-                      <Input
-                        id="clientName"
-                        name="clientName"
-                        placeholder="Nguyễn Văn A"
-                        required={clientMode === "new"}
-                        className={outlinedFieldInputClass}
-                      />
-                    </OutlinedField>
-                  )}
-
-                  <div className="flex items-stretch gap-2">
-                    <OutlinedField
-                      label="SĐT khách hàng"
-                      htmlFor="clientPhone"
-                      className="min-w-0 flex-1"
-                    >
-                      <div
-                        className={cn(
-                          outlinedFieldInputClass,
-                          "client-phone-field flex min-h-10 flex-wrap items-center gap-1.5 px-2 focus-within:outline-none focus-within:ring-2 focus-within:ring-primary/40",
-                        )}
-                        onClick={() => phoneInputRef.current?.focus()}
-                      >
-                        {clientPhones.map((phone, index) => (
-                          <span
-                            key={`${phone}-${index}`}
-                            className="client-phone-chip inline-flex max-w-full items-center gap-1 rounded-[4px] bg-slate-100 py-0.5 pl-2 pr-1 text-sm text-slate-800"
-                          >
-                            <span className="truncate">{phone}</span>
-                            <button
-                              type="button"
-                              disabled={clientFieldsDisabled}
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                removeClientPhone(index);
-                              }}
-                              className="interactive-press rounded p-0.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700 disabled:pointer-events-none"
-                              aria-label={`Xóa số ${phone}`}
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </span>
-                        ))}
-                        <input
-                          ref={phoneInputRef}
-                          id="clientPhone"
-                          type="tel"
-                          value={phoneDraft}
-                          disabled={clientFieldsDisabled}
-                          onChange={(event) => setPhoneDraft(event.target.value)}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter") {
-                              event.preventDefault();
-                              commitPhoneDraft();
-                            }
-
-                            if (
-                              event.key === "Backspace" &&
-                              phoneDraft === "" &&
-                              clientPhones.length > 0
-                            ) {
-                              removeClientPhone(clientPhones.length - 1);
-                            }
-                          }}
-                          placeholder={
-                            clientPhones.length === 0 ? "0901234567" : "Thêm SĐT..."
-                          }
-                          className="min-w-[7rem] flex-1 border-0 bg-transparent px-1 py-0.5 text-sm outline-none placeholder:text-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
-                        />
-                      </div>
-                    </OutlinedField>
                     <Button
                       type="button"
                       variant="outline"
-                      disabled={clientFieldsDisabled}
-                      onClick={commitPhoneDraft}
-                      className="interactive-press h-auto w-10 shrink-0 self-stretch rounded-[5px] p-0"
-                      aria-label="Thêm số điện thoại"
+                      size="sm"
+                      onClick={openNewClientModal}
+                      className="interactive-press shrink-0"
                     >
                       <Plus className="h-4 w-4" />
+                      Khách hàng mới
                     </Button>
-                  </div>
+                  ) : null}
+                </div>
 
-                  <OutlinedField label="Thành phố" htmlFor="clientCity">
-                    <CityAutocompleteInput
-                      id="clientCity"
-                      name="clientCity"
-                      value={clientCity}
-                      onChange={setClientCity}
-                      placeholder="Hà Nội"
-                      disabled={clientFieldsDisabled}
-                      className={outlinedFieldInputClass}
-                    />
-                  </OutlinedField>
+                <div className="space-y-7">
+                  {clientMode === "new" ? (
+                    <>
+                      <input type="hidden" name="clientName" value={clientName} />
+                      <input type="hidden" name="clientAddress" value={clientAddress} />
+                      <input type="hidden" name="clientCity" value={clientCity} />
+                      <div className="rounded-[5px] border border-primary/20 bg-primary-muted px-4 py-3">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0 space-y-1">
+                            <p className="text-xs font-medium uppercase tracking-wide text-primary/70">
+                              Khách hàng mới
+                            </p>
+                            <p className="break-words font-semibold text-slate-900">
+                              {clientName}
+                            </p>
+                            {clientPhones.length > 0 ? (
+                              <p className="break-words text-sm text-slate-600">
+                                {clientPhones.join(", ")}
+                              </p>
+                            ) : null}
+                            {[clientAddress, clientCity].filter(Boolean).length > 0 ? (
+                              <p className="break-words text-sm text-slate-600">
+                                {[clientAddress, clientCity].filter(Boolean).join(", ")}
+                              </p>
+                            ) : null}
+                          </div>
+                          <div className="flex shrink-0 flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={openNewClientModal}
+                            >
+                              Sửa
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={clearNewClient}
+                            >
+                              Đổi khách có sẵn
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                        <OutlinedField
+                          label="Chọn khách hàng"
+                          htmlFor="clientId"
+                          className="min-w-0 flex-1"
+                        >
+                          <Select
+                            id="clientId"
+                            name="clientId"
+                            value={selectedClientId}
+                            onChange={(e) => handleClientChange(e.target.value)}
+                            className={cn(outlinedFieldInputClass, "h-11")}
+                          >
+                            <option value="">-- Chọn khách hàng --</option>
+                            {formData.clients.map((client) => (
+                              <option key={client.id} value={client.id}>
+                                {client.name}
+                              </option>
+                            ))}
+                          </Select>
+                        </OutlinedField>
+                      </div>
 
-                  <OutlinedField label="Địa chỉ khách hàng" htmlFor="clientAddress">
-                    <Input
-                      id="clientAddress"
-                      name="clientAddress"
-                      value={clientAddress}
-                      onChange={(e) => setClientAddress(e.target.value)}
-                      placeholder="Số nhà, đường, quận/huyện"
-                      disabled={clientFieldsDisabled}
-                      className={outlinedFieldInputClass}
-                    />
-                  </OutlinedField>
+                      <div className="flex items-stretch gap-2">
+                        <OutlinedField
+                          label="SĐT khách hàng"
+                          htmlFor="clientPhone"
+                          className="min-w-0 flex-1"
+                        >
+                          <div
+                            className={cn(
+                              outlinedFieldInputClass,
+                              "client-phone-field flex min-h-10 flex-wrap items-center gap-1.5 px-2 focus-within:outline-none focus-within:ring-2 focus-within:ring-primary/40",
+                            )}
+                            onClick={() => phoneInputRef.current?.focus()}
+                          >
+                            {clientPhones.map((phone, index) => (
+                              <span
+                                key={`${phone}-${index}`}
+                                className="client-phone-chip inline-flex max-w-full items-center gap-1 rounded-[4px] bg-slate-100 py-0.5 pl-2 pr-1 text-sm text-slate-800"
+                              >
+                                <span className="truncate">{phone}</span>
+                                <button
+                                  type="button"
+                                  disabled={clientFieldsDisabled}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    removeClientPhone(index);
+                                  }}
+                                  className="interactive-press rounded p-0.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700 disabled:pointer-events-none"
+                                  aria-label={`Xóa số ${phone}`}
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </span>
+                            ))}
+                            <input
+                              ref={phoneInputRef}
+                              id="clientPhone"
+                              type="tel"
+                              value={phoneDraft}
+                              disabled={clientFieldsDisabled}
+                              onChange={(event) => setPhoneDraft(event.target.value)}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                  event.preventDefault();
+                                  commitPhoneDraft();
+                                }
+
+                                if (
+                                  event.key === "Backspace" &&
+                                  phoneDraft === "" &&
+                                  clientPhones.length > 0
+                                ) {
+                                  removeClientPhone(clientPhones.length - 1);
+                                }
+                              }}
+                              placeholder={
+                                clientPhones.length === 0 ? "0901234567" : "Thêm SĐT..."
+                              }
+                              className="min-w-[7rem] flex-1 border-0 bg-transparent px-1 py-0.5 text-sm outline-none placeholder:text-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
+                            />
+                          </div>
+                        </OutlinedField>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={clientFieldsDisabled}
+                          onClick={commitPhoneDraft}
+                          className="interactive-press h-auto w-10 shrink-0 self-stretch rounded-[5px] p-0"
+                          aria-label="Thêm số điện thoại"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      <OutlinedField label="Thành phố" htmlFor="clientCity">
+                        <CityAutocompleteInput
+                          id="clientCity"
+                          name="clientCity"
+                          value={clientCity}
+                          onChange={setClientCity}
+                          placeholder="Hà Nội"
+                          disabled={clientFieldsDisabled}
+                          className={outlinedFieldInputClass}
+                        />
+                      </OutlinedField>
+
+                      <OutlinedField label="Địa chỉ khách hàng" htmlFor="clientAddress">
+                        <Input
+                          id="clientAddress"
+                          name="clientAddress"
+                          value={clientAddress}
+                          onChange={(e) => setClientAddress(e.target.value)}
+                          placeholder="Số nhà, đường, quận/huyện"
+                          disabled={clientFieldsDisabled}
+                          className={outlinedFieldInputClass}
+                        />
+                      </OutlinedField>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -1084,6 +1127,165 @@ export function CreateMatterModal({
           </div>
         </div>
       </div>
+
+      {newClientMounted ? (
+        <div className="fixed inset-0 z-[10000] flex h-dvh w-dvw items-stretch justify-center p-0 sm:items-center sm:p-6">
+          <button
+            type="button"
+            aria-label="Đóng form khách hàng mới"
+            className={cn(
+              "overlay-backdrop absolute inset-0 bg-black/45 backdrop-blur-[1px]",
+              newClientActive && "is-active",
+            )}
+            onClick={closeNewClientModal}
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="new-client-title"
+            className={cn(
+              "overlay-panel relative z-10 flex max-h-[min(90dvh,720px)] w-full max-w-lg flex-col overflow-hidden rounded-none border-0 bg-white shadow-[var(--shadow-overlay)] sm:rounded-lg sm:border sm:border-slate-200",
+              newClientActive && "is-active",
+            )}
+          >
+            <div className="flex items-start justify-between border-b border-slate-200 px-5 py-4 sm:px-6">
+              <div>
+                <h3 id="new-client-title" className="text-lg font-semibold text-primary">
+                  Khách hàng mới
+                </h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  Điền thông tin khách hàng để gắn vào vụ việc này.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={closeNewClientModal}
+                aria-label="Đóng"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-5 sm:px-6">
+              <OutlinedField label="Họ và tên khách hàng" htmlFor="draftClientName">
+                <Input
+                  id="draftClientName"
+                  value={draftClientName}
+                  onChange={(e) => setDraftClientName(e.target.value)}
+                  placeholder="Nguyễn Văn A"
+                  autoFocus
+                  className={outlinedFieldInputClass}
+                />
+              </OutlinedField>
+
+              <div className="flex items-stretch gap-2">
+                <OutlinedField
+                  label="SĐT khách hàng"
+                  htmlFor="draftClientPhone"
+                  className="min-w-0 flex-1"
+                >
+                  <div
+                    className={cn(
+                      outlinedFieldInputClass,
+                      "client-phone-field flex min-h-10 flex-wrap items-center gap-1.5 px-2 focus-within:outline-none focus-within:ring-2 focus-within:ring-primary/40",
+                    )}
+                    onClick={() => draftPhoneInputRef.current?.focus()}
+                  >
+                    {draftClientPhones.map((phone, index) => (
+                      <span
+                        key={`${phone}-${index}`}
+                        className="client-phone-chip inline-flex max-w-full items-center gap-1 rounded-[4px] bg-slate-100 py-0.5 pl-2 pr-1 text-sm text-slate-800"
+                      >
+                        <span className="truncate">{phone}</span>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            removeDraftPhone(index);
+                          }}
+                          className="interactive-press rounded p-0.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
+                          aria-label={`Xóa số ${phone}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                    <input
+                      ref={draftPhoneInputRef}
+                      id="draftClientPhone"
+                      type="tel"
+                      value={draftPhoneDraft}
+                      onChange={(event) => setDraftPhoneDraft(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          commitDraftPhone();
+                        }
+
+                        if (
+                          event.key === "Backspace" &&
+                          draftPhoneDraft === "" &&
+                          draftClientPhones.length > 0
+                        ) {
+                          removeDraftPhone(draftClientPhones.length - 1);
+                        }
+                      }}
+                      placeholder={
+                        draftClientPhones.length === 0 ? "0901234567" : "Thêm SĐT..."
+                      }
+                      className="min-w-[7rem] flex-1 border-0 bg-transparent px-1 py-0.5 text-sm outline-none placeholder:text-slate-400"
+                    />
+                  </div>
+                </OutlinedField>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={commitDraftPhone}
+                  className="interactive-press h-auto w-10 shrink-0 self-stretch rounded-[5px] p-0"
+                  aria-label="Thêm số điện thoại"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <OutlinedField label="Thành phố" htmlFor="draftClientCity">
+                <CityAutocompleteInput
+                  id="draftClientCity"
+                  value={draftClientCity}
+                  onChange={setDraftClientCity}
+                  placeholder="Hà Nội"
+                  className={outlinedFieldInputClass}
+                />
+              </OutlinedField>
+
+              <OutlinedField label="Địa chỉ khách hàng" htmlFor="draftClientAddress">
+                <Input
+                  id="draftClientAddress"
+                  value={draftClientAddress}
+                  onChange={(e) => setDraftClientAddress(e.target.value)}
+                  placeholder="Số nhà, đường, quận/huyện"
+                  className={outlinedFieldInputClass}
+                />
+              </OutlinedField>
+
+              {draftClientError ? (
+                <p className="text-sm text-red-600">{draftClientError}</p>
+              ) : null}
+            </div>
+
+            <div className="flex justify-end gap-3 border-t border-slate-200 px-5 py-4 sm:px-6">
+              <Button type="button" variant="outline" onClick={closeNewClientModal}>
+                Hủy
+              </Button>
+              <Button type="button" onClick={confirmNewClient}>
+                Lưu khách hàng
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </>,
     document.body,
   );

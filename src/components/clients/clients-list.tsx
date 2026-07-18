@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, Check, ChevronDown, Trash2, X } from "lucide-react";
 import { deleteClientAction } from "@/lib/actions";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
+import { CreateClientButton } from "@/components/clients/create-client-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CLIENT_BUSINESS_TYPE_LABELS } from "@/lib/constants";
@@ -425,156 +426,168 @@ export function ClientsList({
   return (
     <>
       {dialog}
-      <div className="flex h-full min-h-0 min-w-0 flex-col gap-4">
-      <div className="shrink-0 rounded-md border border-slate-200/80 bg-white px-3 py-3">
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-end">
-          <MultiSelectFilter
-            label="Tên khách hàng"
-            values={filters.names}
-            onChange={(names) => setFilters({ ...filters, names })}
-            options={nameOptions}
-            sortActive={filters.sortBy === "name"}
-            sortDir={filters.sortDir}
-            onToggleSort={() => setFilters(toggleSort(filters, "name"))}
-          />
-          <MultiSelectFilter
-            label="Thành phố"
-            values={filters.cities}
-            onChange={(cities) => setFilters({ ...filters, cities })}
-            options={cityOptions}
-            sortActive={filters.sortBy === "city"}
-            sortDir={filters.sortDir}
-            onToggleSort={() => setFilters(toggleSort(filters, "city"))}
-          />
-          <MultiSelectFilter
-            label="Loại doanh nghiệp"
-            values={filters.businessTypes}
-            onChange={(businessTypes) =>
-              setFilters({
-                ...filters,
-                businessTypes: businessTypes as ClientBusinessType[],
-              })
-            }
-            options={businessTypeOptions}
-            sortActive={filters.sortBy === "businessType"}
-            sortDir={filters.sortDir}
-            onToggleSort={() => setFilters(toggleSort(filters, "businessType"))}
-          />
-          <div className="min-w-0 w-full">
-            <p className="mb-1 truncate text-xs text-slate-500">Số vụ việc</p>
-            <div
-              className={cn(
-                "interactive-field flex h-10 w-full items-center justify-between gap-2 rounded-[5px] border border-slate-300 bg-white px-3 text-sm",
-                "hover:border-primary/35 hover:bg-slate-50/90",
-                filters.sortBy === "matters" &&
-                  "border-primary/40 bg-primary-muted/40",
-              )}
-            >
-              <button
-                type="button"
-                onClick={() => setFilters(toggleSort(filters, "matters"))}
-                className="interactive-press min-w-0 flex-1 truncate text-left"
-              >
-                {filters.sortBy === "matters"
-                  ? filters.sortDir === "asc"
-                    ? "Tăng dần"
-                    : "Giảm dần"
-                  : "Sắp xếp"}
-              </button>
-              <SortToggle
-                active={filters.sortBy === "matters"}
+      <div className="flex min-h-0 min-w-0 flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-slate-500">
+            {visibleClients.length === clients.length
+              ? `${clients.length} khách hàng`
+              : `${visibleClients.length}/${clients.length} khách hàng`}
+          </p>
+          <CreateClientButton />
+        </div>
+
+        <div className="shrink-0 rounded-md border border-slate-200/80 bg-white px-3 py-3">
+          <div className="flex items-end gap-2 overflow-x-auto pb-0.5">
+            <div className="min-w-[9.5rem] flex-1">
+              <MultiSelectFilter
+                label="Tên khách hàng"
+                values={filters.names}
+                onChange={(names) => setFilters({ ...filters, names })}
+                options={nameOptions}
+                sortActive={filters.sortBy === "name"}
                 sortDir={filters.sortDir}
-                onToggle={() => setFilters(toggleSort(filters, "matters"))}
-                label="Số vụ việc"
+                onToggleSort={() => setFilters(toggleSort(filters, "name"))}
               />
             </div>
+            <div className="min-w-[8rem] flex-1">
+              <MultiSelectFilter
+                label="Thành phố"
+                values={filters.cities}
+                onChange={(cities) => setFilters({ ...filters, cities })}
+                options={cityOptions}
+                sortActive={filters.sortBy === "city"}
+                sortDir={filters.sortDir}
+                onToggleSort={() => setFilters(toggleSort(filters, "city"))}
+              />
+            </div>
+            <div className="min-w-[9rem] flex-1">
+              <MultiSelectFilter
+                label="Loại doanh nghiệp"
+                values={filters.businessTypes}
+                onChange={(businessTypes) =>
+                  setFilters({
+                    ...filters,
+                    businessTypes: businessTypes as ClientBusinessType[],
+                  })
+                }
+                options={businessTypeOptions}
+                sortActive={filters.sortBy === "businessType"}
+                sortDir={filters.sortDir}
+                onToggleSort={() => setFilters(toggleSort(filters, "businessType"))}
+              />
+            </div>
+            <div className="min-w-[7.5rem] flex-1 sm:max-w-[10rem]">
+              <p className="mb-1 truncate text-xs text-slate-500">Số vụ việc</p>
+              <div
+                className={cn(
+                  "interactive-field flex h-10 w-full items-center justify-between gap-2 rounded-[5px] border border-slate-300 bg-white px-3 text-sm",
+                  "hover:border-primary/35 hover:bg-slate-50/90",
+                  filters.sortBy === "matters" &&
+                    "border-primary/40 bg-primary-muted/40",
+                )}
+              >
+                <button
+                  type="button"
+                  onClick={() => setFilters(toggleSort(filters, "matters"))}
+                  className="interactive-press min-w-0 flex-1 truncate text-left"
+                >
+                  {filters.sortBy === "matters"
+                    ? filters.sortDir === "asc"
+                      ? "Tăng dần"
+                      : "Giảm dần"
+                    : "Sắp xếp"}
+                </button>
+                <SortToggle
+                  active={filters.sortBy === "matters"}
+                  sortDir={filters.sortDir}
+                  onToggle={() => setFilters(toggleSort(filters, "matters"))}
+                  label="Số vụ việc"
+                />
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              tabIndex={hasActiveFilters ? 0 : -1}
+              aria-hidden={!hasActiveFilters}
+              aria-disabled={!hasActiveFilters}
+              className={cn(
+                "h-10 shrink-0 text-red-600 transition-opacity duration-500 ease-out hover:bg-red-50 hover:text-red-700",
+                hasActiveFilters ? "opacity-100" : "pointer-events-none opacity-0",
+              )}
+              onClick={() => {
+                if (!hasActiveFilters) return;
+                setFilters({
+                  ...DEFAULT_FILTERS,
+                  sortBy: filters.sortBy,
+                  sortDir: filters.sortDir,
+                });
+              }}
+            >
+              <X className="h-3.5 w-3.5" />
+              Xóa lọc
+            </Button>
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            tabIndex={hasActiveFilters ? 0 : -1}
-            aria-hidden={!hasActiveFilters}
-            aria-disabled={!hasActiveFilters}
-            className={cn(
-              "mb-0.5 w-full shrink-0 text-red-600 transition-opacity duration-500 ease-out hover:bg-red-50 hover:text-red-700 sm:w-auto",
-              hasActiveFilters ? "opacity-100" : "pointer-events-none opacity-0",
-            )}
-            onClick={() => {
-              if (!hasActiveFilters) return;
-              setFilters({
-                ...DEFAULT_FILTERS,
-                sortBy: filters.sortBy,
-                sortDir: filters.sortDir,
-              });
-            }}
-          >
-            <X className="h-3.5 w-3.5" />
-            Xóa lọc
-          </Button>
         </div>
-      </div>
 
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
-        {clients.length === 0 ? (
-          <Card>
-            <CardContent className="py-10 text-center text-sm text-slate-500">
-              Chưa có khách hàng nào. Thêm khách hàng ở form phía trên để bắt đầu.
-            </CardContent>
-          </Card>
-        ) : visibleClients.length === 0 ? (
-          <Card>
-            <CardContent className="py-10 text-center text-sm text-slate-500">
-              Không có khách hàng khớp bộ lọc hiện tại.
-            </CardContent>
-          </Card>
-        ) : (
-          visibleClients.map((client) => (
-            <Card key={client.id}>
-              <CardHeader>
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <CardTitle>{client.name}</CardTitle>
-                      {client.businessType ? (
-                        <span className="rounded-full bg-primary-muted px-2.5 py-1 text-xs font-medium text-primary">
-                          {CLIENT_BUSINESS_TYPE_LABELS[client.businessType]}
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-                  {canDelete ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={isPending}
-                      onClick={() => handleDelete(client)}
-                      className="shrink-0 text-red-600 hover:bg-red-50 hover:text-red-700"
-                      aria-label={`Xóa ${client.name}`}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      <span className="hidden sm:inline">Xóa</span>
-                    </Button>
-                  ) : null}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm text-slate-600">
-                {client.email && <p>Email: {client.email}</p>}
-                {client.phone && <p>Điện thoại: {client.phone}</p>}
-                {client.city && <p>Thành phố: {client.city}</p>}
-                {client.address && <p>Địa chỉ: {client.address}</p>}
-                {client.notes && <p>Ghi chú: {client.notes}</p>}
-                <p className="text-slate-500">
-                  {client._count.matters} vụ việc
-                  công việc
-                </p>
+        <div className="min-h-0 flex-1 space-y-4">
+          {clients.length === 0 ? (
+            <Card>
+              <CardContent className="py-10 text-center text-sm text-slate-500">
+                Chưa có khách hàng nào. Bấm &quot;+ Khách hàng mới&quot; phía trên để thêm.
               </CardContent>
             </Card>
-          ))
-        )}
+          ) : visibleClients.length === 0 ? (
+            <Card>
+              <CardContent className="py-10 text-center text-sm text-slate-500">
+                Không có khách hàng khớp bộ lọc hiện tại.
+              </CardContent>
+            </Card>
+          ) : (
+            visibleClients.map((client) => (
+              <Card key={client.id}>
+                <CardHeader>
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <CardTitle>{client.name}</CardTitle>
+                        {client.businessType ? (
+                          <span className="rounded-full bg-primary-muted px-2.5 py-1 text-xs font-medium text-primary">
+                            {CLIENT_BUSINESS_TYPE_LABELS[client.businessType]}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                    {canDelete ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={isPending}
+                        onClick={() => handleDelete(client)}
+                        className="shrink-0 text-red-600 hover:bg-red-50 hover:text-red-700"
+                        aria-label={`Xóa ${client.name}`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Xóa</span>
+                      </Button>
+                    ) : null}
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm text-slate-600">
+                  {client.email && <p>Email: {client.email}</p>}
+                  {client.phone && <p>Điện thoại: {client.phone}</p>}
+                  {client.city && <p>Thành phố: {client.city}</p>}
+                  {client.address && <p>Địa chỉ: {client.address}</p>}
+                  {client.notes && <p>Ghi chú: {client.notes}</p>}
+                  <p className="text-slate-500">{client._count.matters} vụ việc</p>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
       </div>
-    </div>
     </>
   );
 }

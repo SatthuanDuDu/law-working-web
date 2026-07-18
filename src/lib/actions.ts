@@ -494,6 +494,157 @@ async function assertCanEditMatterPlan(userId: string, role: Parameters<typeof i
   return { error: null, matter };
 }
 
+async function assertCanAccessMatter(
+  userId: string,
+  role: Parameters<typeof isManagerOrAbove>[0],
+  matterId: string,
+) {
+  const matter = await prisma.matter.findUnique({
+    where: { id: matterId },
+    select: {
+      id: true,
+      code: true,
+      leadLawyerId: true,
+      members: { select: { userId: true } },
+    },
+  });
+  if (!matter) return { error: "Không tìm thấy vụ việc" as const, matter: null };
+
+  const matterIds = await getAccessibleMatterIds(userId, role);
+  if (matterIds && !matterIds.includes(matterId)) {
+    return { error: "Không có quyền truy cập vụ việc này" as const, matter: null };
+  }
+
+  const canAccess =
+    isManagerOrAbove(role) ||
+    matter.leadLawyerId === userId ||
+    matter.members.some((member) => member.userId === userId);
+
+  if (!canAccess) {
+    return { error: "Không có quyền truy cập vụ việc này" as const, matter: null };
+  }
+
+  return { error: null, matter };
+}
+
+function parseMentionIds(raw: FormDataEntryValue | null): string[] {
+  if (typeof raw !== "string" || !raw.trim()) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed.filter((id): id is string => typeof id === "string");
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+export async function createCommentAction(formData: FormData) {
+  const user = await requireAuth();
+
+  const matterId = formData.get("matterId");
+  const rawStepId = formData.get("matterPlanStepId");
+  const rawBody = formData.get("body");
+
+  if (typeof matterId !== "string" || !matterId) {
+    return { error: "Thiếu thông tin vụ việc" };
+  }
+  const body = typeof rawBody === "string" ? rawBody.trim() : "";
+  if (!body) return { error: "Nội dung bình luận không được để trống" };
+  if (body.length > 5000) return { error: "Bình luận quá dài (tối đa 5000 ký tự)" };
+
+  const matterPlanStepId =
+    typeof rawStepId === "string" && rawStepId ? rawStepId : null;
+
+  const access = await assertCanAccessMatter(user.id, user.role, matterId);
+  if (access.error || !access.matter) return { error: access.error ?? "Không có quyền" };
+  const matter = access.matter;
+
+  if (matterPlanStepId) {
+    const step = await prisma.matterPlanStep.findUnique({
+      where: { id: matterPlanStepId },
+      select: { matterId: true },
+    });
+    if (!step || step.matterId !== matterId) {
+      return { error: "Không tìm thấy bước kế hoạch" };
+    }
+  }
+
+  const allowedUserIds = new Set<string>([
+    matter.leadLawyerId,
+    ...matter.members.map((member) => member.userId),
+  ]);
+  const mentionedUserIds = Array.from(new Set(parseMentionIds(formData.get("mentionedUserIds"))))
+    .filter((id) => allowedUserIds.has(id) && id !== user.id);
+
+  try {
+    const comment = await prisma.$transaction(async (tx) => {
+      const created = await tx.comment.create({
+        data: {
+          matterId,
+          matterPlanStepId,
+          authorId: user.id,
+          body,
+        },
+      });
+
+      if (mentionedUserIds.length > 0) {
+        await tx.commentMention.createMany({
+          data: mentionedUserIds.map((userId) => ({
+            commentId: created.id,
+            userId,
+          })),
+        });
+
+        const link = matterPlanStepId
+          ? `/matters/${matterId}/plan`
+          : `/matters/${matterId}/report`;
+        await tx.notification.createMany({
+          data: mentionedUserIds.map((userId) => ({
+            userId,
+            type: "MENTION" as const,
+            title: "Bạn được nhắc đến",
+            message: `${user.name} đã nhắc bạn trong ${matter.code}`,
+            link,
+          })),
+        });
+      }
+
+      return created;
+    });
+
+    revalidatePath(`/matters/${matterId}/report`);
+    revalidatePath(`/matters/${matterId}/plan`);
+    return { success: true, commentId: comment.id };
+  } catch (error) {
+    console.error("createCommentAction failed:", error);
+    return {
+      error:
+        "Không thể gửi bình luận. Hãy refresh trang; nếu vẫn lỗi chạy `npx prisma generate` rồi restart `npm run dev`.",
+    };
+  }
+}
+
+export async function deleteCommentAction(commentId: string) {
+  const user = await requireAuth();
+
+  const comment = await prisma.comment.findUnique({
+    where: { id: commentId },
+    select: { id: true, authorId: true, matterId: true },
+  });
+  if (!comment) return { error: "Không tìm thấy bình luận" };
+
+  const canDelete = comment.authorId === user.id || isManagerOrAbove(user.role);
+  if (!canDelete) return { error: "Không có quyền xóa bình luận này" };
+
+  await prisma.comment.delete({ where: { id: commentId } });
+
+  revalidatePath(`/matters/${comment.matterId}/report`);
+  revalidatePath(`/matters/${comment.matterId}/plan`);
+  return { success: true };
+}
+
 export async function createMatterPlanStepAction(formData: FormData) {
   const user = await requireAuth();
   const parsed = matterPlanStepSchema.safeParse({

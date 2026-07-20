@@ -46,6 +46,7 @@ ADMIN_EMAIL=ban@congty.vn ADMIN_PASSWORD='MatKhauManh!' npm run db:admin
 [
   {
     "AllowedOrigins": [
+      "https://law-working-web.vercel.app",
       "https://law-working-web-pi.vercel.app",
       "https://YOUR-APP.vercel.app",
       "http://localhost:3000"
@@ -58,7 +59,7 @@ ADMIN_EMAIL=ban@congty.vn ADMIN_PASSWORD='MatKhauManh!' npm run db:admin
 ]
 ```
 
-> Nếu comment/chat upload fail trên production: kiểm tra CORS origin khớp đúng domain Vercel, và `S3_PUBLIC_ENDPOINT` **không** trỏ `localhost`.
+> Nếu comment/chat upload fail trên production: kiểm tra CORS origin khớp đúng domain Vercel (`law-working-web.vercel.app`), và `S3_PUBLIC_ENDPOINT` **phải** trùng `S3_ENDPOINT` (R2), **không** trỏ `localhost`. Ảnh/file ≤4MB được upload qua API Next.js (không cần CORS); file lớn hơn vẫn dùng presigned PUT nên CORS vẫn bắt buộc.
 
 Env:
 

@@ -17,16 +17,17 @@ export function DeleteUserButton({
   canDelete: boolean;
 }) {
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [isPending, startTransition] = useTransition();
   const { confirm, dialog } = useConfirmDialog();
   const router = useRouter();
 
-  if (!canDelete) return null;
+  // Keep column alignment even when delete is unavailable.
+  if (!canDelete) {
+    return <div className="h-8 w-8 shrink-0" aria-hidden />;
+  }
 
   function handleDelete() {
     setError("");
-    setSuccess("");
     confirm({
       title: "Xóa nhân viên",
       message: `Bạn có chắc muốn xóa nhân viên "${userName}"? Hành động này không thể hoàn tác.`,
@@ -39,7 +40,6 @@ export function DeleteUserButton({
             setError(result.error);
             return;
           }
-          setSuccess("Đã xóa nhân viên");
           router.refresh();
         });
       },
@@ -47,19 +47,26 @@ export function DeleteUserButton({
   }
 
   return (
-    <div>
+    <div className="relative">
       {dialog}
       <Button
         variant="ghost"
         size="sm"
         disabled={isPending}
         onClick={handleDelete}
-        className="h-8 px-2 text-red-600 hover:bg-red-50 hover:text-red-700"
+        className="h-8 w-8 shrink-0 px-0 text-red-600 hover:bg-red-50 hover:text-red-700"
+        aria-label={`Xóa ${userName}`}
       >
         <Trash2 className="h-4 w-4" />
       </Button>
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
-      {success && <p className="mt-1 text-xs text-emerald-600">{success}</p>}
+      {error ? (
+        <p
+          className="pointer-events-none absolute right-0 top-full z-10 mt-1 w-max max-w-[12rem] rounded-md bg-surface px-2 py-1 text-center text-[10px] font-medium text-red-600 shadow-[var(--shadow-overlay)] ring-1 ring-border"
+          role="alert"
+        >
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

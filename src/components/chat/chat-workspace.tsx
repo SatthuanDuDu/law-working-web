@@ -410,12 +410,14 @@ export function ChatWorkspace({
         setError(prepared.error || t("uploadFailed"));
         return;
       }
-      const upload = await fetch(prepared.uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": file.type || "application/octet-stream" },
-        body: file,
-      }).catch(() => null);
-      if (!upload || !upload.ok) {
+      const { putAttachmentBytes } = await import("@/lib/browser-upload");
+      const uploaded = await putAttachmentBytes({
+        attachmentId: prepared.attachment.id,
+        uploadUrl: prepared.uploadUrl,
+        file,
+        mimeType: file.type || "application/octet-stream",
+      });
+      if (!uploaded.ok) {
         await fetch(`/api/attachments/${prepared.attachment.id}`, {
           method: "DELETE",
         });

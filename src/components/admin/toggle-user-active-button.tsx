@@ -56,7 +56,7 @@ export function ToggleUserActiveButton({
   const label = isActive ? tUsers("lockAccountShort") : tUsers("activateAccountShort");
 
   return (
-    <div>
+    <div className="relative w-full">
       {dialog}
       <Button
         type="button"
@@ -65,7 +65,8 @@ export function ToggleUserActiveButton({
         disabled={disabled || isPending}
         onClick={handleToggle}
         className={cn(
-          compact && "h-8 px-2.5",
+          "w-full gap-1.5",
+          compact && "h-8 px-0 sm:px-2",
           isActive
             ? "text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:hover:bg-amber-950/40"
             : "text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 dark:hover:bg-emerald-950/40",
@@ -77,13 +78,20 @@ export function ToggleUserActiveButton({
         }
       >
         {isActive ? (
-          <Lock className="h-3.5 w-3.5" />
+          <Lock className="h-3.5 w-3.5 shrink-0" />
         ) : (
-          <Unlock className="h-3.5 w-3.5" />
+          <Unlock className="h-3.5 w-3.5 shrink-0" />
         )}
-        <span className={compact ? "hidden sm:inline" : undefined}>{label}</span>
+        <span className="hidden truncate sm:inline">{label}</span>
       </Button>
-      {error ? <p className="mt-1 text-xs text-red-600">{error}</p> : null}
+      {error ? (
+        <p
+          className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 w-max max-w-[12rem] -translate-x-1/2 rounded-md bg-surface px-2 py-1 text-center text-[10px] font-medium text-red-600 shadow-[var(--shadow-overlay)] ring-1 ring-border"
+          role="alert"
+        >
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

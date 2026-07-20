@@ -226,24 +226,34 @@ export function UsersList({
                       </div>
                     </div>
 
-                    <div className="flex flex-col gap-1.5 sm:shrink-0 sm:items-end">
-                      <div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
+                    <div
+                      className="relative grid w-full shrink-0 grid-cols-[2rem_2rem_2rem_2rem] justify-end gap-1.5 self-start sm:w-[22rem] sm:grid-cols-[4.75rem_7.5rem_4.75rem_2rem]"
+                      role="group"
+                      aria-label={tUsers("editUser")}
+                    >
+                      <div className="min-w-0">
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
                           onClick={() => setEditUser(item)}
-                          className="h-8 px-2.5"
+                          className="h-8 w-full gap-1.5 px-0 sm:px-2"
                           aria-label={tUsers("editUser")}
                         >
-                          <Pencil className="h-3.5 w-3.5" />
-                          <span className="hidden sm:inline">{tCommon("edit")}</span>
+                          <Pencil className="h-3.5 w-3.5 shrink-0" />
+                          <span className="hidden truncate sm:inline">
+                            {tCommon("edit")}
+                          </span>
                         </Button>
+                      </div>
+                      <div className="relative min-w-0">
                         <ResetPasswordButton
                           userId={item.id}
                           userName={item.name}
                           compact
                         />
+                      </div>
+                      <div className="min-w-0">
                         <ToggleUserActiveButton
                           userId={item.id}
                           userName={item.name}
@@ -251,6 +261,8 @@ export function UsersList({
                           disabled={item.id === currentUserId}
                           compact
                         />
+                      </div>
+                      <div className="flex min-w-0 justify-center">
                         <DeleteUserButton
                           userId={item.id}
                           userName={item.name}

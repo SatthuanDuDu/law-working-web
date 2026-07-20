@@ -98,29 +98,14 @@ export function SettingsPageClient({
     setAvatarError("");
     setAvatarSuccess("");
     try {
-      const prepare = await fetch("/api/avatar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fileName: "avatar.jpg",
-          mimeType: "image/jpeg",
-          sizeBytes: blob.size,
-        }),
-      });
-      const prepared = await prepare.json().catch(() => ({}));
-      if (!prepare.ok) {
-        setAvatarError(prepared.error || t("avatarUploadFailed"));
-        setAvatarBusy(false);
-        return;
-      }
-
-      const upload = await fetch(prepared.uploadUrl, {
+      const upload = await fetch("/api/avatar/content", {
         method: "PUT",
         headers: { "Content-Type": "image/jpeg" },
         body: blob,
       });
+      const uploaded = await upload.json().catch(() => ({}));
       if (!upload.ok) {
-        setAvatarError(t("avatarUploadFailed"));
+        setAvatarError(uploaded.error || t("avatarUploadFailed"));
         setAvatarBusy(false);
         return;
       }
@@ -128,7 +113,7 @@ export function SettingsPageClient({
       const confirmRes = await fetch("/api/avatar/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storageKey: prepared.storageKey }),
+        body: JSON.stringify({ storageKey: uploaded.storageKey }),
       });
       const confirmed = await confirmRes.json().catch(() => ({}));
       if (!confirmRes.ok) {

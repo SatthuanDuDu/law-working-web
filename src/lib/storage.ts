@@ -44,6 +44,11 @@ export function buildStorageKey(fileName: string) {
   return `attachments/${Date.now()}-${crypto.randomUUID()}-${safeName}`;
 }
 
+export function buildAvatarStorageKey(userId: string, fileName: string) {
+  const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+  return `avatars/${userId}/${Date.now()}-${crypto.randomUUID()}-${safeName}`;
+}
+
 export async function createUploadUrl(storageKey: string, mimeType: string) {
   const config = getS3Config();
   const client = createClient(config.publicEndpoint);
@@ -62,6 +67,22 @@ export async function createDownloadUrl(storageKey: string, fileName: string) {
     Bucket: config.bucket,
     Key: storageKey,
     ResponseContentDisposition: `attachment; filename="${encodeURIComponent(fileName)}"`,
+  });
+  return getSignedUrl(client, command, { expiresIn: 60 * 5 });
+}
+
+export async function createPreviewUrl(
+  storageKey: string,
+  fileName: string,
+  mimeType: string,
+) {
+  const config = getS3Config();
+  const client = createClient(config.publicEndpoint);
+  const command = new GetObjectCommand({
+    Bucket: config.bucket,
+    Key: storageKey,
+    ResponseContentDisposition: `inline; filename="${encodeURIComponent(fileName)}"`,
+    ResponseContentType: mimeType || "application/octet-stream",
   });
   return getSignedUrl(client, command, { expiresIn: 60 * 5 });
 }

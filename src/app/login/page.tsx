@@ -8,9 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useTranslations } from "next-intl";
 
 export default function LoginPage() {
   const router = useRouter();
+  const t = useTranslations("auth");
+  const tPages = useTranslations("pages");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -29,7 +32,7 @@ export default function LoginPage() {
     setLoading(false);
 
     if (result?.error) {
-      setError("Tên đăng nhập hoặc mật khẩu không đúng");
+      setError(t("invalidCredentials"));
       return;
     }
 
@@ -41,7 +44,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary via-primary-hover to-[#0b3a20] p-6">
       <Card className="w-full max-w-md border-border shadow-[var(--shadow-overlay)]">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-white ring-1 ring-border">
+          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-surface ring-1 ring-border">
             <Image
               src="/logo-nslaw.png"
               alt="NSLAW"
@@ -51,15 +54,15 @@ export default function LoginPage() {
               className="h-full w-full object-contain"
             />
           </div>
-          <CardTitle>NSLAW Work Manager</CardTitle>
+          <CardTitle>{tPages("fallback.title")}</CardTitle>
           <CardDescription>
-            Hệ thống quản lý công việc nội bộ
+            {t("loginSubtitle")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Tên đăng nhập</Label>
+              <Label htmlFor="email">{t("email")}</Label>
               <Input
                 id="email"
                 name="email"
@@ -70,7 +73,7 @@ export default function LoginPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Mật khẩu</Label>
+              <Label htmlFor="password">{t("password")}</Label>
               <Input
                 id="password"
                 name="password"
@@ -85,20 +88,16 @@ export default function LoginPage() {
               </p>
             )}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+              {loading ? t("signingIn") : t("signIn")}
             </Button>
           </form>
-          <div className="mt-6 rounded-lg bg-muted p-4 text-xs text-slate-500">
+          <div className="mt-6 rounded-lg bg-muted p-4 text-xs text-muted-foreground">
             {process.env.NODE_ENV === "development" && (
               <>
-                <p className="font-medium text-primary">Tài khoản demo (local seed):</p>
+                <p className="font-medium text-primary">Demo (local seed):</p>
                 <p>admin / admin</p>
               </>
             )}
-            <p className={process.env.NODE_ENV === "development" ? "mt-2" : undefined}>
-              Quên mật khẩu? Liên hệ quản trị viên để được đặt lại, hoặc đăng nhập
-              rồi đổi mật khẩu trong mục Cài đặt.
-            </p>
           </div>
         </CardContent>
       </Card>

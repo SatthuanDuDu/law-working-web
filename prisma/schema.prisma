@@ -19,6 +19,7 @@ enum MatterStatus {
   IN_PROGRESS
   ON_HOLD
   CLOSED
+  ARCHIVED
 }
 
 enum MatterType {
@@ -91,6 +92,7 @@ model User {
   role             Role           @default(SUPPORT)
   departmentId     String?
   department       Department?    @relation(fields: [departmentId], references: [id])
+  avatarKey        String?
   isActive         Boolean        @default(true)
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
@@ -145,20 +147,27 @@ model Matter {
 }
 
 model MatterPlanStep {
-  id              String                @id @default(cuid())
-  matterId        String
-  matter          Matter                @relation(fields: [matterId], references: [id], onDelete: Cascade)
-  title           String
-  workTypeId      String?
-  workType        WorkType?             @relation(fields: [workTypeId], references: [id], onDelete: SetNull)
-  startedAt       DateTime?
-  dueAt           DateTime?
-  status          MatterPlanStepStatus  @default(NOT_STARTED)
-  statusChangedAt DateTime?
-  sortOrder       Int                   @default(0)
-  createdAt       DateTime              @default(now())
-  updatedAt       DateTime              @updatedAt
-  comments        Comment[]
+  id               String                @id @default(cuid())
+  matterId         String
+  matter           Matter                @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  title            String
+  workTypeId       String?
+  workType         WorkType?             @relation(fields: [workTypeId], references: [id], onDelete: SetNull)
+  startedAt        DateTime?
+  dueAt            DateTime?
+  status           MatterPlanStepStatus  @default(NOT_STARTED)
+  priority         TaskPriority          @default(MEDIUM)
+  statusChangedAt  DateTime?
+  sortOrder        Int                   @default(0)
+  locationName     String?
+  locationAddress  String?
+  locationPlaceId  String?
+  locationLat      Float?
+  locationLng      Float?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  comments         Comment[]
+  attachments      Attachment[]
 
   @@index([matterId, sortOrder])
 }
@@ -182,6 +191,15 @@ model WorkType {
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
   planSteps MatterPlanStep[]
+}
+
+model AttachmentLabel {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  attachments Attachment[]
 }
 
 model Task {
@@ -209,20 +227,33 @@ model Task {
 }
 
 model Attachment {
-  id           String    @id @default(cuid())
-  fileName     String
-  mimeType     String
-  sizeBytes    Int
-  storageKey   String
-  matterId     String?
-  matter       Matter?   @relation(fields: [matterId], references: [id], onDelete: Cascade)
-  taskId       String?
-  task         Task?     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  clientId     String?
-  client       Client?   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  uploadedById String
-  uploadedBy   User      @relation(fields: [uploadedById], references: [id])
-  createdAt    DateTime  @default(now())
+  id               String           @id @default(cuid())
+  fileName         String
+  mimeType         String
+  sizeBytes        Int
+  storageKey       String
+  matterId         String?
+  matter           Matter?          @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  taskId           String?
+  task             Task?            @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  clientId         String?
+  client           Client?          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  matterPlanStepId String?
+  matterPlanStep   MatterPlanStep?  @relation(fields: [matterPlanStepId], references: [id], onDelete: Cascade)
+  commentId        String?
+  comment          Comment?         @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  labelId          String?
+  label            AttachmentLabel? @relation(fields: [labelId], references: [id], onDelete: SetNull)
+  customLabel      String?
+  isImportant      Boolean          @default(false)
+  uploadedById     String
+  uploadedBy       User             @relation(fields: [uploadedById], references: [id])
+  createdAt        DateTime         @default(now())
+
+  @@index([matterPlanStepId])
+  @@index([commentId])
+  @@index([labelId])
+  @@index([isImportant])
 }
 
 model Notification {
@@ -248,9 +279,15 @@ model Comment {
   authorId         String
   author           User             @relation(fields: [authorId], references: [id], onDelete: Cascade)
   body             String
+  locationName     String?
+  locationAddress  String?
+  locationPlaceId  String?
+  locationLat      Float?
+  locationLng      Float?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
   mentions         CommentMention[]
+  attachments      Attachment[]
 
   @@index([matterId, createdAt])
   @@index([matterPlanStepId, createdAt])

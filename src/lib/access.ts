@@ -80,3 +80,17 @@ export async function canAccessAttachmentTarget(
 
   return false;
 }
+
+export async function assertMatterNotArchived(matterId: string) {
+  const matter = await prisma.matter.findUnique({
+    where: { id: matterId },
+    select: { status: true },
+  });
+  if (!matter) return { error: "Không tìm thấy vụ việc" as const };
+  if (matter.status === "ARCHIVED") {
+    return {
+      error: "Vụ việc đã lưu trữ — chỉ được xem, không thể chỉnh sửa" as const,
+    };
+  }
+  return { error: null };
+}

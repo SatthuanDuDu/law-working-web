@@ -4,8 +4,9 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { Check, ChevronDown, Loader2 } from "lucide-react";
 import { updateMatterStatusAction } from "@/lib/actions";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
-import { MATTER_STATUS_LABELS } from "@/lib/constants";
+import { useLabelMaps } from "@/i18n/use-label-maps";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import type { MatterStatus } from "@prisma/client";
 
 /** Flat Material tonal chips — no colored glow/shadow */
@@ -14,6 +15,7 @@ const STATUS_TAG_CLASS: Record<MatterStatus, string> = {
   IN_PROGRESS: "bg-amber-500 text-white",
   ON_HOLD: "bg-rose-500 text-white",
   CLOSED: "bg-emerald-500 text-white",
+  ARCHIVED: "bg-slate-500 text-white",
 };
 
 const STATUS_DOT_CLASS: Record<MatterStatus, string> = {
@@ -21,7 +23,15 @@ const STATUS_DOT_CLASS: Record<MatterStatus, string> = {
   IN_PROGRESS: "bg-amber-500",
   ON_HOLD: "bg-rose-500",
   CLOSED: "bg-emerald-500",
+  ARCHIVED: "bg-slate-500",
 };
+
+const WORKFLOW_STATUSES: MatterStatus[] = [
+  "NEW",
+  "IN_PROGRESS",
+  "ON_HOLD",
+  "CLOSED",
+];
 
 /** Read-only / trigger chip — same palette as status picker */
 export function MatterStatusBadge({
@@ -35,6 +45,8 @@ export function MatterStatusBadge({
   open?: boolean;
   className?: string;
 }) {
+  const { matterStatus } = useLabelMaps();
+
   return (
     <span
       className={cn(
@@ -45,7 +57,7 @@ export function MatterStatusBadge({
         className,
       )}
     >
-      {MATTER_STATUS_LABELS[status]}
+      {matterStatus[status]}
       {interactive ? (
         <ChevronDown
           className={cn("h-3 w-3 opacity-80 transition-transform", open && "rotate-180")}
@@ -60,24 +72,32 @@ export function MatterStatusControl({
   matterId,
   status,
   canEdit,
+  isAdmin = false,
   className,
 }: {
   matterId: string;
   status: MatterStatus;
   canEdit: boolean;
+  isAdmin?: boolean;
   className?: string;
 }) {
   const [isPending, startTransition] = useTransition();
   const [feedback, setFeedback] = useState<"idle" | "spinning" | "success">("idle");
-  const [currentStatus, setCurrentStatus] = useState(status);
+  const [optimisticStatus, setOptimisticStatus] = useState<MatterStatus | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const successTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { confirm, dialog } = useConfirmDialog();
+  const t = useTranslations("matters");
+  const tCommon = useTranslations("common");
+  const { matterStatus } = useLabelMaps();
 
-  useEffect(() => {
-    setCurrentStatus(status);
-  }, [status]);
+  const currentStatus =
+    optimisticStatus !== null && optimisticStatus !== status
+      ? optimisticStatus
+      : status;
+  const isArchived = currentStatus === "ARCHIVED";
+  const canOpenMenu = canEdit || (isAdmin && isArchived);
 
   useEffect(() => {
     return () => {
@@ -116,26 +136,28 @@ export function MatterStatusControl({
     }, 600);
   }
 
-  function handleChange(nextStatus: MatterStatus) {
+  function handleChange(nextStatus: MatterStatus, label?: string) {
     setMenuOpen(false);
     if (nextStatus === currentStatus) return;
 
+    const nextLabel = label ?? matterStatus[nextStatus];
+
     confirm({
-      title: "Xác nhận đổi trạng thái",
-      message: `Chuyển trạng thái vụ việc sang "${MATTER_STATUS_LABELS[nextStatus]}"?`,
-      confirmLabel: "Cập nhật",
+      title: tCommon("confirm"),
+      message: `${t("status")}: "${nextLabel}"?`,
+      confirmLabel: tCommon("save"),
       onConfirm: () => {
         startTransition(async () => {
           const result = await updateMatterStatusAction(matterId, nextStatus);
           if (result?.error) return;
-          setCurrentStatus(nextStatus);
+          setOptimisticStatus(nextStatus);
           playSuccessFeedback();
         });
       },
     });
   }
 
-  if (!canEdit) {
+  if (!canOpenMenu) {
     return (
       <div className={cn("flex items-center gap-2", className)}>
         <MatterStatusBadge status={currentStatus} />
@@ -144,6 +166,19 @@ export function MatterStatusControl({
   }
 
   const busy = isPending || feedback !== "idle";
+  const menuItems: { value: MatterStatus; label: string }[] = isArchived
+    ? isAdmin
+      ? [{ value: "IN_PROGRESS", label: matterStatus.IN_PROGRESS }]
+      : []
+    : [
+        ...WORKFLOW_STATUSES.map((value) => ({
+          value,
+          label: matterStatus[value],
+        })),
+        ...(isAdmin
+          ? [{ value: "ARCHIVED" as const, label: matterStatus.ARCHIVED }]
+          : []),
+      ];
 
   return (
     <>
@@ -172,7 +207,7 @@ export function MatterStatusControl({
           disabled={busy}
           aria-haspopup="listbox"
           aria-expanded={menuOpen}
-          aria-label="Trạng thái vụ việc"
+          aria-label={t("status")}
           className="interactive-press rounded-full disabled:opacity-60"
           onClick={() => setMenuOpen((open) => !open)}
         >
@@ -183,27 +218,27 @@ export function MatterStatusControl({
           <ul
             role="listbox"
             aria-labelledby={`matter-status-${matterId}`}
-            className="absolute right-0 top-full z-20 mt-1.5 min-w-[9.5rem] overflow-hidden rounded-[5px] border border-slate-200/80 bg-white py-1"
+            className="absolute right-0 top-full z-20 mt-1.5 min-w-[10.5rem] overflow-hidden rounded-[5px] border border-border bg-surface py-1 shadow-[var(--shadow-overlay)]"
           >
-            {(Object.keys(MATTER_STATUS_LABELS) as MatterStatus[]).map((value) => {
-              const selected = value === currentStatus;
+            {menuItems.map((item) => {
+              const selected = item.value === currentStatus;
               return (
-                <li key={value} role="option" aria-selected={selected}>
+                <li key={`${item.value}-${item.label}`} role="option" aria-selected={selected}>
                   <button
                     type="button"
                     className={cn(
-                      "interactive-press flex w-full cursor-pointer items-center gap-2.5 px-3 py-1.5 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50",
-                      selected && "bg-slate-50 font-medium text-slate-900 hover:bg-slate-100",
+                      "interactive-press flex w-full cursor-pointer items-center gap-2.5 px-3 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-muted",
+                      selected && "bg-muted font-medium hover:bg-muted",
                     )}
-                    onClick={() => handleChange(value)}
+                    onClick={() => handleChange(item.value, item.label)}
                   >
                     <span
-                      className={cn("h-2 w-2 shrink-0 rounded-full", STATUS_DOT_CLASS[value])}
+                      className={cn("h-2 w-2 shrink-0 rounded-full", STATUS_DOT_CLASS[item.value])}
                       aria-hidden
                     />
-                    <span className="flex-1">{MATTER_STATUS_LABELS[value]}</span>
+                    <span className="flex-1">{item.label}</span>
                     {selected ? (
-                      <Check className="h-3.5 w-3.5 text-slate-500" aria-hidden />
+                      <Check className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
                     ) : (
                       <span className="w-3.5" aria-hidden />
                     )}

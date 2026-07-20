@@ -13,6 +13,7 @@ import {
   Settings,
   UserCog,
   Tags,
+  Bookmark,
   Building2,
   ScrollText,
   LogOut,
@@ -23,14 +24,26 @@ import {
   ChevronUp,
   UserRound,
   Loader2,
+  Check,
+  Languages,
+  Monitor,
+  Moon,
+  Sun,
 } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
+import { useTheme } from "next-themes";
+import { useRouter } from "next/navigation";
+import { useTransition } from "react";
 import { cn } from "@/lib/utils";
-import { ADMIN_NAV_ITEMS, MANAGER_NAV_ITEMS, NAV_ITEMS, ROLE_LABELS } from "@/lib/constants";
+import { ADMIN_NAV_ITEMS, MANAGER_NAV_ITEMS, NAV_ITEMS } from "@/lib/constants";
 import { canAccessAdmin, isManagerOrAbove } from "@/lib/permissions";
 import type { Role } from "@prisma/client";
 import { signOut } from "next-auth/react";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { useSidebar } from "@/contexts/sidebar-context";
+import { useLabelMaps } from "@/i18n/use-label-maps";
+import { setLocaleAction } from "@/lib/locale-actions";
+import type { Locale } from "@/i18n/config";
 
 const iconMap = {
   LayoutDashboard,
@@ -39,6 +52,7 @@ const iconMap = {
   Settings,
   UserCog,
   Tags,
+  Bookmark,
   Building2,
   ScrollText,
   CalendarDays,
@@ -215,6 +229,12 @@ function AccountMenu({
   onSignOut: () => void;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const t = useTranslations("account");
+  const { roles } = useLabelMaps();
+  const locale = useLocale();
+  const { theme, setTheme } = useTheme();
+  const [isLocalePending, startLocaleTransition] = useTransition();
   const rootRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -236,9 +256,9 @@ function AccountMenu({
     if (collapsed) {
       return {
         mode: "collapsed" as const,
-        top: Math.max(8, rect.bottom - 148),
+        top: Math.max(8, rect.bottom - 280),
         left: rect.right + 8,
-        width: 220,
+        width: Math.max(rect.width, 200),
       };
     }
 
@@ -259,6 +279,14 @@ function AccountMenu({
   function closeMenu() {
     setOpen(false);
     setMenuBox(null);
+  }
+
+  function toggleMenu() {
+    if (open) {
+      closeMenu();
+      return;
+    }
+    openMenu();
   }
 
   useEffect(() => {
@@ -297,6 +325,14 @@ function AccountMenu({
     };
   }, [open, measureMenu]);
 
+  function changeLocale(next: Locale) {
+    if (next === locale) return;
+    startLocaleTransition(async () => {
+      await setLocaleAction(next);
+      router.refresh();
+    });
+  }
+
   const menu =
     open && menuBox
       ? createPortal(
@@ -304,7 +340,7 @@ function AccountMenu({
             ref={menuRef}
             id={menuId}
             role="menu"
-            aria-label="Quản lý tài khoản"
+            aria-label={t("menuLabel")}
             style={
               menuBox.mode === "collapsed"
                 ? {
@@ -318,26 +354,97 @@ function AccountMenu({
                     width: menuBox.width,
                   }
             }
-            className="fixed z-[60] overflow-hidden rounded-[5px] border border-slate-200/80 bg-white py-1"
-            onMouseEnter={openMenu}
-            onMouseLeave={closeMenu}
+            className="fixed z-[60] overflow-hidden rounded-[5px] border border-border bg-surface py-1 shadow-[var(--shadow-overlay)]"
           >
-            <div className="border-b border-slate-100 px-3 py-2">
-              <p className="truncate text-sm font-medium text-slate-900">{user.name}</p>
-              <p className="text-xs text-slate-500">{ROLE_LABELS[user.role]}</p>
+            <div className="border-b border-border px-3 py-2">
+              <p className="truncate text-sm font-medium text-foreground">
+                {user.name}
+              </p>
+              <p className="text-xs text-muted-foreground">{roles[user.role]}</p>
             </div>
             <Link
               href="/settings"
               role="menuitem"
               onClick={closeMenu}
               className={cn(
-                "interactive-press flex w-full items-center gap-2.5 px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50",
-                settingsActive && "bg-slate-50 font-medium text-slate-900",
+                "interactive-press flex w-full items-center gap-2.5 px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted",
+                settingsActive && "bg-muted font-medium",
               )}
             >
-              <Settings className="h-4 w-4 shrink-0 text-slate-500" />
-              Cài đặt
+              <Settings className="h-4 w-4 shrink-0 text-muted-foreground" />
+              {t("settings")}
             </Link>
+
+            <div className="border-t border-border px-3 py-2">
+              <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <Languages className="h-3 w-3" />
+                {t("language")}
+              </p>
+              <div className="grid grid-cols-2 gap-1">
+                {(
+                  [
+                    { value: "vi" as const, label: t("languageVi") },
+                    { value: "en" as const, label: t("languageEn") },
+                  ] as const
+                ).map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={locale === opt.value}
+                    disabled={isLocalePending}
+                    onClick={() => changeLocale(opt.value)}
+                    className={cn(
+                      "interactive-press flex items-center justify-between gap-1 rounded-md px-2 py-1.5 text-left text-xs",
+                      locale === opt.value
+                        ? "bg-primary-muted font-medium text-primary"
+                        : "text-foreground hover:bg-muted",
+                    )}
+                  >
+                    <span className="truncate">{opt.label}</span>
+                    {locale === opt.value ? (
+                      <Check className="h-3 w-3 shrink-0" />
+                    ) : null}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="border-t border-border px-3 py-2">
+              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {t("theme")}
+              </p>
+              <div className="grid grid-cols-3 gap-1">
+                {(
+                  [
+                    { value: "light", label: t("themeLight"), Icon: Sun },
+                    { value: "dark", label: t("themeDark"), Icon: Moon },
+                    { value: "system", label: t("themeSystem"), Icon: Monitor },
+                  ] as const
+                ).map((opt) => {
+                  const active = (theme ?? "system") === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={active}
+                      onClick={() => setTheme(opt.value)}
+                      className={cn(
+                        "interactive-press flex flex-col items-center gap-0.5 rounded-md px-1 py-1.5 text-[10px]",
+                        active
+                          ? "bg-primary-muted font-medium text-primary"
+                          : "text-foreground hover:bg-muted",
+                      )}
+                    >
+                      <opt.Icon className="h-3.5 w-3.5" />
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <button
               type="button"
               role="menuitem"
@@ -345,10 +452,10 @@ function AccountMenu({
                 closeMenu();
                 onSignOut();
               }}
-              className="interactive-press flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50"
+              className="interactive-press flex w-full items-center gap-2.5 border-t border-border px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50 dark:hover:bg-red-950/40"
             >
               <LogOut className="h-4 w-4 shrink-0" />
-              Đăng xuất
+              {t("signOut")}
             </button>
           </div>,
           document.body,
@@ -357,18 +464,13 @@ function AccountMenu({
 
   return (
     <>
-      <div
-        ref={rootRef}
-        className="relative"
-        onMouseEnter={openMenu}
-        onMouseLeave={closeMenu}
-      >
+      <div ref={rootRef} className="relative">
         <button
           type="button"
           aria-haspopup="menu"
           aria-expanded={open}
           aria-controls={menuId}
-          onClick={() => (open ? closeMenu() : openMenu())}
+          onClick={toggleMenu}
           className={cn(
             "interactive-press flex w-full items-center rounded-md transition-colors",
             collapsed
@@ -383,7 +485,7 @@ function AccountMenu({
             <>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{user.name}</p>
-                <p className="text-xs text-white/60">{ROLE_LABELS[user.role]}</p>
+                <p className="text-xs text-white/60">{roles[user.role]}</p>
               </div>
               <ChevronUp
                 className={cn(
@@ -411,12 +513,13 @@ export function Sidebar({
   const pathname = usePathname();
   const { confirm, dialog } = useConfirmDialog();
   const { collapsed, toggleCollapsed, mobileOpen, closeMobile } = useSidebar();
+  const t = useTranslations("account");
 
   function handleSignOut() {
     confirm({
-      title: "Đăng xuất",
-      message: "Bạn có chắc muốn đăng xuất khỏi hệ thống?",
-      confirmLabel: "Đăng xuất",
+      title: t("signOut"),
+      message: t("signOutConfirm"),
+      confirmLabel: t("signOut"),
       onConfirm: () =>
         signOut({
           callbackUrl: `${window.location.origin}/login`,
@@ -440,7 +543,7 @@ export function Sidebar({
         {mobileOpen ? (
           <button
             type="button"
-            aria-label="Đóng menu"
+            aria-label={t("closeMenu")}
             className="fixed inset-0 z-40 bg-slate-900/40 lg:hidden"
             onClick={closeMobile}
           />
@@ -505,6 +608,9 @@ function SidebarContent({
   onSignOut: () => void;
   showEdgeToggle: boolean;
 }) {
+  const tAccount = useTranslations("account");
+  const tNav = useTranslations("nav");
+
   return (
     <>
       {showEdgeToggle ? (
@@ -513,7 +619,7 @@ function SidebarContent({
 
       <div
         className={cn(
-          "flex items-center border-b border-white/10 py-5",
+          "flex items-center border-b border-white/10 bg-white/5 py-5 backdrop-blur-md",
           collapsed ? "justify-center px-3" : "gap-3 px-6",
         )}
       >
@@ -529,7 +635,7 @@ function SidebarContent({
         {!collapsed && (
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">NSLAW</p>
-            <p className="text-xs text-white/60">Quản lý nội bộ</p>
+            <p className="text-xs text-white/60">{tAccount("brandSubtitle")}</p>
           </div>
         )}
       </div>
@@ -543,7 +649,7 @@ function SidebarContent({
             <NavLink
               key={item.href}
               href={item.href}
-              label={item.label}
+              label={tNav(item.labelKey)}
               icon={item.icon as keyof typeof iconMap}
               active={active}
               collapsed={collapsed}
@@ -556,7 +662,7 @@ function SidebarContent({
           <div className="pt-4">
             {!collapsed && (
               <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-white/40">
-                Quản lý
+                {tAccount("sectionManager")}
               </p>
             )}
             {MANAGER_NAV_ITEMS.map((item) => {
@@ -567,7 +673,7 @@ function SidebarContent({
                 <NavLink
                   key={item.href}
                   href={item.href}
-                  label={item.label}
+                  label={tNav(item.labelKey)}
                   icon={item.icon as keyof typeof iconMap}
                   active={active}
                   collapsed={collapsed}
@@ -582,7 +688,7 @@ function SidebarContent({
           <div className="pt-4">
             {!collapsed && (
               <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-white/40">
-                Quản trị
+                {tAccount("sectionAdmin")}
               </p>
             )}
             {ADMIN_NAV_ITEMS.map((item) => {
@@ -593,7 +699,7 @@ function SidebarContent({
                 <NavLink
                   key={item.href}
                   href={item.href}
-                  label={item.label}
+                  label={tNav(item.labelKey)}
                   icon={item.icon as keyof typeof iconMap}
                   active={active}
                   collapsed={collapsed}

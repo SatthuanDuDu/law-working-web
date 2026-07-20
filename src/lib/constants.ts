@@ -1,5 +1,6 @@
 import type { Role } from "@prisma/client";
 
+/** @deprecated Prefer useLabelMaps() / getLabelMaps() for locale-aware labels. */
 export const ROLE_LABELS: Record<Role, string> = {
   ADMIN: "Quản trị viên",
   MANAGER: "Quản lý",
@@ -7,13 +8,16 @@ export const ROLE_LABELS: Record<Role, string> = {
   SUPPORT: "Nhân viên hỗ trợ",
 };
 
+/** @deprecated Prefer useLabelMaps() / getLabelMaps(). */
 export const MATTER_STATUS_LABELS = {
   NEW: "Mới",
   IN_PROGRESS: "Đang xử lý",
   ON_HOLD: "Tạm dừng",
   CLOSED: "Đóng",
+  ARCHIVED: "Lưu trữ",
 } as const;
 
+/** @deprecated Prefer useLabelMaps() / getLabelMaps(). */
 export const MATTER_TYPE_LABELS = {
   CIVIL: "Dân sự",
   CRIMINAL: "Hình sự",
@@ -23,6 +27,7 @@ export const MATTER_TYPE_LABELS = {
   OTHER: "Khác",
 } as const;
 
+/** @deprecated Prefer useLabelMaps() / getLabelMaps(). */
 export const CLIENT_BUSINESS_TYPE_LABELS = {
   LLC: "Công ty TNHH",
   JSC: "Công ty cổ phần",
@@ -32,6 +37,7 @@ export const CLIENT_BUSINESS_TYPE_LABELS = {
   OTHER: "Khác",
 } as const;
 
+/** @deprecated Prefer useLabelMaps() / getLabelMaps(). */
 export const MATTER_PLAN_STEP_STATUS_LABELS = {
   NOT_STARTED: "Chưa thực hiện",
   IN_PROGRESS: "Đang thực hiện",
@@ -57,6 +63,7 @@ export const VIETNAM_CITY_SUGGESTIONS = [
   "Hải Dương",
 ] as const;
 
+/** @deprecated Prefer useLabelMaps() / getLabelMaps(). */
 export const TASK_STATUS_LABELS = {
   TODO: "Chưa làm",
   IN_PROGRESS: "Đang làm",
@@ -64,6 +71,7 @@ export const TASK_STATUS_LABELS = {
   CANCELLED: "Đã hủy",
 } as const;
 
+/** @deprecated Prefer useLabelMaps() / getLabelMaps(). */
 export const TASK_PRIORITY_LABELS = {
   LOW: "Thấp",
   MEDIUM: "Vừa",
@@ -71,6 +79,7 @@ export const TASK_PRIORITY_LABELS = {
   URGENT: "Khẩn cấp",
 } as const;
 
+/** @deprecated Prefer useLabelMaps() / getLabelMaps(). */
 export const NOTIFICATION_TYPE_LABELS = {
   TASK_ASSIGNED: "Giao việc",
   TASK_DUE: "Hạn công việc",
@@ -78,20 +87,37 @@ export const NOTIFICATION_TYPE_LABELS = {
   MENTION: "Nhắc đến",
 } as const;
 
+export type NavLabelKey =
+  | "dashboard"
+  | "matters"
+  | "clients"
+  | "calendar"
+  | "workload"
+  | "users"
+  | "workTypes"
+  | "attachmentLabels"
+  | "departments"
+  | "auditLogs";
+
 export const NAV_ITEMS = [
-  { href: "/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
-  { href: "/matters", label: "Vụ việc", icon: "Briefcase" },
-  { href: "/clients", label: "Khách hàng", icon: "Users" },
-  { href: "/calendar", label: "Lịch & hạn", icon: "CalendarDays" },
+  { href: "/dashboard", labelKey: "dashboard" as const, icon: "LayoutDashboard" },
+  { href: "/matters", labelKey: "matters" as const, icon: "Briefcase" },
+  { href: "/clients", labelKey: "clients" as const, icon: "Users" },
+  { href: "/calendar", labelKey: "calendar" as const, icon: "CalendarDays" },
 ] as const;
 
 export const MANAGER_NAV_ITEMS = [
-  { href: "/workload", label: "Workload", icon: "Gauge" },
+  { href: "/workload", labelKey: "workload" as const, icon: "Gauge" },
 ] as const;
 
 export const ADMIN_NAV_ITEMS = [
-  { href: "/admin/users", label: "Nhân viên", icon: "UserCog" },
-  { href: "/admin/work-types", label: "Loại công việc", icon: "Tags" },
-  { href: "/admin/departments", label: "Phòng ban", icon: "Building2" },
-  { href: "/admin/audit-logs", label: "Nhật ký hệ thống", icon: "ScrollText" },
+  { href: "/admin/users", labelKey: "users" as const, icon: "UserCog" },
+  { href: "/admin/work-types", labelKey: "workTypes" as const, icon: "Tags" },
+  {
+    href: "/admin/attachment-labels",
+    labelKey: "attachmentLabels" as const,
+    icon: "Bookmark",
+  },
+  { href: "/admin/departments", labelKey: "departments" as const, icon: "Building2" },
+  { href: "/admin/audit-logs", labelKey: "auditLogs" as const, icon: "ScrollText" },
 ] as const;

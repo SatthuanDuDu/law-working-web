@@ -5,6 +5,7 @@ export type SessionUser = {
   email: string;
   name: string;
   role: Role;
+  avatarKey?: string | null;
 };
 
 export function isAdmin(role: Role) {

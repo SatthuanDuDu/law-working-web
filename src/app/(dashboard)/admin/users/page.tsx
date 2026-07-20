@@ -1,15 +1,15 @@
 import { PageHeaderSlot } from "@/components/layout/page-header-slot";
 import { UserForm } from "@/components/admin/user-form";
-import { ResetPasswordButton } from "@/components/admin/reset-password-button";
-import { DeleteUserButton } from "@/components/admin/delete-user-button";
-import { Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { UsersList } from "@/components/admin/users-list";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
-import { ROLE_LABELS } from "@/lib/constants";
-import { formatDate } from "@/lib/utils";
+import { getTranslations } from "next-intl/server";
 
 export default async function AdminUsersPage() {
   const user = await requireRole(["ADMIN"]);
+  const t = await getTranslations("admin");
+  const tPages = await getTranslations("pages.users");
 
   const [users, departments] = await Promise.all([
     prisma.user.findMany({
@@ -19,70 +19,43 @@ export default async function AdminUsersPage() {
     prisma.department.findMany({ orderBy: { name: "asc" } }),
   ]);
 
+  const listItems = users.map((item) => ({
+    id: item.id,
+    name: item.name,
+    email: item.email,
+    role: item.role,
+    isActive: item.isActive,
+    avatarKey: item.avatarKey,
+    createdAt: item.createdAt.toISOString(),
+    department: item.department
+      ? { id: item.department.id, name: item.department.name }
+      : null,
+  }));
+
   return (
     <>
       <PageHeaderSlot
-        title="Quản lý nhân viên"
-        description="Tạo tài khoản và đặt lại mật khẩu khi nhân viên quên"
+        title={tPages("title")}
+        description={tPages("description")}
       />
       <div className="grid gap-8 xl:grid-cols-[360px_1fr]">
-        <Card>
+        <Card className="rounded-[5px]">
           <CardHeader>
-            <CardTitle>Thêm nhân viên</CardTitle>
+            <CardTitle>{t("createUser")}</CardTitle>
           </CardHeader>
           <CardContent>
             <UserForm departments={departments} />
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Danh sách nhân viên</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[44rem] text-sm">
-                <thead>
-                  <tr className="border-b text-left text-slate-500">
-                    <th className="whitespace-nowrap px-3 py-2">Họ tên</th>
-                    <th className="whitespace-nowrap px-3 py-2">Email</th>
-                    <th className="whitespace-nowrap px-3 py-2">Vai trò</th>
-                    <th className="whitespace-nowrap px-3 py-2">Phòng ban</th>
-                    <th className="whitespace-nowrap px-3 py-2">Trạng thái</th>
-                    <th className="whitespace-nowrap px-3 py-2">Ngày tạo</th>
-                    <th className="whitespace-nowrap px-3 py-2">Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((item) => (
-                    <tr key={item.id} className="interactive-row border-b">
-                      <td className="px-3 py-3 font-medium">{item.name}</td>
-                      <td className="px-3 py-3">{item.email}</td>
-                      <td className="px-3 py-3">{ROLE_LABELS[item.role]}</td>
-                      <td className="px-3 py-3">{item.department?.name ?? "—"}</td>
-                      <td className="px-3 py-3">
-                        <Badge variant={item.isActive ? "success" : "danger"}>
-                          {item.isActive ? "Hoạt động" : "Khóa"}
-                        </Badge>
-                      </td>
-                      <td className="px-3 py-3">{formatDate(item.createdAt)}</td>
-                      <td className="px-3 py-3">
-                        <div className="flex items-center gap-1">
-                          <ResetPasswordButton userId={item.id} userName={item.name} />
-                          <DeleteUserButton
-                            userId={item.id}
-                            userName={item.name}
-                            canDelete={item.id !== user.id}
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+        <UsersList
+          users={listItems}
+          currentUserId={user.id}
+          departments={departments.map((department) => ({
+            id: department.id,
+            name: department.name,
+          }))}
+        />
       </div>
     </>
   );

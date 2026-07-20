@@ -1,69 +1,156 @@
 import { PageHeaderSlot } from "@/components/layout/page-header-slot";
-import { Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AuditLogsList } from "@/components/admin/audit-logs-list";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
-import { formatDateTime } from "@/lib/utils";
+import { getTranslations } from "next-intl/server";
 
-const ACTION_LABELS = {
-  CREATE: "Tạo",
-  UPDATE: "Cập nhật",
-  DELETE: "Xóa",
-  LOGIN: "Đăng nhập",
-  LOGOUT: "Đăng xuất",
-} as const;
+async function resolveAuditHrefs(
+  logs: {
+    entityType: string;
+    entityId: string | null;
+  }[],
+) {
+  const hrefByKey = new Map<string, string | null>();
+
+  const byType = (type: string) =>
+    [
+      ...new Set(
+        logs
+          .filter((log) => log.entityType === type && log.entityId)
+          .map((log) => log.entityId as string),
+      ),
+    ];
+
+  const matterIds = byType("Matter");
+  const stepIds = byType("MatterPlanStep");
+  const commentIds = byType("Comment");
+  const attachmentIds = byType("Attachment");
+
+  const [steps, comments, attachments] = await Promise.all([
+    stepIds.length
+      ? prisma.matterPlanStep.findMany({
+          where: { id: { in: stepIds } },
+          select: { id: true, matterId: true },
+        })
+      : Promise.resolve([]),
+    commentIds.length
+      ? prisma.comment.findMany({
+          where: { id: { in: commentIds } },
+          select: { id: true, matterId: true },
+        })
+      : Promise.resolve([]),
+    attachmentIds.length
+      ? prisma.attachment.findMany({
+          where: { id: { in: attachmentIds } },
+          select: { id: true, matterId: true },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  for (const id of matterIds) {
+    hrefByKey.set(`Matter:${id}`, `/matters/${id}`);
+  }
+  for (const step of steps) {
+    hrefByKey.set(`MatterPlanStep:${step.id}`, `/matters/${step.matterId}/plan`);
+  }
+  for (const comment of comments) {
+    hrefByKey.set(`Comment:${comment.id}`, `/matters/${comment.matterId}/report`);
+  }
+  for (const attachment of attachments) {
+    hrefByKey.set(
+      `Attachment:${attachment.id}`,
+      `/matters/${attachment.matterId}`,
+    );
+  }
+
+  for (const log of logs) {
+    if (!log.entityId) continue;
+    const key = `${log.entityType}:${log.entityId}`;
+    if (hrefByKey.has(key)) continue;
+
+    switch (log.entityType) {
+      case "Client":
+        hrefByKey.set(key, "/clients");
+        break;
+      case "Task":
+        hrefByKey.set(key, "/tasks");
+        break;
+      case "User":
+        hrefByKey.set(key, "/admin/users");
+        break;
+      case "WorkType":
+        hrefByKey.set(key, "/admin/work-types");
+        break;
+      case "Department":
+        hrefByKey.set(key, "/admin/departments");
+        break;
+      case "AttachmentLabel":
+        hrefByKey.set(key, "/admin/attachment-labels");
+        break;
+      default:
+        hrefByKey.set(key, null);
+    }
+  }
+
+  return hrefByKey;
+}
 
 export default async function AdminAuditLogsPage() {
   await requireRole(["ADMIN"]);
+  const tPages = await getTranslations("pages.auditLogs");
+
   const logs = await prisma.auditLog.findMany({
-    include: { user: true },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          avatarKey: true,
+        },
+      },
+    },
     orderBy: { createdAt: "desc" },
-    take: 100,
+    take: 500,
   });
+
+  const hrefByKey = await resolveAuditHrefs(logs);
+
+  const actorsMap = new Map<string, string>();
+  for (const log of logs) {
+    if (log.user) actorsMap.set(log.user.id, log.user.name);
+  }
+  const actors = [...actorsMap.entries()]
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name, "vi"));
+
+  const listItems = logs.map((log) => ({
+    id: log.id,
+    action: log.action,
+    entityType: log.entityType,
+    entityId: log.entityId,
+    details: log.details,
+    createdAt: log.createdAt.toISOString(),
+    href: log.entityId
+      ? (hrefByKey.get(`${log.entityType}:${log.entityId}`) ?? null)
+      : null,
+    user: log.user
+      ? {
+          id: log.user.id,
+          name: log.user.name,
+          email: log.user.email,
+          avatarKey: log.user.avatarKey,
+        }
+      : null,
+  }));
 
   return (
     <>
       <PageHeaderSlot
-        title="Nhật ký hệ thống"
-        description="Theo dõi thao tác quan trọng trong hệ thống"
+        title={tPages("title")}
+        description={tPages("description")}
       />
-      <Card>
-        <CardHeader>
-          <CardTitle>100 bản ghi gần nhất</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[40rem] text-sm">
-              <thead>
-                <tr className="border-b text-left text-slate-500">
-                  <th className="whitespace-nowrap px-3 py-2">Thời gian</th>
-                  <th className="whitespace-nowrap px-3 py-2">Người dùng</th>
-                  <th className="whitespace-nowrap px-3 py-2">Hành động</th>
-                  <th className="whitespace-nowrap px-3 py-2">Đối tượng</th>
-                  <th className="px-3 py-2">Chi tiết</th>
-                </tr>
-              </thead>
-              <tbody>
-                {logs.map((log) => (
-                  <tr key={log.id} className="interactive-row border-b">
-                    <td className="whitespace-nowrap px-3 py-3">{formatDateTime(log.createdAt)}</td>
-                    <td className="px-3 py-3">{log.user?.name ?? "Hệ thống"}</td>
-                    <td className="px-3 py-3">
-                      <Badge variant="info">{ACTION_LABELS[log.action]}</Badge>
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-3">
-                      {log.entityType}
-                      {log.entityId ? ` (#${log.entityId.slice(0, 8)})` : ""}
-                    </td>
-                    <td className="max-w-[12rem] truncate px-3 py-3" title={log.details ?? undefined}>
-                      {log.details ?? "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+      <AuditLogsList logs={listItems} actors={actors} />
     </>
   );
 }

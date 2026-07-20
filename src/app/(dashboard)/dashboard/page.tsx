@@ -4,41 +4,48 @@ import type { ReactNode } from "react";
 import {
   AlertTriangle,
   ArrowUpRight,
-  Bell,
   Briefcase,
   CalendarClock,
   CheckCircle2,
   ListTodo,
 } from "lucide-react";
 import { PageHeaderSlot } from "@/components/layout/page-header-slot";
-import { Badge, Card } from "@/components/ui/card";
+import {
+  ExpandableStatCard,
+  type DashboardTaskItem,
+} from "@/components/dashboard/expandable-stat-card";
+import { Badge } from "@/components/ui/card";
+import { SectionPanel } from "@/components/ui/section-panel";
+import {
+  UpcomingDeadlineList,
+  type UpcomingDeadlineItem,
+} from "@/components/dashboard/upcoming-deadline-list";
 import { MatterStatusBadge } from "@/components/matters/matter-status-control";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
+import { isManagerOrAbove } from "@/lib/permissions";
 import { formatDate, cn } from "@/lib/utils";
-import {
-  MATTER_STATUS_LABELS,
-  TASK_PRIORITY_LABELS,
-  TASK_STATUS_LABELS,
-} from "@/lib/constants";
+import { getLabelMaps } from "@/i18n/server-labels";
+import { getTranslations } from "next-intl/server";
 import { getAccessibleMatterIds } from "@/lib/access";
-import type { MatterStatus, TaskPriority } from "@prisma/client";
-
-const STAT_TONES = {
-  primary: "bg-primary-muted text-primary",
-  sky: "bg-sky-100 text-sky-700",
-  amber: "bg-amber-100 text-amber-700",
-  accent: "bg-accent-muted text-accent",
-} as const;
+import type { MatterStatus, TaskPriority, TaskStatus } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 
 const STATUS_BAR_CLASS: Record<MatterStatus, string> = {
   NEW: "bg-sky-500",
   IN_PROGRESS: "bg-amber-500",
   ON_HOLD: "bg-rose-500",
   CLOSED: "bg-emerald-500",
+  ARCHIVED: "bg-slate-500",
 };
 
-const STATUS_ORDER: MatterStatus[] = ["NEW", "IN_PROGRESS", "ON_HOLD", "CLOSED"];
+const STATUS_ORDER: MatterStatus[] = [
+  "NEW",
+  "IN_PROGRESS",
+  "ON_HOLD",
+  "CLOSED",
+  "ARCHIVED",
+];
 
 function priorityVariant(
   priority: TaskPriority,
@@ -55,75 +62,29 @@ function priorityVariant(
   }
 }
 
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+function taskHref(matterId: string | null) {
+  return matterId ? `/matters/${matterId}` : "/tasks";
 }
 
-function StatCard({
-  label,
-  value,
-  sub,
-  icon,
-  tone,
-}: {
-  label: string;
-  value: string;
-  sub?: ReactNode;
-  icon: ReactNode;
-  tone: keyof typeof STAT_TONES;
-}) {
-  return (
-    <div className="group rounded-md border border-slate-200/80 bg-white p-5 transition-colors duration-200 hover:border-slate-300/80">
-      <div className="flex items-start justify-between gap-3">
-        <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          {label}
-        </span>
-        <span
-          className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-md",
-            STAT_TONES[tone],
-          )}
-        >
-          {icon}
-        </span>
-      </div>
-      <p className="mt-4 text-[1.75rem] font-bold leading-none tabular-nums text-slate-900">
-        {value}
-      </p>
-      {sub ? <div className="mt-2 text-sm">{sub}</div> : null}
-    </div>
-  );
-}
-
-function Panel({
-  title,
-  icon,
-  action,
-  children,
-  className,
-}: {
+function serializeTask(task: {
+  id: string;
   title: string;
-  icon: ReactNode;
-  action?: ReactNode;
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <Card className={cn("flex flex-col overflow-hidden", className)}>
-      <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
-            {icon}
-          </span>
-          <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
-        </div>
-        {action}
-      </div>
-      <div className="flex-1 p-5">{children}</div>
-    </Card>
-  );
+  status: DashboardTaskItem["status"];
+  priority: TaskPriority;
+  dueDate: Date | null;
+  matterId: string | null;
+  matter: { id: string; code: string; title: string } | null;
+}): DashboardTaskItem {
+  return {
+    id: task.id,
+    title: task.title,
+    status: task.status,
+    priority: task.priority,
+    dueDate: task.dueDate?.toISOString() ?? null,
+    matterId: task.matterId ?? task.matter?.id ?? null,
+    matterCode: task.matter?.code ?? null,
+    matterTitle: task.matter?.title ?? null,
+  };
 }
 
 function ActionLink({ href, children }: { href: string; children: ReactNode }) {
@@ -138,53 +99,85 @@ function ActionLink({ href, children }: { href: string; children: ReactNode }) {
   );
 }
 
-function EmptyState({ children }: { children: ReactNode }) {
+function EmptyState({
+  children,
+  action,
+}: {
+  children: ReactNode;
+  action?: ReactNode;
+}) {
   return (
-    <div className="flex items-center justify-center rounded-md border border-dashed border-slate-200 bg-slate-50/50 px-4 py-8 text-center text-sm text-slate-500">
-      {children}
+    <div className="flex flex-col items-center justify-center gap-2 rounded-md border border-dashed border-border bg-muted/80 px-4 py-8 text-center text-sm text-muted-foreground">
+      <p>{children}</p>
+      {action}
     </div>
   );
 }
 
+function shortenCode(code: string | null | undefined) {
+  if (!code) return null;
+  if (code.length <= 18) return code;
+  return `${code.slice(0, 8)}…${code.slice(-6)}`;
+}
+
+const matterSelect = { id: true, code: true, title: true } as const;
+
 export default async function DashboardPage() {
   const user = await requireAuth();
+  const labels = await getLabelMaps();
+  const t = await getTranslations("dashboard");
+  const tPages = await getTranslations("pages.dashboard");
+  const tCommon = await getTranslations("common");
   const now = new Date();
   const todayStart = startOfDay(now);
-  const todayEnd = endOfDay(now);
   const soonEnd = endOfDay(addDays(now, 3));
 
   const matterIds = await getAccessibleMatterIds(user.id, user.role);
   const matterWhere = matterIds ? { id: { in: matterIds } } : {};
+  const openTaskWhere: Prisma.TaskWhereInput = {
+    assigneeId: user.id,
+    status: { in: ["TODO", "IN_PROGRESS"] satisfies TaskStatus[] },
+  };
 
   const [
     openTasks,
     overdueTasks,
-    upcomingCount,
+    inProgressTasks,
+    openTasksList,
+    inProgressTasksList,
     matters,
     recentTasks,
-    unreadNotifications,
     upcomingDeadlines,
+    upcomingPlanSteps,
     matterStatusGroups,
   ] = await Promise.all([
+    prisma.task.count({ where: openTaskWhere }),
     prisma.task.count({
       where: {
-        assigneeId: user.id,
-        status: { in: ["TODO", "IN_PROGRESS"] },
-      },
-    }),
-    prisma.task.count({
-      where: {
-        assigneeId: user.id,
-        status: { in: ["TODO", "IN_PROGRESS"] },
+        ...openTaskWhere,
         dueDate: { lt: now },
       },
     }),
     prisma.task.count({
       where: {
         assigneeId: user.id,
-        status: { in: ["TODO", "IN_PROGRESS"] },
-        dueDate: { gte: todayStart, lte: soonEnd },
+        status: "IN_PROGRESS",
       },
+    }),
+    prisma.task.findMany({
+      where: openTaskWhere,
+      include: { matter: { select: matterSelect } },
+      orderBy: [{ dueDate: "asc" }, { updatedAt: "desc" }],
+      take: 8,
+    }),
+    prisma.task.findMany({
+      where: {
+        assigneeId: user.id,
+        status: "IN_PROGRESS",
+      },
+      include: { matter: { select: matterSelect } },
+      orderBy: [{ dueDate: "asc" }, { updatedAt: "desc" }],
+      take: 8,
     }),
     prisma.matter.findMany({
       where: matterWhere,
@@ -194,22 +187,38 @@ export default async function DashboardPage() {
     }),
     prisma.task.findMany({
       where: { assigneeId: user.id },
-      include: { matter: { select: { code: true } } },
+      include: { matter: { select: matterSelect } },
       orderBy: { updatedAt: "desc" },
       take: 6,
     }),
-    prisma.notification.count({
-      where: { userId: user.id, isRead: false },
-    }),
     prisma.task.findMany({
       where: {
-        assigneeId: user.id,
-        status: { in: ["TODO", "IN_PROGRESS"] },
+        ...openTaskWhere,
         dueDate: { gte: todayStart, lte: soonEnd },
       },
-      include: { matter: { select: { code: true } } },
+      include: { matter: { select: matterSelect } },
       orderBy: { dueDate: "asc" },
-      take: 5,
+      take: 8,
+    }),
+    prisma.matterPlanStep.findMany({
+      where: {
+        dueAt: { gte: todayStart, lte: soonEnd },
+        status: { not: "DONE" },
+        ...(matterIds ? { matterId: { in: matterIds } } : {}),
+      },
+      include: {
+        matter: {
+          select: {
+            ...matterSelect,
+            leadLawyerId: true,
+            status: true,
+            members: { select: { userId: true } },
+          },
+        },
+        workType: { select: { name: true } },
+      },
+      orderBy: { dueAt: "asc" },
+      take: 8,
     }),
     prisma.matter.groupBy({
       by: ["status"],
@@ -229,108 +238,154 @@ export default async function DashboardPage() {
     .filter((item) => item.status !== "CLOSED")
     .reduce((sum, item) => sum + item.count, 0);
 
+  const openItems = openTasksList.map(serializeTask);
+  const inProgressItems = inProgressTasksList.map(serializeTask);
+
+  type UpcomingItem = UpcomingDeadlineItem & { dueAt: Date };
+
+  const upcomingItems: UpcomingItem[] = [
+    ...upcomingDeadlines.map((task) => ({
+      key: `task-${task.id}`,
+      title: task.title,
+      href: taskHref(task.matterId),
+      dueAt: task.dueDate!,
+      kind: "task" as const,
+      statusLabel: labels.taskPriority[task.priority],
+      statusVariant: priorityVariant(task.priority),
+      dueLabel: formatDate(task.dueDate!),
+      matterCodeShort: shortenCode(task.matter?.code),
+    })),
+    ...upcomingPlanSteps.map((step) => {
+      const canEditPlan =
+        step.matter.status !== "ARCHIVED" &&
+        (isManagerOrAbove(user.role) ||
+          step.matter.leadLawyerId === user.id ||
+          step.matter.members.some((member) => member.userId === user.id));
+      return {
+        key: `plan-${step.id}`,
+        title: step.title,
+        href: `/matters/${step.matterId}/plan`,
+        dueAt: step.dueAt!,
+        kind: "plan" as const,
+        planStepId: step.id,
+        canEditPlan,
+        planStatus: step.status,
+        statusLabel: labels.planStepStatus[step.status],
+        statusVariant: "info" as const,
+        dueLabel: formatDate(step.dueAt!),
+        matterCodeShort: shortenCode(step.matter.code),
+      };
+    }),
+  ]
+    .sort((a, b) => a.dueAt.getTime() - b.dueAt.getTime())
+    .slice(0, 10);
+
+  const upcomingListItems: UpcomingDeadlineItem[] = upcomingItems.map(
+    (item) => ({
+      key: item.key,
+      title: item.title,
+      href: item.href,
+      kind: item.kind,
+      planStepId: item.planStepId,
+      canEditPlan: item.canEditPlan,
+      planStatus: item.planStatus,
+      statusLabel: item.statusLabel,
+      statusVariant: item.statusVariant,
+      dueLabel: item.dueLabel,
+      matterCodeShort: item.matterCodeShort,
+    }),
+  );
+
   return (
     <div className="space-y-6">
       <PageHeaderSlot
-        title={`Xin chào, ${user.name}`}
-        description="Tổng quan công việc hôm nay"
+        title={tPages("greeting", { name: user.name })}
+        description={tPages("description")}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label="Việc chưa hoàn thành"
+      <div className="grid gap-4 sm:grid-cols-2">
+        <ExpandableStatCard
+          label={t("openTasks")}
           value={String(openTasks)}
           sub={
             overdueTasks > 0 ? (
               <span className="inline-flex items-center gap-1 font-medium text-rose-600">
                 <AlertTriangle className="h-3.5 w-3.5" />
-                {overdueTasks} quá hạn
+                {t("overdueCount", { count: overdueTasks })}
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 font-medium text-emerald-600">
                 <CheckCircle2 className="h-3.5 w-3.5" />
-                Đúng tiến độ
+                {t("onTrack")}
               </span>
             )
           }
           icon={<ListTodo className="h-[18px] w-[18px]" />}
           tone="primary"
+          items={openItems}
+          emptyLabel={t("openTasksEmpty")}
         />
-        <StatCard
-          label="Sắp đến hạn"
-          value={String(upcomingCount)}
-          sub="Trong 3 ngày tới"
-          icon={<CalendarClock className="h-[18px] w-[18px]" />}
-          tone="amber"
-        />
-        <StatCard
-          label="Vụ việc đang mở"
+        <ExpandableStatCard
+          label={t("activeMatters")}
           value={String(activeMatters)}
-          sub={`${totalMatters} tổng cộng`}
+          sub={
+            <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="text-muted-foreground">
+                {t("totalMatters", { count: totalMatters })}
+              </span>
+              <span className="text-border" aria-hidden>
+                ·
+              </span>
+              <span className="font-medium text-sky-700 dark:text-sky-300">
+                {t("inProgressTasks", { count: inProgressTasks })}
+              </span>
+            </span>
+          }
           icon={<Briefcase className="h-[18px] w-[18px]" />}
           tone="sky"
-        />
-        <StatCard
-          label="Thông báo chưa đọc"
-          value={String(unreadNotifications)}
-          sub={<ActionLink href="/notifications">Xem thông báo</ActionLink>}
-          icon={<Bell className="h-[18px] w-[18px]" />}
-          tone="accent"
+          items={inProgressItems}
+          emptyLabel={t("activeMattersEmpty")}
         />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <Panel
-          title="Sắp đến hạn"
+        <SectionPanel
+          title={t("upcoming")}
           icon={<CalendarClock className="h-4 w-4" />}
-          action={<ActionLink href="/calendar">Xem lịch</ActionLink>}
+          action={<ActionLink href="/calendar">{t("viewCalendar")}</ActionLink>}
           className="lg:col-span-2"
         >
-          {upcomingDeadlines.length === 0 ? (
-            <EmptyState>Không có hạn nào trong 3 ngày tới.</EmptyState>
+          {upcomingListItems.length === 0 ? (
+            <EmptyState
+              action={
+                <ActionLink href="/calendar">{t("openCalendarHint")}</ActionLink>
+              }
+            >
+              {t("noUpcoming3Days")}
+            </EmptyState>
           ) : (
-            <div className="space-y-2.5">
-              {upcomingDeadlines.map((task) => (
-                <div
-                  key={task.id}
-                  className="rounded-md border border-slate-200/80 px-4 py-3 transition-colors hover:border-slate-300 hover:bg-slate-50/70"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="min-w-0 truncate font-medium text-slate-900">
-                      {task.title}
-                    </p>
-                    <Badge variant={priorityVariant(task.priority)}>
-                      {TASK_PRIORITY_LABELS[task.priority]}
-                    </Badge>
-                  </div>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Hạn {task.dueDate ? formatDate(task.dueDate) : "—"}
-                    {task.matter ? ` • ${task.matter.code}` : ""}
-                  </p>
-                </div>
-              ))}
-            </div>
+            <UpcomingDeadlineList items={upcomingListItems} />
           )}
-        </Panel>
+        </SectionPanel>
 
-        <Panel
-          title="Phân bố trạng thái"
+        <SectionPanel
+          title={t("statusDistribution")}
           icon={<Briefcase className="h-4 w-4" />}
           action={
-            <span className="text-sm font-medium text-slate-500">
-              {activeMatters} đang mở
+            <span className="text-sm font-medium text-muted-foreground">
+              {t("activeOpen", { count: activeMatters })}
             </span>
           }
         >
           {totalMatters === 0 ? (
-            <EmptyState>Chưa có vụ việc.</EmptyState>
+            <EmptyState>{t("noMattersYet")}</EmptyState>
           ) : (
             <div className="space-y-4">
               <div>
-                <p className="text-3xl font-bold tabular-nums text-slate-900">
+                <p className="text-3xl font-bold tabular-nums text-foreground">
                   {totalMatters}
                 </p>
-                <p className="text-sm text-slate-500">Tổng vụ việc</p>
+                <p className="text-sm text-muted-foreground">{t("totalMattersLabel")}</p>
               </div>
               <div className="space-y-3">
                 {statusCounts.map(({ status, count }) => {
@@ -340,14 +395,14 @@ export default async function DashboardPage() {
                   return (
                     <div key={status}>
                       <div className="mb-1 flex items-center justify-between text-sm">
-                        <span className="text-slate-600">
-                          {MATTER_STATUS_LABELS[status]}
+                        <span className="text-muted-foreground">
+                          {labels.matterStatus[status]}
                         </span>
-                        <span className="font-medium tabular-nums text-slate-900">
+                        <span className="font-medium tabular-nums text-foreground">
                           {count}
                         </span>
                       </div>
-                      <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+                      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
                         <div
                           className={cn(
                             "h-full rounded-full transition-all duration-500",
@@ -362,148 +417,70 @@ export default async function DashboardPage() {
               </div>
             </div>
           )}
-        </Panel>
+        </SectionPanel>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Panel
-          title="Vụ việc đang phụ trách"
+        <SectionPanel
+          title={t("myMatters")}
           icon={<Briefcase className="h-4 w-4" />}
-          action={<ActionLink href="/matters">Tất cả</ActionLink>}
+          action={<ActionLink href="/matters">{tCommon("all")}</ActionLink>}
         >
           {matters.length === 0 ? (
-            <EmptyState>Không có vụ việc nào.</EmptyState>
+            <EmptyState>{t("noMyMatters")}</EmptyState>
           ) : (
             <div className="space-y-2.5">
               {matters.map((matter) => (
                 <Link
                   key={matter.id}
                   href={`/matters/${matter.id}`}
-                  className="group flex items-center justify-between gap-3 rounded-md border border-slate-200/80 px-4 py-3 transition-colors hover:border-slate-300 hover:bg-slate-50/70"
+                  className="interactive-press group flex items-center justify-between gap-3 rounded-md border border-border/80 bg-surface/50 px-4 py-3 transition-colors hover:border-primary/30 hover:bg-primary-muted/40 hover:[filter:none] active:[filter:none]"
                 >
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="truncate font-medium text-slate-900">
+                      <p className="truncate font-medium text-foreground">
                         {matter.title}
                       </p>
                       <MatterStatusBadge status={matter.status} />
                     </div>
-                    <p className="mt-0.5 text-sm text-slate-500">
+                    <p className="mt-0.5 text-sm text-muted-foreground">
                       {matter.code} • {matter.client.name} • {matter.leadLawyer.name}
                     </p>
                   </div>
-                  <ArrowUpRight className="h-4 w-4 shrink-0 text-slate-300 transition-colors group-hover:text-primary" />
+                  <ArrowUpRight className="h-4 w-4 shrink-0 text-border transition-colors group-hover:text-primary" />
                 </Link>
               ))}
             </div>
           )}
-        </Panel>
+        </SectionPanel>
 
-        <Panel title="Nhiệm vụ gần đây" icon={<ListTodo className="h-4 w-4" />}>
+        <SectionPanel title={t("recentTasks")} icon={<ListTodo className="h-4 w-4" />}>
           {recentTasks.length === 0 ? (
-            <EmptyState>Chưa có nhiệm vụ nào.</EmptyState>
+            <EmptyState>{t("noRecentTasks")}</EmptyState>
           ) : (
             <div className="space-y-2.5">
               {recentTasks.map((task) => (
-                <div
+                <Link
                   key={task.id}
-                  className="rounded-md border border-slate-200/80 px-4 py-3 transition-colors hover:border-slate-300 hover:bg-slate-50/70"
+                  href={taskHref(task.matterId)}
+                  className="interactive-press block rounded-md border border-border/80 bg-surface/50 px-4 py-3 transition-colors hover:border-primary/30 hover:bg-primary-muted/40 hover:[filter:none] active:[filter:none]"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <p className="min-w-0 truncate font-medium text-slate-900">
+                    <p className="min-w-0 truncate font-medium text-foreground">
                       {task.title}
                     </p>
-                    <Badge variant="info">{TASK_STATUS_LABELS[task.status]}</Badge>
+                    <Badge variant="info">{labels.taskStatus[task.status]}</Badge>
                   </div>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Cập nhật {formatDate(task.updatedAt)}
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {t("updatedAt", { date: formatDate(task.updatedAt) })}
                     {task.matter ? ` • ${task.matter.code}` : ""}
                   </p>
-                </div>
+                </Link>
               ))}
             </div>
           )}
-        </Panel>
+        </SectionPanel>
       </div>
-
-      <Panel title="Nhiệm vụ của tôi" icon={<ListTodo className="h-4 w-4" />}>
-        {recentTasks.length === 0 ? (
-          <EmptyState>Chưa có nhiệm vụ nào.</EmptyState>
-        ) : (
-          <>
-            <div className="space-y-2.5 md:hidden">
-              {recentTasks.map((task) => (
-                <div
-                  key={task.id}
-                  className="rounded-md border border-slate-200/80 px-4 py-3"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="min-w-0 font-medium text-slate-900">{task.title}</p>
-                    <Badge variant="info">{TASK_STATUS_LABELS[task.status]}</Badge>
-                  </div>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {task.matter?.code ?? "—"}
-                    {task.dueDate ? ` • Hạn ${formatDate(task.dueDate)}` : ""}
-                  </p>
-                  <div className="mt-2">
-                    <Badge variant={priorityVariant(task.priority)}>
-                      {TASK_PRIORITY_LABELS[task.priority]}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="-mx-5 -mb-5 hidden overflow-x-auto md:block">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
-                    <th className="px-5 py-2.5 font-semibold">Nhiệm vụ</th>
-                    <th className="px-3 py-2.5 font-semibold">Vụ việc</th>
-                    <th className="px-3 py-2.5 font-semibold">Hạn</th>
-                    <th className="px-3 py-2.5 font-semibold">Ưu tiên</th>
-                    <th className="px-5 py-2.5 text-right font-semibold">
-                      Trạng thái
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {recentTasks.map((task) => (
-                    <tr
-                      key={task.id}
-                      className="transition-colors hover:bg-slate-50/70"
-                    >
-                      <td className="px-5 py-3">
-                        <div className="flex items-center gap-2.5">
-                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-muted text-xs font-semibold text-primary">
-                            {getInitials(user.name)}
-                          </span>
-                          <span className="font-medium text-slate-900">
-                            {task.title}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 text-slate-500">
-                        {task.matter?.code ?? "—"}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-3 text-slate-500">
-                        {task.dueDate ? formatDate(task.dueDate) : "—"}
-                      </td>
-                      <td className="px-3 py-3">
-                        <Badge variant={priorityVariant(task.priority)}>
-                          {TASK_PRIORITY_LABELS[task.priority]}
-                        </Badge>
-                      </td>
-                      <td className="px-5 py-3 text-right">
-                        <Badge variant="info">{TASK_STATUS_LABELS[task.status]}</Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
-      </Panel>
     </div>
   );
 }

@@ -3,13 +3,18 @@
 import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowUp, Check, ChevronDown, Trash2, X } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
+import { ArrowDown, ArrowUp, Check, ChevronDown, Pencil, Trash2, X } from "lucide-react";
 import { deleteClientAction } from "@/lib/actions";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { CreateClientButton } from "@/components/clients/create-client-button";
+import {
+  ClientFormModal,
+  type ClientFormInitial,
+} from "@/components/clients/client-form";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CLIENT_BUSINESS_TYPE_LABELS } from "@/lib/constants";
+import { Card, CardContent } from "@/components/ui/card";
+import { useLabelMaps } from "@/i18n/use-label-maps";
 import { cn } from "@/lib/utils";
 import type { ClientBusinessType } from "@prisma/client";
 
@@ -56,6 +61,9 @@ function SortToggle({
   onToggle: () => void;
   label: string;
 }) {
+  const t = useTranslations("filters");
+  const direction = sortDir === "asc" ? t("sortAsc") : t("sortDesc");
+
   return (
     <button
       type="button"
@@ -65,16 +73,16 @@ function SortToggle({
         onToggle();
       }}
       className={cn(
-        "interactive-press inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors",
-        "hover:bg-slate-100 hover:text-slate-700",
+        "interactive-press inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors",
+        "hover:bg-muted hover:text-foreground",
         active && "bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary",
       )}
       aria-label={
         active
-          ? `${label}: đang ${sortDir === "asc" ? "tăng dần" : "giảm dần"} — nhấn để đổi`
-          : `${label}: sắp xếp`
+          ? t("sortActive", { label, direction })
+          : `${label}: ${t("sort")}`
       }
-      title={active ? (sortDir === "asc" ? "Tăng dần" : "Giảm dần") : "Sắp xếp"}
+      title={active ? direction : t("sort")}
     >
       {active && sortDir === "asc" ? (
         <ArrowUp className="h-3.5 w-3.5" strokeWidth={2.25} />
@@ -93,7 +101,7 @@ function MultiSelectFilter({
   sortActive,
   sortDir,
   onToggleSort,
-  emptyLabel = "Tất cả",
+  emptyLabel,
 }: {
   label: string;
   options: Option[];
@@ -102,8 +110,9 @@ function MultiSelectFilter({
   sortActive: boolean;
   sortDir: "asc" | "desc";
   onToggleSort: () => void;
-  emptyLabel?: string;
+  emptyLabel: string;
 }) {
+  const t = useTranslations("filters");
   const [open, setOpen] = useState(false);
   const [menuBox, setMenuBox] = useState<{
     top: number;
@@ -190,18 +199,18 @@ function MultiSelectFilter({
     values.length === 0
       ? emptyLabel
       : values.length === 1
-        ? (options.find((option) => option.value === values[0])?.label ?? "1 đã chọn")
-        : `${values.length} đã chọn`;
+        ? (options.find((option) => option.value === values[0])?.label ?? t("selectedOne"))
+        : t("selectedCount", { count: values.length });
 
   return (
     <div ref={rootRef} className="relative min-w-0 w-full">
-      <p className="mb-1 truncate text-xs text-slate-500">{label}</p>
+      <p className="mb-1 truncate text-xs text-muted-foreground">{label}</p>
       <div
         ref={fieldRef}
         className={cn(
-          "interactive-field flex h-10 w-full cursor-pointer items-center rounded-[5px] border border-slate-300 bg-white pl-3 pr-1 text-sm",
-          "hover:border-primary/35 hover:bg-slate-50/90",
-          open && "border-primary/40 bg-slate-50/90",
+          "interactive-field flex h-10 w-full cursor-pointer items-center rounded-[5px] border border-border bg-surface pl-3 pr-1 text-sm",
+          "hover:border-primary/35 hover:bg-muted/90",
+          open && "border-primary/40 bg-muted/90",
           values.length > 0 && "border-primary/40 bg-primary-muted/40 hover:bg-primary-muted/55",
         )}
       >
@@ -226,7 +235,7 @@ function MultiSelectFilter({
           tabIndex={-1}
           aria-hidden
           onClick={toggleMenu}
-          className="interactive-press inline-flex h-7 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+          className="interactive-press inline-flex h-7 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <ChevronDown
             className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")}
@@ -245,10 +254,10 @@ function MultiSelectFilter({
                 left: menuBox.left,
                 width: menuBox.width,
               }}
-              className="fixed z-[60] max-h-56 overflow-y-auto rounded-[5px] border border-slate-200/80 bg-white py-1"
+              className="fixed z-[60] max-h-56 overflow-y-auto rounded-[5px] border border-border bg-surface py-1"
             >
               {options.length === 0 ? (
-                <li className="px-3 py-2 text-sm text-slate-500">Không có lựa chọn</li>
+                <li className="px-3 py-2 text-sm text-muted-foreground">{t("noOptions")}</li>
               ) : (
                 options.map((option) => {
                   const selected = values.includes(option.value);
@@ -257,8 +266,8 @@ function MultiSelectFilter({
                       <button
                         type="button"
                         className={cn(
-                          "interactive-press flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50",
-                          selected && "bg-slate-50 font-medium text-slate-900 hover:bg-slate-100",
+                          "interactive-press flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-muted",
+                          selected && "bg-muted font-medium text-foreground hover:bg-muted",
                         )}
                         onClick={() => toggle(option.value)}
                       >
@@ -267,7 +276,7 @@ function MultiSelectFilter({
                             "flex h-4 w-4 items-center justify-center rounded border transition-colors",
                             selected
                               ? "border-primary bg-primary text-white"
-                              : "border-slate-300 bg-white",
+                              : "border-border bg-surface",
                           )}
                           aria-hidden
                         >
@@ -300,7 +309,12 @@ function toggleSort(
   return { ...filters, sortBy, sortDir: "asc" };
 }
 
-function applyClientFilters(clients: ClientListItem[], filters: ClientsFilterState) {
+function applyClientFilters(
+  clients: ClientListItem[],
+  filters: ClientsFilterState,
+  businessTypeLabels: Record<ClientBusinessType, string>,
+  locale: string,
+) {
   const filtered = clients.filter((client) => {
     if (filters.names.length > 0 && !filters.names.includes(client.name)) {
       return false;
@@ -325,16 +339,16 @@ function applyClientFilters(clients: ClientListItem[], filters: ClientsFilterSta
     let compare = 0;
     switch (filters.sortBy) {
       case "city":
-        compare = (a.city ?? "").localeCompare(b.city ?? "", "vi");
+        compare = (a.city ?? "").localeCompare(b.city ?? "", locale);
         break;
       case "businessType": {
         const labelA = a.businessType
-          ? CLIENT_BUSINESS_TYPE_LABELS[a.businessType]
+          ? businessTypeLabels[a.businessType]
           : "";
         const labelB = b.businessType
-          ? CLIENT_BUSINESS_TYPE_LABELS[b.businessType]
+          ? businessTypeLabels[b.businessType]
           : "";
-        compare = labelA.localeCompare(labelB, "vi");
+        compare = labelA.localeCompare(labelB, locale);
         break;
       }
       case "matters":
@@ -342,7 +356,7 @@ function applyClientFilters(clients: ClientListItem[], filters: ClientsFilterSta
         break;
       case "name":
       default:
-        compare = a.name.localeCompare(b.name, "vi");
+        compare = a.name.localeCompare(b.name, locale);
         break;
     }
     return compare * direction;
@@ -351,31 +365,52 @@ function applyClientFilters(clients: ClientListItem[], filters: ClientsFilterSta
 
 export function ClientsList({
   clients,
-  canDelete,
+  canManage,
 }: {
   clients: ClientListItem[];
-  canDelete: boolean;
+  canManage: boolean;
 }) {
   const router = useRouter();
+  const locale = useLocale();
+  const t = useTranslations("clients");
+  const tCommon = useTranslations("common");
+  const tFilters = useTranslations("filters");
+  const labels = useLabelMaps();
   const { confirm, dialog } = useConfirmDialog();
   const [isPending, startTransition] = useTransition();
   const [filters, setFilters] = useState<ClientsFilterState>(DEFAULT_FILTERS);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editClient, setEditClient] = useState<ClientFormInitial | null>(null);
+
+  function openEdit(client: ClientListItem) {
+    setEditClient({
+      id: client.id,
+      name: client.name,
+      email: client.email,
+      phone: client.phone,
+      address: client.address,
+      city: client.city,
+      businessType: client.businessType,
+      notes: client.notes,
+    });
+    setEditOpen(true);
+  }
 
   function handleDelete(client: ClientListItem) {
     confirm({
-      title: "Xóa khách hàng",
-      message: `Bạn có chắc muốn xóa khách hàng "${client.name}"? Hành động này không hoàn tác.`,
-      confirmLabel: "Xóa khách hàng",
-      cancelLabel: "Hủy",
+      title: t("deleteTitle"),
+      message: t("deleteConfirm", { name: client.name }),
+      confirmLabel: t("deleteConfirmLabel"),
+      cancelLabel: tCommon("cancel"),
       variant: "destructive",
       onConfirm: () => {
         startTransition(async () => {
           const result = await deleteClientAction(client.id);
           if (result.error) {
             confirm({
-              title: "Không thể xóa",
+              title: tCommon("cannotDelete"),
               message: result.error,
-              confirmLabel: "Đóng",
+              confirmLabel: tCommon("close"),
               onConfirm: () => undefined,
             });
             return;
@@ -389,33 +424,33 @@ export function ClientsList({
   const nameOptions = useMemo(
     () =>
       [...new Set(clients.map((client) => client.name))]
-        .sort((a, b) => a.localeCompare(b, "vi"))
+        .sort((a, b) => a.localeCompare(b, locale))
         .map((name) => ({ value: name, label: name })),
-    [clients],
+    [clients, locale],
   );
 
   const cityOptions = useMemo(
     () =>
       [...new Set(clients.map((client) => client.city).filter(Boolean) as string[])]
-        .sort((a, b) => a.localeCompare(b, "vi"))
+        .sort((a, b) => a.localeCompare(b, locale))
         .map((city) => ({ value: city, label: city })),
-    [clients],
+    [clients, locale],
   );
 
   const businessTypeOptions = useMemo(
     () =>
-      (Object.keys(CLIENT_BUSINESS_TYPE_LABELS) as ClientBusinessType[]).map(
+      (Object.keys(labels.clientBusinessType) as ClientBusinessType[]).map(
         (type) => ({
           value: type,
-          label: CLIENT_BUSINESS_TYPE_LABELS[type],
+          label: labels.clientBusinessType[type],
         }),
       ),
-    [],
+    [labels.clientBusinessType],
   );
 
   const visibleClients = useMemo(
-    () => applyClientFilters(clients, filters),
-    [clients, filters],
+    () => applyClientFilters(clients, filters, labels.clientBusinessType, locale),
+    [clients, filters, labels.clientBusinessType, locale],
   );
 
   const hasActiveFilters =
@@ -428,19 +463,23 @@ export function ClientsList({
       {dialog}
       <div className="flex min-h-0 min-w-0 flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             {visibleClients.length === clients.length
-              ? `${clients.length} khách hàng`
-              : `${visibleClients.length}/${clients.length} khách hàng`}
+              ? t("clientCount", { count: clients.length })
+              : t("clientCountFiltered", {
+                  visible: visibleClients.length,
+                  total: clients.length,
+                })}
           </p>
           <CreateClientButton />
         </div>
 
-        <div className="shrink-0 rounded-md border border-slate-200/80 bg-white px-3 py-3">
+        <div className="shrink-0 rounded-md border border-border bg-surface px-3 py-3">
           <div className="flex items-end gap-2 overflow-x-auto pb-0.5">
             <div className="min-w-[9.5rem] flex-1">
               <MultiSelectFilter
-                label="Tên khách hàng"
+                label={t("filterName")}
+                emptyLabel={tCommon("all")}
                 values={filters.names}
                 onChange={(names) => setFilters({ ...filters, names })}
                 options={nameOptions}
@@ -451,7 +490,8 @@ export function ClientsList({
             </div>
             <div className="min-w-[8rem] flex-1">
               <MultiSelectFilter
-                label="Thành phố"
+                label={t("filterCity")}
+                emptyLabel={tCommon("all")}
                 values={filters.cities}
                 onChange={(cities) => setFilters({ ...filters, cities })}
                 options={cityOptions}
@@ -462,7 +502,8 @@ export function ClientsList({
             </div>
             <div className="min-w-[9rem] flex-1">
               <MultiSelectFilter
-                label="Loại doanh nghiệp"
+                label={t("filterBusinessType")}
+                emptyLabel={tCommon("all")}
                 values={filters.businessTypes}
                 onChange={(businessTypes) =>
                   setFilters({
@@ -477,11 +518,11 @@ export function ClientsList({
               />
             </div>
             <div className="min-w-[7.5rem] flex-1 sm:max-w-[10rem]">
-              <p className="mb-1 truncate text-xs text-slate-500">Số vụ việc</p>
+              <p className="mb-1 truncate text-xs text-muted-foreground">{t("filterMatterCount")}</p>
               <div
                 className={cn(
-                  "interactive-field flex h-10 w-full items-center justify-between gap-2 rounded-[5px] border border-slate-300 bg-white px-3 text-sm",
-                  "hover:border-primary/35 hover:bg-slate-50/90",
+                  "interactive-field flex h-10 w-full items-center justify-between gap-2 rounded-[5px] border border-border bg-surface px-3 text-sm",
+                  "hover:border-primary/35 hover:bg-muted/90",
                   filters.sortBy === "matters" &&
                     "border-primary/40 bg-primary-muted/40",
                 )}
@@ -493,15 +534,15 @@ export function ClientsList({
                 >
                   {filters.sortBy === "matters"
                     ? filters.sortDir === "asc"
-                      ? "Tăng dần"
-                      : "Giảm dần"
-                    : "Sắp xếp"}
+                      ? tFilters("sortAsc")
+                      : tFilters("sortDesc")
+                    : tFilters("sort")}
                 </button>
                 <SortToggle
                   active={filters.sortBy === "matters"}
                   sortDir={filters.sortDir}
                   onToggle={() => setFilters(toggleSort(filters, "matters"))}
-                  label="Số vụ việc"
+                  label={t("filterMatterCount")}
                 />
               </div>
             </div>
@@ -512,6 +553,7 @@ export function ClientsList({
               tabIndex={hasActiveFilters ? 0 : -1}
               aria-hidden={!hasActiveFilters}
               aria-disabled={!hasActiveFilters}
+              aria-label={tFilters("clearFilters")}
               className={cn(
                 "h-10 shrink-0 text-red-600 transition-opacity duration-500 ease-out hover:bg-red-50 hover:text-red-700",
                 hasActiveFilters ? "opacity-100" : "pointer-events-none opacity-0",
@@ -526,7 +568,7 @@ export function ClientsList({
               }}
             >
               <X className="h-3.5 w-3.5" />
-              Xóa lọc
+              {tFilters("clearFilters")}
             </Button>
           </div>
         </div>
@@ -534,60 +576,103 @@ export function ClientsList({
         <div className="min-h-0 flex-1 space-y-4">
           {clients.length === 0 ? (
             <Card>
-              <CardContent className="py-10 text-center text-sm text-slate-500">
-                Chưa có khách hàng nào. Bấm &quot;+ Khách hàng mới&quot; phía trên để thêm.
+              <CardContent className="py-10 text-center text-sm text-muted-foreground">
+                {t("emptyHint")}
               </CardContent>
             </Card>
           ) : visibleClients.length === 0 ? (
             <Card>
-              <CardContent className="py-10 text-center text-sm text-slate-500">
-                Không có khách hàng khớp bộ lọc hiện tại.
+              <CardContent className="py-10 text-center text-sm text-muted-foreground">
+                {t("noFilterMatch")}
               </CardContent>
             </Card>
           ) : (
-            visibleClients.map((client) => (
-              <Card key={client.id}>
-                <CardHeader>
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <CardTitle>{client.name}</CardTitle>
-                        {client.businessType ? (
-                          <span className="rounded-full bg-primary-muted px-2.5 py-1 text-xs font-medium text-primary">
-                            {CLIENT_BUSINESS_TYPE_LABELS[client.businessType]}
-                          </span>
+            <Card className="rounded-[5px]">
+              <CardContent className="divide-y divide-border/70 p-0">
+                {visibleClients.map((client) => {
+                  const meta = [
+                    client.phone,
+                    client.email,
+                    client.city,
+                    client.address,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ");
+
+                  return (
+                    <div key={client.id} className="px-4 py-3 sm:px-6">
+                      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-4">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <h3 className="truncate text-sm font-semibold text-foreground">
+                              {client.name}
+                            </h3>
+                            {client.businessType ? (
+                              <span className="rounded-full bg-primary-muted px-2 py-0 text-[10px] font-semibold text-primary">
+                                {labels.clientBusinessType[client.businessType]}
+                              </span>
+                            ) : null}
+                            <span className="rounded-full bg-muted px-2 py-0 text-[10px] font-medium tabular-nums text-muted-foreground">
+                              {t("fieldMatters", { count: client._count.matters })}
+                            </span>
+                          </div>
+                          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                            {meta || "—"}
+                          </p>
+                          {client.notes ? (
+                            <p className="mt-1 line-clamp-1 text-xs text-foreground/80">
+                              {client.notes}
+                            </p>
+                          ) : null}
+                        </div>
+
+                        {canManage ? (
+                          <div className="flex flex-wrap items-center gap-1.5 sm:shrink-0 sm:justify-end">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={isPending}
+                              onClick={() => openEdit(client)}
+                              className="h-8 px-2.5"
+                              aria-label={t("editClient")}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                              <span className="hidden sm:inline">{tCommon("edit")}</span>
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              disabled={isPending}
+                              onClick={() => handleDelete(client)}
+                              className="h-8 px-2 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40"
+                              aria-label={`${tCommon("delete")} ${client.name}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         ) : null}
                       </div>
                     </div>
-                    {canDelete ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={isPending}
-                        onClick={() => handleDelete(client)}
-                        className="shrink-0 text-red-600 hover:bg-red-50 hover:text-red-700"
-                        aria-label={`Xóa ${client.name}`}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        <span className="hidden sm:inline">Xóa</span>
-                      </Button>
-                    ) : null}
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm text-slate-600">
-                  {client.email && <p>Email: {client.email}</p>}
-                  {client.phone && <p>Điện thoại: {client.phone}</p>}
-                  {client.city && <p>Thành phố: {client.city}</p>}
-                  {client.address && <p>Địa chỉ: {client.address}</p>}
-                  {client.notes && <p>Ghi chú: {client.notes}</p>}
-                  <p className="text-slate-500">{client._count.matters} vụ việc</p>
-                </CardContent>
-              </Card>
-            ))
+                  );
+                })}
+              </CardContent>
+            </Card>
           )}
         </div>
       </div>
+
+      {editOpen ? (
+        <ClientFormModal
+          open={editOpen}
+          initial={editClient}
+          onClose={() => {
+            setEditOpen(false);
+            setEditClient(null);
+          }}
+        />
+      ) : null}
     </>
   );
 }

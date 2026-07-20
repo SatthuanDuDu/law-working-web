@@ -11,7 +11,8 @@ import {
   outlinedFieldControlClass,
 } from "@/components/ui/outlined-field";
 import { cn } from "@/lib/utils";
-import { ROLE_LABELS } from "@/lib/constants";
+import { useLabelMaps } from "@/i18n/use-label-maps";
+import { useTranslations } from "next-intl";
 
 export function UserForm({
   departments,
@@ -22,6 +23,10 @@ export function UserForm({
   const [success, setSuccess] = useState("");
   const [isPending, startTransition] = useTransition();
   const { confirm, dialog } = useConfirmDialog();
+  const t = useTranslations("admin");
+  const tSettings = useTranslations("settings");
+  const tCommon = useTranslations("common");
+  const { roles } = useLabelMaps();
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -29,9 +34,9 @@ export function UserForm({
     const name = String(formData.get("name") ?? "");
 
     confirm({
-      title: "Xác nhận tạo nhân viên",
-      message: `Bạn có chắc muốn tạo tài khoản cho "${name}"?`,
-      confirmLabel: "Tạo nhân viên",
+      title: tCommon("confirm"),
+      message: `${t("createUser")}: "${name}"?`,
+      confirmLabel: t("createUser"),
       onConfirm: () => {
         setError("");
         setSuccess("");
@@ -41,7 +46,7 @@ export function UserForm({
             setError(result.error);
             return;
           }
-          setSuccess("Đã tạo nhân viên");
+          setSuccess(t("createUser"));
           (document.getElementById("user-form") as HTMLFormElement)?.reset();
         });
       },
@@ -52,7 +57,7 @@ export function UserForm({
     <>
       {dialog}
       <form id="user-form" onSubmit={handleSubmit} className="space-y-5">
-        <OutlinedField label="Họ tên" htmlFor="name" className="mt-1">
+        <OutlinedField label={tSettings("name")} htmlFor="name" className="mt-1">
           <Input
             id="name"
             name="name"
@@ -60,7 +65,7 @@ export function UserForm({
             className={cn(outlinedFieldControlClass, "h-auto")}
           />
         </OutlinedField>
-        <OutlinedField label="Email" htmlFor="email">
+        <OutlinedField label={tSettings("email")} htmlFor="email">
           <Input
             id="email"
             name="email"
@@ -69,7 +74,7 @@ export function UserForm({
             className={cn(outlinedFieldControlClass, "h-auto")}
           />
         </OutlinedField>
-        <OutlinedField label="Mật khẩu" htmlFor="password">
+        <OutlinedField label={tSettings("newPassword")} htmlFor="password">
           <Input
             id="password"
             name="password"
@@ -79,15 +84,15 @@ export function UserForm({
             className={cn(outlinedFieldControlClass, "h-auto")}
           />
         </OutlinedField>
-        <OutlinedSelect id="role" name="role" label="Vai trò" defaultValue="SUPPORT">
-          {Object.entries(ROLE_LABELS).map(([value, label]) => (
+        <OutlinedSelect id="role" name="role" label={tSettings("role")} defaultValue="SUPPORT">
+          {Object.entries(roles).map(([value, label]) => (
             <option key={value} value={value}>
               {label}
             </option>
           ))}
         </OutlinedSelect>
-        <OutlinedSelect id="departmentId" name="departmentId" label="Phòng ban">
-          <option value="">-- Không chọn --</option>
+        <OutlinedSelect id="departmentId" name="departmentId" label={tSettings("department")}>
+          <option value="">—</option>
           {departments.map((d) => (
             <option key={d.id} value={d.id}>
               {d.name}
@@ -96,12 +101,12 @@ export function UserForm({
         </OutlinedSelect>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="isActive" defaultChecked className="rounded" />
-          Đang hoạt động
+          {t("active")}
         </label>
         {error && <p className="text-sm text-red-600">{error}</p>}
         {success && <p className="text-sm text-emerald-600">{success}</p>}
         <Button type="submit" disabled={isPending} className="w-full">
-          {isPending ? "Đang tạo..." : "Tạo nhân viên"}
+          {isPending ? tCommon("loading") : t("createUser")}
         </Button>
       </form>
     </>

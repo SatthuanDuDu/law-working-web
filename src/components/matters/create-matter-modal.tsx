@@ -9,10 +9,10 @@ import { createMatterAction, updateMatterAction } from "@/lib/actions";
 import { buildMatterCode } from "@/lib/matter-code";
 import type { MatterFormData } from "@/lib/matter-form-data";
 import {
-  MATTER_TYPE_LABELS,
-  ROLE_LABELS,
   VIETNAM_CITY_SUGGESTIONS,
 } from "@/lib/constants";
+import { useTranslations } from "next-intl";
+import { useLabelMaps } from "@/i18n/use-label-maps";
 import { invalidateMatterFormDataCache } from "@/hooks/use-matter-form-data";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { useOverlayAnimation } from "@/hooks/use-overlay-animation";
@@ -23,16 +23,16 @@ import { Label, Select } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 const matterTypeControlClass =
-  "interactive-field h-full w-full appearance-none rounded-[5px] border-0 bg-white pl-5 pr-12 text-base font-bold text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40";
+  "interactive-field h-full w-full appearance-none rounded-[5px] border-0 bg-surface pl-5 pr-12 text-base font-bold text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40";
 
 const matterTypeChevronClass =
-  "absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500";
+  "absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground";
 
 const outlinedFieldLabelClass =
-  "pointer-events-none absolute left-3 top-0 z-[1] -translate-y-1/2 bg-white px-1.5 text-sm font-medium text-slate-700";
+  "pointer-events-none absolute left-3 top-0 z-[1] -translate-y-1/2 bg-surface px-1.5 text-sm font-medium text-foreground";
 
 const outlinedFieldInputClass =
-  "interactive-field w-full rounded-[5px] border border-slate-300 bg-white px-3 pb-2.5 pt-3";
+  "interactive-field w-full rounded-[5px] border border-border bg-surface px-3 pb-2.5 pt-3";
 
 function OutlinedField({
   label,
@@ -179,7 +179,7 @@ function CityAutocompleteInput({
         <ul
           id={`${id}-suggestions`}
           role="listbox"
-          className="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-y-auto rounded-[5px] border border-slate-300 bg-white py-1 shadow-lg"
+          className="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-y-auto rounded-[5px] border border-border bg-surface py-1 shadow-lg"
         >
           {suggestions.map((city, index) => (
             <li key={city} role="option" aria-selected={index === highlightIndex}>
@@ -189,7 +189,7 @@ function CityAutocompleteInput({
                   "interactive-press w-full px-3 py-2 text-left text-sm transition-colors",
                   index === highlightIndex
                     ? "bg-primary-muted font-medium text-primary"
-                    : "text-slate-700 hover:bg-slate-50",
+                    : "text-foreground hover:bg-muted",
                 )}
                 onMouseDown={(event) => event.preventDefault()}
                 onMouseEnter={() => setHighlightIndex(index)}
@@ -218,6 +218,8 @@ function AssociateMultiSelect({
   onChange: (ids: string[]) => void;
   excludeIds?: string[];
 }) {
+  const t = useTranslations("matters.createModal");
+  const { roles } = useLabelMaps();
   const availableMembers = members.filter(
     (member) => !selectedIds.includes(member.id) && !excludeIds.includes(member.id),
   );
@@ -232,7 +234,7 @@ function AssociateMultiSelect({
   }
 
   return (
-    <OutlinedField label="Cộng sự" htmlFor={id}>
+    <OutlinedField label={t("associates")} htmlFor={id}>
       <div
         className={cn(
           outlinedFieldInputClass,
@@ -246,16 +248,16 @@ function AssociateMultiSelect({
           return (
             <span
               key={memberId}
-              className="inline-flex max-w-full items-center gap-1 rounded-[4px] bg-slate-100 py-0.5 pl-2 pr-1 text-sm text-slate-800"
+              className="inline-flex max-w-full items-center gap-1 rounded-[4px] bg-muted py-0.5 pl-2 pr-1 text-sm text-foreground"
             >
               <span className="truncate">
-                {member.name} ({ROLE_LABELS[member.role]})
+                {member.name} ({roles[member.role]})
               </span>
               <button
                 type="button"
                 onClick={() => removeMember(memberId)}
-                className="interactive-press rounded p-0.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
-                aria-label={`Xóa ${member.name}`}
+                className="interactive-press rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                aria-label={t("removeMember", { name: member.name })}
               >
                 <X className="h-3 w-3" />
               </button>
@@ -272,25 +274,25 @@ function AssociateMultiSelect({
           className={cn(
             "min-w-[8rem] flex-1 appearance-none border-0 bg-transparent py-0.5 pr-6 text-sm outline-none",
             availableMembers.length === 0
-              ? "cursor-not-allowed text-slate-400"
-              : "cursor-pointer text-slate-700",
+              ? "cursor-not-allowed text-muted-foreground"
+              : "cursor-pointer text-foreground",
           )}
         >
           <option value="">
             {availableMembers.length === 0
-              ? "Không còn cộng sự để chọn"
+              ? t("noAssociatesLeft")
               : selectedIds.length === 0
-                ? "Chọn cộng sự..."
-                : "Thêm cộng sự..."}
+                ? t("selectAssociate")
+                : t("addAssociate")}
           </option>
           {availableMembers.map((member) => (
             <option key={member.id} value={member.id}>
-              {member.name} ({ROLE_LABELS[member.role]})
+              {member.name} ({roles[member.role]})
             </option>
           ))}
         </select>
         <ChevronDown
-          className="pointer-events-none -ml-5 h-4 w-4 shrink-0 text-slate-500"
+          className="pointer-events-none -ml-5 h-4 w-4 shrink-0 text-muted-foreground"
           aria-hidden
         />
       </div>
@@ -304,18 +306,18 @@ function CreateMatterSummaryTable({
   rows: { label: string; value: string }[];
 }) {
   return (
-    <div className="mt-3 max-h-[min(50vh,420px)] overflow-y-auto rounded-[5px] border border-slate-200">
+    <div className="mt-3 max-h-[min(50vh,420px)] overflow-y-auto rounded-[5px] border border-border">
       <table className="w-full text-sm">
         <tbody>
           {rows.map((row) => (
-            <tr key={row.label} className="border-b border-slate-100 last:border-0">
+            <tr key={row.label} className="border-b border-border/60 last:border-0">
               <th
                 scope="row"
-                className="w-[38%] bg-slate-50 px-3 py-2.5 text-left align-top font-medium text-slate-600"
+                className="w-[38%] bg-muted/50 px-3 py-2.5 text-left align-top font-medium text-muted-foreground"
               >
                 {row.label}
               </th>
-              <td className="break-words px-3 py-2.5 text-slate-900 whitespace-pre-wrap">
+              <td className="break-words px-3 py-2.5 text-foreground whitespace-pre-wrap">
                 {row.value || "—"}
               </td>
             </tr>
@@ -374,6 +376,11 @@ export function CreateMatterModal({
   editMatter?: MatterEditInitial | null;
 }) {
   const isEdit = Boolean(editMatter);
+  const t = useTranslations("matters.createModal");
+  const tMatters = useTranslations("matters");
+  const tClients = useTranslations("clients");
+  const tCommon = useTranslations("common");
+  const { roles, matterType } = useLabelMaps();
   const router = useRouter();
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -545,7 +552,7 @@ export function CreateMatterModal({
   function confirmNewClient() {
     const name = draftClientName.trim();
     if (!name) {
-      setDraftClientError("Vui lòng nhập họ và tên khách hàng mới");
+      setDraftClientError(t("newClientNameRequired"));
       return;
     }
 
@@ -629,7 +636,7 @@ export function CreateMatterModal({
     const typeLabel =
       type === "OTHER" && customTypeLabel.trim()
         ? customTypeLabel.trim()
-        : MATTER_TYPE_LABELS[type];
+        : matterType[type];
     const selectedClient = formData.clients.find((client) => client.id === selectedClientId);
     const leadLawyer =
       formData.lawyers.find((lawyer) => lawyer.id === leadLawyerId) ?? formData.currentUser;
@@ -638,42 +645,40 @@ export function CreateMatterModal({
       .filter((member): member is MatterFormData["members"][number] => Boolean(member));
 
     const summaryRows = [
-      { label: "Mã vụ việc", value: previewCode },
-      { label: "Tên vụ việc", value: title },
-      { label: "Mô tả", value: description },
-      { label: "Loại vụ", value: typeLabel },
+      { label: t("matterCode"), value: previewCode },
+      { label: t("matterName"), value: title },
+      { label: tMatters("fieldDescription"), value: description },
+      { label: t("matterType"), value: typeLabel },
       {
-        label: "Loại khách hàng",
-        value: clientMode === "new" ? "Khách hàng mới" : "Khách hàng có sẵn",
+        label: t("clientType"),
+        value: clientMode === "new" ? t("newClient") : t("existingClient"),
       },
       {
-        label: "Tên khách hàng",
+        label: tClients("name"),
         value: clientMode === "existing" ? (selectedClient?.name ?? "") : clientName,
       },
-      { label: "SĐT khách hàng", value: phones.join(", ") },
-      { label: "Thành phố", value: clientCity.trim() },
-      { label: "Địa chỉ khách hàng", value: clientAddress.trim() },
+      { label: t("clientPhone"), value: phones.join(", ") },
+      { label: t("city"), value: clientCity.trim() },
+      { label: t("clientAddress"), value: clientAddress.trim() },
       {
-        label: "Luật sư chính",
-        value: `${leadLawyer.name} (${ROLE_LABELS[leadLawyer.role]})`,
+        label: t("leadLawyerMain"),
+        value: `${leadLawyer.name} (${roles[leadLawyer.role]})`,
       },
       {
-        label: "Cộng sự",
+        label: t("associates"),
         value:
           associates.length > 0
-            ? associates.map((member) => `${member.name} (${ROLE_LABELS[member.role]})`).join("\n")
+            ? associates.map((member) => `${member.name} (${roles[member.role]})`).join("\n")
             : "",
       },
     ];
 
     confirm({
-      title: isEdit ? "Xác nhận cập nhật vụ việc" : "Xác nhận tạo vụ việc",
-      message: isEdit
-        ? "Vui lòng kiểm tra lại thông tin trước khi lưu."
-        : "Vui lòng kiểm tra lại thông tin trước khi tạo vụ việc.",
+      title: isEdit ? t("confirmUpdateTitle") : t("confirmCreateTitle"),
+      message: isEdit ? t("reviewBeforeSave") : t("reviewBeforeCreate"),
       content: <CreateMatterSummaryTable rows={summaryRows} />,
-      confirmLabel: isEdit ? "Xác nhận lưu" : "Xác nhận tạo",
-      cancelLabel: "Quay lại",
+      confirmLabel: isEdit ? t("confirmSave") : t("confirmCreate"),
+      cancelLabel: tCommon("back"),
       size: "large",
       onConfirm: () => {
         setError("");
@@ -706,7 +711,7 @@ export function CreateMatterModal({
       <div className="fixed inset-0 z-[9998] flex h-dvh w-dvw items-stretch justify-center p-0 sm:items-center sm:p-6">
         <button
           type="button"
-          aria-label="Đóng form tạo vụ việc"
+          aria-label={t("closeFormAria")}
           className={cn(
             "overlay-backdrop absolute inset-0 bg-black/40 backdrop-blur-[1px]",
             active && "is-active",
@@ -721,22 +726,20 @@ export function CreateMatterModal({
           aria-modal="true"
           aria-labelledby="create-matter-title"
           className={cn(
-            "overlay-panel relative z-10 flex h-dvh max-h-none w-full max-w-none flex-col overflow-hidden rounded-none border-0 bg-white shadow-[var(--shadow-overlay)] sm:h-auto sm:max-h-[min(90dvh,900px)] sm:max-w-2xl sm:rounded-lg sm:border sm:border-slate-200",
+            "overlay-panel relative z-10 flex h-dvh max-h-none w-full max-w-none flex-col overflow-hidden rounded-none border-0 bg-surface shadow-[var(--shadow-overlay)] sm:h-auto sm:max-h-[min(90dvh,900px)] sm:max-w-2xl sm:rounded-lg sm:border sm:border-border",
             active && "is-active",
           )}
         >
-          <div className="flex items-start justify-between border-b border-slate-200 px-6 py-4">
+          <div className="flex items-start justify-between border-b border-border px-6 py-4">
             <div>
               <h2 id="create-matter-title" className="text-xl font-semibold text-primary">
-                {isEdit ? "Sửa vụ việc" : "Tạo vụ việc mới"}
+                {isEdit ? tMatters("editMatter") : t("createTitle")}
               </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                {isEdit
-                  ? "Cập nhật thông tin vụ việc. Mã vụ việc được giữ nguyên."
-                  : "Trạng thái mặc định: Mới. Nhân viên có thể cập nhật khi bắt đầu xử lý."}
+              <p className="mt-1 text-sm text-muted-foreground">
+                {isEdit ? t("editSubtitle") : t("createSubtitle")}
               </p>
             </div>
-            <Button type="button" variant="ghost" size="icon" onClick={handleClose} aria-label="Đóng">
+            <Button type="button" variant="ghost" size="icon" onClick={handleClose} aria-label={tCommon("close")}>
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -763,7 +766,7 @@ export function CreateMatterModal({
                     htmlFor={type === "OTHER" && customTypeInputOpen ? "customTypeLabel" : "type"}
                     className="text-base font-bold text-white"
                   >
-                    Loại vụ
+                    {t("matterType")}
                   </Label>
                   <div className="relative h-12 w-full">
                     {type === "OTHER" && customTypeInputOpen ? (
@@ -798,7 +801,7 @@ export function CreateMatterModal({
                           "pointer-events-none absolute inset-0 invisible",
                       )}
                     >
-                      {Object.entries(MATTER_TYPE_LABELS).map(([value, label]) => (
+                      {Object.entries(matterType).map(([value, label]) => (
                         <option key={value} value={value}>
                           {label}
                         </option>
@@ -811,7 +814,7 @@ export function CreateMatterModal({
                         name="customTypeLabel"
                         value={customTypeLabel}
                         onChange={(e) => setCustomTypeLabel(e.target.value)}
-                        placeholder="Nhập loại vụ..."
+                        placeholder={t("customTypePlaceholder")}
                         required
                         autoFocus
                         className={cn(matterTypeControlClass, "absolute inset-0 z-[1] font-semibold")}
@@ -824,9 +827,9 @@ export function CreateMatterModal({
                       className={cn(
                         "interactive-press z-[2]",
                         matterTypeChevronClass,
-                        "rounded p-0.5 hover:bg-slate-100 hover:text-slate-800",
+                        "rounded p-0.5 hover:bg-muted hover:text-foreground",
                       )}
-                      aria-label="Mở danh sách loại vụ"
+                      aria-label={t("openTypeListAria")}
                     >
                       <ChevronDown className="h-4 w-4" />
                     </button>
@@ -840,11 +843,11 @@ export function CreateMatterModal({
                   name="title"
                   required
                   defaultValue={editMatter?.title ?? ""}
-                  placeholder="Nhập tên vụ việc"
+                  placeholder={t("titlePlaceholder")}
                   className={outlinedFieldInputClass}
                 />
                 <Label htmlFor="title" className={outlinedFieldLabelClass}>
-                  Tên vụ việc
+                  {t("matterName")}
                 </Label>
               </div>
 
@@ -854,19 +857,19 @@ export function CreateMatterModal({
                   name="description"
                   rows={3}
                   defaultValue={editMatter?.description ?? ""}
-                  placeholder="Mô tả ngắn về vụ việc"
+                  placeholder={t("descriptionPlaceholder")}
                   className={cn(outlinedFieldInputClass, "min-h-[6.5rem] resize-y")}
                 />
                 <Label htmlFor="description" className={outlinedFieldLabelClass}>
-                  Mô tả
+                  {tMatters("fieldDescription")}
                 </Label>
               </div>
 
-              <div className="relative rounded-[5px] border border-slate-300 p-4">
-                <div className="mb-6 flex flex-wrap items-center justify-between gap-2 text-sm font-semibold text-slate-700">
+              <div className="relative rounded-[5px] border border-border p-4">
+                <div className="mb-6 flex flex-wrap items-center justify-between gap-2 text-sm font-semibold text-foreground">
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-                    Khách hàng
+                    {tMatters("client")}
                   </div>
                   {clientMode === "existing" ? (
                     <Button
@@ -877,7 +880,7 @@ export function CreateMatterModal({
                       className="interactive-press shrink-0"
                     >
                       <Plus className="h-4 w-4" />
-                      Khách hàng mới
+                      {tClients("newClient")}
                     </Button>
                   ) : null}
                 </div>
@@ -892,18 +895,18 @@ export function CreateMatterModal({
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div className="min-w-0 space-y-1">
                             <p className="text-xs font-medium uppercase tracking-wide text-primary/70">
-                              Khách hàng mới
+                              {tClients("newClient")}
                             </p>
-                            <p className="break-words font-semibold text-slate-900">
+                            <p className="break-words font-semibold text-foreground">
                               {clientName}
                             </p>
                             {clientPhones.length > 0 ? (
-                              <p className="break-words text-sm text-slate-600">
+                              <p className="break-words text-sm text-muted-foreground">
                                 {clientPhones.join(", ")}
                               </p>
                             ) : null}
                             {[clientAddress, clientCity].filter(Boolean).length > 0 ? (
-                              <p className="break-words text-sm text-slate-600">
+                              <p className="break-words text-sm text-muted-foreground">
                                 {[clientAddress, clientCity].filter(Boolean).join(", ")}
                               </p>
                             ) : null}
@@ -915,7 +918,7 @@ export function CreateMatterModal({
                               size="sm"
                               onClick={openNewClientModal}
                             >
-                              Sửa
+                              {tCommon("edit")}
                             </Button>
                             <Button
                               type="button"
@@ -923,7 +926,7 @@ export function CreateMatterModal({
                               size="sm"
                               onClick={clearNewClient}
                             >
-                              Đổi khách có sẵn
+                              {t("switchToExistingClient")}
                             </Button>
                           </div>
                         </div>
@@ -933,7 +936,7 @@ export function CreateMatterModal({
                     <>
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                         <OutlinedField
-                          label="Chọn khách hàng"
+                          label={t("selectClient")}
                           htmlFor="clientId"
                           className="min-w-0 flex-1"
                         >
@@ -944,7 +947,7 @@ export function CreateMatterModal({
                             onChange={(e) => handleClientChange(e.target.value)}
                             className={cn(outlinedFieldInputClass, "h-11")}
                           >
-                            <option value="">-- Chọn khách hàng --</option>
+                            <option value="">{t("selectClientPlaceholder")}</option>
                             {formData.clients.map((client) => (
                               <option key={client.id} value={client.id}>
                                 {client.name}
@@ -956,7 +959,7 @@ export function CreateMatterModal({
 
                       <div className="flex items-stretch gap-2">
                         <OutlinedField
-                          label="SĐT khách hàng"
+                          label={t("clientPhone")}
                           htmlFor="clientPhone"
                           className="min-w-0 flex-1"
                         >
@@ -970,7 +973,7 @@ export function CreateMatterModal({
                             {clientPhones.map((phone, index) => (
                               <span
                                 key={`${phone}-${index}`}
-                                className="client-phone-chip inline-flex max-w-full items-center gap-1 rounded-[4px] bg-slate-100 py-0.5 pl-2 pr-1 text-sm text-slate-800"
+                                className="client-phone-chip inline-flex max-w-full items-center gap-1 rounded-[4px] bg-muted py-0.5 pl-2 pr-1 text-sm text-foreground"
                               >
                                 <span className="truncate">{phone}</span>
                                 <button
@@ -980,8 +983,8 @@ export function CreateMatterModal({
                                     event.stopPropagation();
                                     removeClientPhone(index);
                                   }}
-                                  className="interactive-press rounded p-0.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700 disabled:pointer-events-none"
-                                  aria-label={`Xóa số ${phone}`}
+                                  className="interactive-press rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none"
+                                  aria-label={t("removePhone", { phone })}
                                 >
                                   <X className="h-3 w-3" />
                                 </button>
@@ -1009,9 +1012,9 @@ export function CreateMatterModal({
                                 }
                               }}
                               placeholder={
-                                clientPhones.length === 0 ? "0901234567" : "Thêm SĐT..."
+                                clientPhones.length === 0 ? "0901234567" : t("addPhonePlaceholder")
                               }
-                              className="min-w-[7rem] flex-1 border-0 bg-transparent px-1 py-0.5 text-sm outline-none placeholder:text-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
+                              className="min-w-[7rem] flex-1 border-0 bg-transparent px-1 py-0.5 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
                             />
                           </div>
                         </OutlinedField>
@@ -1021,31 +1024,31 @@ export function CreateMatterModal({
                           disabled={clientFieldsDisabled}
                           onClick={commitPhoneDraft}
                           className="interactive-press h-auto w-10 shrink-0 self-stretch rounded-[5px] p-0"
-                          aria-label="Thêm số điện thoại"
+                          aria-label={t("addPhone")}
                         >
                           <Plus className="h-4 w-4" />
                         </Button>
                       </div>
 
-                      <OutlinedField label="Thành phố" htmlFor="clientCity">
+                      <OutlinedField label={t("city")} htmlFor="clientCity">
                         <CityAutocompleteInput
                           id="clientCity"
                           name="clientCity"
                           value={clientCity}
                           onChange={setClientCity}
-                          placeholder="Hà Nội"
+                          placeholder={t("cityPlaceholder")}
                           disabled={clientFieldsDisabled}
                           className={outlinedFieldInputClass}
                         />
                       </OutlinedField>
 
-                      <OutlinedField label="Địa chỉ khách hàng" htmlFor="clientAddress">
+                      <OutlinedField label={t("clientAddress")} htmlFor="clientAddress">
                         <Input
                           id="clientAddress"
                           name="clientAddress"
                           value={clientAddress}
                           onChange={(e) => setClientAddress(e.target.value)}
-                          placeholder="Số nhà, đường, quận/huyện"
+                          placeholder={t("addressPlaceholder")}
                           disabled={clientFieldsDisabled}
                           className={outlinedFieldInputClass}
                         />
@@ -1055,17 +1058,17 @@ export function CreateMatterModal({
                 </div>
               </div>
 
-              <div className="relative rounded-[5px] border border-slate-300 px-4 pb-5 pt-8">
+              <div className="relative rounded-[5px] border border-border px-4 pb-5 pt-8">
                 <div className="absolute left-3 top-0 -translate-y-1/2">
                   <div className="flex items-center gap-2 rounded-[5px] bg-primary px-3 py-1.5 text-base font-semibold text-white shadow-sm">
                     <Scale className="h-4 w-4 shrink-0" aria-hidden />
-                    Luật sư phụ trách
+                    {tMatters("leadLawyer")}
                   </div>
                 </div>
 
                 <div className="space-y-7">
                   {canPickLeadLawyer ? (
-                    <OutlinedField label="Luật sư chính" htmlFor="leadLawyerDisplay">
+                    <OutlinedField label={t("leadLawyerMain")} htmlFor="leadLawyerDisplay">
                       <div className="relative">
                         <Select
                           id="leadLawyerDisplay"
@@ -1075,21 +1078,21 @@ export function CreateMatterModal({
                         >
                           {formData.lawyers.map((lawyer) => (
                             <option key={lawyer.id} value={lawyer.id}>
-                              {lawyer.name} ({ROLE_LABELS[lawyer.role]})
+                              {lawyer.name} ({roles[lawyer.role]})
                             </option>
                           ))}
                         </Select>
                         <ChevronDown
-                          className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
+                          className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
                           aria-hidden
                         />
                       </div>
                     </OutlinedField>
                   ) : (
-                    <OutlinedField label="Luật sư chính" htmlFor="leadLawyerDisplay">
+                    <OutlinedField label={t("leadLawyerMain")} htmlFor="leadLawyerDisplay">
                       <Input
                         id="leadLawyerDisplay"
-                        value={`${formData.currentUser.name} (${ROLE_LABELS[formData.currentUser.role]})`}
+                        value={`${formData.currentUser.name} (${roles[formData.currentUser.role]})`}
                         readOnly
                         disabled
                         className={outlinedFieldInputClass}
@@ -1109,18 +1112,18 @@ export function CreateMatterModal({
 
               {error && <p className="text-sm text-red-600">{error}</p>}
 
-              <div className="flex justify-end gap-3 border-t border-slate-200 pt-6">
+              <div className="flex justify-end gap-3 border-t border-border pt-6">
                 <Button type="button" variant="outline" onClick={handleClose}>
-                  Hủy
+                  {tCommon("cancel")}
                 </Button>
                 <Button type="submit" disabled={isPending}>
                   {isPending
                     ? isEdit
-                      ? "Đang lưu..."
-                      : "Đang tạo..."
+                      ? tCommon("saving")
+                      : t("creating")
                     : isEdit
-                      ? "Lưu thay đổi"
-                      : "Tạo vụ việc"}
+                      ? t("saveChanges")
+                      : tMatters("create")}
                 </Button>
               </div>
             </form>
@@ -1132,7 +1135,7 @@ export function CreateMatterModal({
         <div className="fixed inset-0 z-[10000] flex h-dvh w-dvw items-stretch justify-center p-0 sm:items-center sm:p-6">
           <button
             type="button"
-            aria-label="Đóng form khách hàng mới"
+            aria-label={t("closeNewClientAria")}
             className={cn(
               "overlay-backdrop absolute inset-0 bg-black/45 backdrop-blur-[1px]",
               newClientActive && "is-active",
@@ -1144,17 +1147,17 @@ export function CreateMatterModal({
             aria-modal="true"
             aria-labelledby="new-client-title"
             className={cn(
-              "overlay-panel relative z-10 flex max-h-[min(90dvh,720px)] w-full max-w-lg flex-col overflow-hidden rounded-none border-0 bg-white shadow-[var(--shadow-overlay)] sm:rounded-lg sm:border sm:border-slate-200",
+              "overlay-panel relative z-10 flex max-h-[min(90dvh,720px)] w-full max-w-lg flex-col overflow-hidden rounded-none border-0 bg-surface shadow-[var(--shadow-overlay)] sm:rounded-lg sm:border sm:border-border",
               newClientActive && "is-active",
             )}
           >
-            <div className="flex items-start justify-between border-b border-slate-200 px-5 py-4 sm:px-6">
+            <div className="flex items-start justify-between border-b border-border px-5 py-4 sm:px-6">
               <div>
                 <h3 id="new-client-title" className="text-lg font-semibold text-primary">
-                  Khách hàng mới
+                  {tClients("newClient")}
                 </h3>
-                <p className="mt-1 text-sm text-slate-500">
-                  Điền thông tin khách hàng để gắn vào vụ việc này.
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {t("newClientSubtitle")}
                 </p>
               </div>
               <Button
@@ -1162,19 +1165,19 @@ export function CreateMatterModal({
                 variant="ghost"
                 size="icon"
                 onClick={closeNewClientModal}
-                aria-label="Đóng"
+                aria-label={tCommon("close")}
               >
                 <X className="h-4 w-4" />
               </Button>
             </div>
 
             <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-5 sm:px-6">
-              <OutlinedField label="Họ và tên khách hàng" htmlFor="draftClientName">
+              <OutlinedField label={t("clientFullName")} htmlFor="draftClientName">
                 <Input
                   id="draftClientName"
                   value={draftClientName}
                   onChange={(e) => setDraftClientName(e.target.value)}
-                  placeholder="Nguyễn Văn A"
+                  placeholder={t("clientNamePlaceholder")}
                   autoFocus
                   className={outlinedFieldInputClass}
                 />
@@ -1182,7 +1185,7 @@ export function CreateMatterModal({
 
               <div className="flex items-stretch gap-2">
                 <OutlinedField
-                  label="SĐT khách hàng"
+                  label={t("clientPhone")}
                   htmlFor="draftClientPhone"
                   className="min-w-0 flex-1"
                 >
@@ -1196,7 +1199,7 @@ export function CreateMatterModal({
                     {draftClientPhones.map((phone, index) => (
                       <span
                         key={`${phone}-${index}`}
-                        className="client-phone-chip inline-flex max-w-full items-center gap-1 rounded-[4px] bg-slate-100 py-0.5 pl-2 pr-1 text-sm text-slate-800"
+                        className="client-phone-chip inline-flex max-w-full items-center gap-1 rounded-[4px] bg-muted py-0.5 pl-2 pr-1 text-sm text-foreground"
                       >
                         <span className="truncate">{phone}</span>
                         <button
@@ -1205,8 +1208,8 @@ export function CreateMatterModal({
                             event.stopPropagation();
                             removeDraftPhone(index);
                           }}
-                          className="interactive-press rounded p-0.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
-                          aria-label={`Xóa số ${phone}`}
+                          className="interactive-press rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                          aria-label={t("removePhone", { phone })}
                         >
                           <X className="h-3 w-3" />
                         </button>
@@ -1233,9 +1236,9 @@ export function CreateMatterModal({
                         }
                       }}
                       placeholder={
-                        draftClientPhones.length === 0 ? "0901234567" : "Thêm SĐT..."
+                        draftClientPhones.length === 0 ? "0901234567" : t("addPhonePlaceholder")
                       }
-                      className="min-w-[7rem] flex-1 border-0 bg-transparent px-1 py-0.5 text-sm outline-none placeholder:text-slate-400"
+                      className="min-w-[7rem] flex-1 border-0 bg-transparent px-1 py-0.5 text-sm outline-none placeholder:text-muted-foreground"
                     />
                   </div>
                 </OutlinedField>
@@ -1244,28 +1247,28 @@ export function CreateMatterModal({
                   variant="outline"
                   onClick={commitDraftPhone}
                   className="interactive-press h-auto w-10 shrink-0 self-stretch rounded-[5px] p-0"
-                  aria-label="Thêm số điện thoại"
+                  aria-label={t("addPhone")}
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
 
-              <OutlinedField label="Thành phố" htmlFor="draftClientCity">
+              <OutlinedField label={t("city")} htmlFor="draftClientCity">
                 <CityAutocompleteInput
                   id="draftClientCity"
                   value={draftClientCity}
                   onChange={setDraftClientCity}
-                  placeholder="Hà Nội"
+                  placeholder={t("cityPlaceholder")}
                   className={outlinedFieldInputClass}
                 />
               </OutlinedField>
 
-              <OutlinedField label="Địa chỉ khách hàng" htmlFor="draftClientAddress">
+              <OutlinedField label={t("clientAddress")} htmlFor="draftClientAddress">
                 <Input
                   id="draftClientAddress"
                   value={draftClientAddress}
                   onChange={(e) => setDraftClientAddress(e.target.value)}
-                  placeholder="Số nhà, đường, quận/huyện"
+                  placeholder={t("addressPlaceholder")}
                   className={outlinedFieldInputClass}
                 />
               </OutlinedField>
@@ -1275,12 +1278,12 @@ export function CreateMatterModal({
               ) : null}
             </div>
 
-            <div className="flex justify-end gap-3 border-t border-slate-200 px-5 py-4 sm:px-6">
+            <div className="flex justify-end gap-3 border-t border-border px-5 py-4 sm:px-6">
               <Button type="button" variant="outline" onClick={closeNewClientModal}>
-                Hủy
+                {tCommon("cancel")}
               </Button>
               <Button type="button" onClick={confirmNewClient}>
-                Lưu khách hàng
+                {t("saveClient")}
               </Button>
             </div>
           </div>

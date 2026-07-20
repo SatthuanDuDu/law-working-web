@@ -16,11 +16,18 @@ import {
   taskSchema,
   userSchema,
   workTypeSchema,
+  attachmentLabelSchema,
 } from "@/lib/validations";
-import { canManageUsers, isManagerOrAbove } from "@/lib/permissions";
+import { canManageUsers, isAdmin, isManagerOrAbove } from "@/lib/permissions";
 import { generateMatterCode } from "@/lib/matter-code";
-import { getAccessibleClientIds, getAccessibleMatterIds } from "@/lib/access";
+import { getAccessibleClientIds, getAccessibleMatterIds, assertMatterNotArchived } from "@/lib/access";
+import { deleteObject } from "@/lib/storage";
+import { actionError } from "@/i18n/server-labels";
 import type { MatterPlanStepStatus } from "@prisma/client";
+import {
+  locationToPrismaFields,
+  parseLocationFromFormData,
+} from "@/lib/location";
 
 function revalidateClients() {
   revalidatePath("/clients");
@@ -49,14 +56,14 @@ export async function changePasswordAction(formData: FormData) {
   });
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Dữ liệu không hợp lệ" };
+    return { error: parsed.error.issues[0]?.message ?? (await actionError("invalidData")) };
   }
 
   const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
-  if (!dbUser) return { error: "Không tìm thấy người dùng" };
+  if (!dbUser) return { error: await actionError("userNotFound") };
 
   const valid = await bcrypt.compare(parsed.data.currentPassword, dbUser.password);
-  if (!valid) return { error: "Mật khẩu hiện tại không đúng" };
+  if (!valid) return { error: await actionError("wrongPassword") };
 
   const password = await bcrypt.hash(parsed.data.newPassword, 10);
   await prisma.user.update({
@@ -88,7 +95,7 @@ export async function createClientAction(formData: FormData) {
   });
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Dữ liệu không hợp lệ" };
+    return { error: parsed.error.issues[0]?.message ?? (await actionError("invalidData")) };
   }
 
   const client = await prisma.client.create({
@@ -115,15 +122,76 @@ export async function createClientAction(formData: FormData) {
   return { success: true };
 }
 
-export async function deleteClientAction(clientId: string) {
+export async function updateClientAction(clientId: string, formData: FormData) {
   const user = await requireAuth();
   if (!isManagerOrAbove(user.role)) {
-    return { error: "Chỉ Admin/Quản lý mới được xóa khách hàng" };
+    return { error: await actionError("noPermissionEditClient") };
   }
 
   const accessibleIds = await getAccessibleClientIds(user.id, user.role);
   if (accessibleIds && !accessibleIds.includes(clientId)) {
-    return { error: "Không có quyền xóa khách hàng này" };
+    return { error: await actionError("noPermissionThisClientEdit") };
+  }
+
+  const existing = await prisma.client.findUnique({
+    where: { id: clientId },
+    select: { id: true, name: true },
+  });
+  if (!existing) return { error: await actionError("clientNotFound") };
+
+  const parsed = clientSchema.safeParse({
+    name: formData.get("name"),
+    email: formData.get("email"),
+    phone: formData.get("phone"),
+    address: formData.get("address"),
+    city: formData.get("city"),
+    businessType: formData.get("businessType"),
+    notes: formData.get("notes"),
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? (await actionError("invalidData")) };
+  }
+
+  try {
+    const client = await prisma.client.update({
+      where: { id: clientId },
+      data: {
+        name: parsed.data.name,
+        email: parsed.data.email || null,
+        phone: parsed.data.phone || null,
+        address: parsed.data.address || null,
+        city: parsed.data.city?.trim() || null,
+        businessType: parsed.data.businessType ?? null,
+        notes: parsed.data.notes || null,
+      },
+    });
+
+    await createAuditLog({
+      userId: user.id,
+      action: "UPDATE",
+      entityType: "Client",
+      entityId: client.id,
+      details: client.name,
+    });
+
+    revalidateClients();
+    return { success: true };
+  } catch (error) {
+    console.error("updateClientAction failed:", error);
+    return { error: await actionError("cannotUpdateClient") };
+  }
+}
+
+export async function deleteClientAction(clientId: string) {
+  const user = await requireAuth();
+  if (!isManagerOrAbove(user.role)) {
+    return { error: await actionError("noPermissionDeleteClient") };
+  }
+
+  const accessibleIds = await getAccessibleClientIds(user.id, user.role);
+  if (accessibleIds && !accessibleIds.includes(clientId)) {
+    return { error: await actionError("noPermissionThisClient") };
   }
 
   const client = await prisma.client.findUnique({
@@ -134,7 +202,7 @@ export async function deleteClientAction(clientId: string) {
       _count: { select: { matters: true } },
     },
   });
-  if (!client) return { error: "Không tìm thấy khách hàng" };
+  if (!client) return { error: await actionError("clientNotFound") };
 
   if (client._count.matters > 0) {
     return {
@@ -157,7 +225,7 @@ export async function deleteClientAction(clientId: string) {
     return { success: true };
   } catch (error) {
     console.error("deleteClientAction failed:", error);
-    return { error: "Không thể xóa khách hàng" };
+    return { error: await actionError("cannotDeleteClient") };
   }
 }
 
@@ -191,7 +259,7 @@ export async function createMatterAction(formData: FormData) {
   });
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Dữ liệu không hợp lệ" };
+    return { error: parsed.error.issues[0]?.message ?? (await actionError("invalidData")) };
   }
 
   try {
@@ -218,7 +286,7 @@ export async function createMatterAction(formData: FormData) {
         select: { id: true },
       });
       if (!existingClient) {
-        return { error: "Khách hàng đã chọn không còn tồn tại. Vui lòng chọn lại." };
+        return { error: await actionError("clientGone") };
       }
     }
 
@@ -328,18 +396,18 @@ function parseMatterFormPayload(formData: FormData) {
 export async function updateMatterAction(matterId: string, formData: FormData) {
   const user = await requireAuth();
   if (!isManagerOrAbove(user.role)) {
-    return { error: "Chỉ Admin/Quản lý mới được sửa vụ việc" };
+    return { error: await actionError("onlyManagerEditMatter") };
   }
 
   const existing = await prisma.matter.findUnique({
     where: { id: matterId },
     select: { id: true, code: true, clientId: true },
   });
-  if (!existing) return { error: "Không tìm thấy vụ việc" };
+  if (!existing) return { error: await actionError("matterNotFound") };
 
   const parsed = parseMatterFormPayload(formData);
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Dữ liệu không hợp lệ" };
+    return { error: parsed.error.issues[0]?.message ?? (await actionError("invalidData")) };
   }
 
   try {
@@ -352,7 +420,7 @@ export async function updateMatterAction(matterId: string, formData: FormData) {
       select: { id: true },
     });
     if (!leadLawyer) {
-      return { error: "Luật sư phụ trách không hợp lệ" };
+      return { error: await actionError("invalidLeadLawyer") };
     }
 
     let clientId = parsed.data.clientId ?? existing.clientId;
@@ -373,7 +441,7 @@ export async function updateMatterAction(matterId: string, formData: FormData) {
         select: { id: true },
       });
       if (!existingClient) {
-        return { error: "Khách hàng đã chọn không còn tồn tại" };
+        return { error: await actionError("clientGoneShort") };
       }
 
       await prisma.client.update({
@@ -429,21 +497,21 @@ export async function updateMatterAction(matterId: string, formData: FormData) {
     return { success: true, matterId };
   } catch (error) {
     console.error("updateMatterAction failed:", error);
-    return { error: "Không thể cập nhật vụ việc" };
+    return { error: await actionError("cannotUpdateMatter") };
   }
 }
 
 export async function deleteMatterAction(matterId: string) {
   const user = await requireAuth();
   if (!isManagerOrAbove(user.role)) {
-    return { error: "Chỉ Admin/Quản lý mới được xóa vụ việc" };
+    return { error: await actionError("onlyManagerDeleteMatter") };
   }
 
   const matter = await prisma.matter.findUnique({
     where: { id: matterId },
     select: { id: true, code: true, title: true },
   });
-  if (!matter) return { error: "Không tìm thấy vụ việc" };
+  if (!matter) return { error: await actionError("matterNotFound") };
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -466,7 +534,7 @@ export async function deleteMatterAction(matterId: string) {
     return { success: true };
   } catch (error) {
     console.error("deleteMatterAction failed:", error);
-    return { error: "Không thể xóa vụ việc" };
+    return { error: await actionError("cannotDeleteMatter") };
   }
 }
 
@@ -475,11 +543,18 @@ async function assertCanEditMatterPlan(userId: string, role: Parameters<typeof i
     where: { id: matterId },
     include: { members: { select: { userId: true } } },
   });
-  if (!matter) return { error: "Không tìm thấy vụ việc" as const, matter: null };
+  if (!matter) return { error: await actionError("matterNotFound"), matter: null };
+
+  if (matter.status === "ARCHIVED") {
+    return {
+      error: "Vụ việc đã lưu trữ — chỉ được xem, không thể chỉnh sửa" as const,
+      matter: null,
+    };
+  }
 
   const matterIds = await getAccessibleMatterIds(userId, role);
   if (matterIds && !matterIds.includes(matterId)) {
-    return { error: "Không có quyền truy cập vụ việc này" as const, matter: null };
+    return { error: await actionError("noMatterAccess"), matter: null };
   }
 
   const canEdit =
@@ -488,7 +563,7 @@ async function assertCanEditMatterPlan(userId: string, role: Parameters<typeof i
     matter.members.some((member) => member.userId === userId);
 
   if (!canEdit) {
-    return { error: "Không có quyền chỉnh kế hoạch vụ việc" as const, matter: null };
+    return { error: await actionError("noPlanEdit"), matter: null };
   }
 
   return { error: null, matter };
@@ -508,11 +583,11 @@ async function assertCanAccessMatter(
       members: { select: { userId: true } },
     },
   });
-  if (!matter) return { error: "Không tìm thấy vụ việc" as const, matter: null };
+  if (!matter) return { error: await actionError("matterNotFound"), matter: null };
 
   const matterIds = await getAccessibleMatterIds(userId, role);
   if (matterIds && !matterIds.includes(matterId)) {
-    return { error: "Không có quyền truy cập vụ việc này" as const, matter: null };
+    return { error: await actionError("noMatterAccess"), matter: null };
   }
 
   const canAccess =
@@ -521,7 +596,7 @@ async function assertCanAccessMatter(
     matter.members.some((member) => member.userId === userId);
 
   if (!canAccess) {
-    return { error: "Không có quyền truy cập vụ việc này" as const, matter: null };
+    return { error: await actionError("noMatterAccess"), matter: null };
   }
 
   return { error: null, matter };
@@ -540,26 +615,46 @@ function parseMentionIds(raw: FormDataEntryValue | null): string[] {
   }
 }
 
+function parseAttachmentIds(raw: FormDataEntryValue | null): string[] {
+  if (typeof raw !== "string" || !raw.trim()) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed.filter((id): id is string => typeof id === "string");
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
+
 export async function createCommentAction(formData: FormData) {
   const user = await requireAuth();
 
   const matterId = formData.get("matterId");
   const rawStepId = formData.get("matterPlanStepId");
   const rawBody = formData.get("body");
+  const attachmentIds = Array.from(new Set(parseAttachmentIds(formData.get("attachmentIds"))));
 
   if (typeof matterId !== "string" || !matterId) {
-    return { error: "Thiếu thông tin vụ việc" };
+    return { error: await actionError("missingMatter") };
   }
   const body = typeof rawBody === "string" ? rawBody.trim() : "";
-  if (!body) return { error: "Nội dung bình luận không được để trống" };
-  if (body.length > 5000) return { error: "Bình luận quá dài (tối đa 5000 ký tự)" };
+  const location = parseLocationFromFormData(formData);
+  if (!body && attachmentIds.length === 0 && !location) {
+    return { error: await actionError("commentEmpty") };
+  }
+  if (body.length > 5000) return { error: await actionError("commentTooLong") };
 
   const matterPlanStepId =
     typeof rawStepId === "string" && rawStepId ? rawStepId : null;
 
   const access = await assertCanAccessMatter(user.id, user.role, matterId);
-  if (access.error || !access.matter) return { error: access.error ?? "Không có quyền" };
+  if (access.error || !access.matter) return { error: access.error ?? (await actionError("noPermission")) };
   const matter = access.matter;
+
+  const archived = await assertMatterNotArchived(matterId);
+  if (archived.error) return { error: archived.error };
 
   if (matterPlanStepId) {
     const step = await prisma.matterPlanStep.findUnique({
@@ -568,6 +663,22 @@ export async function createCommentAction(formData: FormData) {
     });
     if (!step || step.matterId !== matterId) {
       return { error: "Không tìm thấy bước kế hoạch" };
+    }
+  }
+
+  if (attachmentIds.length > 0) {
+    const pending = await prisma.attachment.findMany({
+      where: {
+        id: { in: attachmentIds },
+        uploadedById: user.id,
+        matterId,
+        commentId: null,
+        matterPlanStepId: null,
+      },
+      select: { id: true },
+    });
+    if (pending.length !== attachmentIds.length) {
+      return { error: "File đính kèm không hợp lệ hoặc đã được dùng" };
     }
   }
 
@@ -585,9 +696,26 @@ export async function createCommentAction(formData: FormData) {
           matterId,
           matterPlanStepId,
           authorId: user.id,
-          body,
+          body: body || (location ? "(Vị trí)" : "(Đính kèm)"),
+          ...locationToPrismaFields(location),
         },
       });
+
+      if (attachmentIds.length > 0) {
+        await tx.attachment.updateMany({
+          where: {
+            id: { in: attachmentIds },
+            uploadedById: user.id,
+            matterId,
+            commentId: null,
+            matterPlanStepId: null,
+          },
+          data: {
+            commentId: created.id,
+            matterPlanStepId,
+          },
+        });
+      }
 
       if (mentionedUserIds.length > 0) {
         await tx.commentMention.createMany({
@@ -614,8 +742,17 @@ export async function createCommentAction(formData: FormData) {
       return created;
     });
 
+    await createAuditLog({
+      userId: user.id,
+      action: "CREATE",
+      entityType: "Comment",
+      entityId: comment.id,
+      details: `${matter.code}: ${body.slice(0, 120) || "(Đính kèm)"}`,
+    });
+
     revalidatePath(`/matters/${matterId}/report`);
     revalidatePath(`/matters/${matterId}/plan`);
+    revalidatePath(`/matters/${matterId}`);
     return { success: true, commentId: comment.id };
   } catch (error) {
     console.error("createCommentAction failed:", error);
@@ -626,22 +763,150 @@ export async function createCommentAction(formData: FormData) {
   }
 }
 
+export async function updateCommentAction(formData: FormData) {
+  const user = await requireAuth();
+
+  const commentId = formData.get("commentId");
+  const rawBody = formData.get("body");
+  const removeAttachmentIds = Array.from(
+    new Set(parseAttachmentIds(formData.get("removeAttachmentIds"))),
+  );
+
+  if (typeof commentId !== "string" || !commentId) {
+    return { error: "Thiếu thông tin bình luận" };
+  }
+
+  const body = typeof rawBody === "string" ? rawBody.trim() : "";
+  if (body.length > 5000) return { error: await actionError("commentTooLong") };
+
+  const comment = await prisma.comment.findUnique({
+    where: { id: commentId },
+    select: {
+      id: true,
+      authorId: true,
+      matterId: true,
+      locationLat: true,
+      locationLng: true,
+      attachments: {
+        select: { id: true, storageKey: true, fileName: true },
+      },
+    },
+  });
+  if (!comment) return { error: "Không tìm thấy bình luận" };
+  if (comment.authorId !== user.id) {
+    return { error: "Chỉ tác giả mới được sửa bình luận này" };
+  }
+
+  const archived = await assertMatterNotArchived(comment.matterId);
+  if (archived.error) return { error: archived.error };
+
+  const remainingAttachments = comment.attachments.filter(
+    (a) => !removeAttachmentIds.includes(a.id),
+  );
+  if (removeAttachmentIds.length > 0) {
+    const ownedIds = new Set(comment.attachments.map((a) => a.id));
+    if (removeAttachmentIds.some((id) => !ownedIds.has(id))) {
+      return { error: "File đính kèm không thuộc bình luận này" };
+    }
+  }
+
+  const locationTouched =
+    formData.has("locationCleared") ||
+    formData.has("locationLat") ||
+    formData.has("locationLng") ||
+    formData.has("locationName");
+  const parsedLocation = locationTouched
+    ? parseLocationFromFormData(formData)
+    : undefined;
+  const hasLocationAfter = locationTouched
+    ? parsedLocation != null
+    : comment.locationLat != null && comment.locationLng != null;
+
+  if (!body && remainingAttachments.length === 0 && !hasLocationAfter) {
+    return { error: await actionError("commentEmpty") };
+  }
+
+  const toRemove = comment.attachments.filter((a) =>
+    removeAttachmentIds.includes(a.id),
+  );
+  for (const attachment of toRemove) {
+    try {
+      await deleteObject(attachment.storageKey);
+    } catch {
+      // Object may already be missing.
+    }
+  }
+
+  await prisma.$transaction(async (tx) => {
+    if (toRemove.length > 0) {
+      await tx.attachment.deleteMany({
+        where: {
+          id: { in: toRemove.map((a) => a.id) },
+          commentId: comment.id,
+        },
+      });
+    }
+    await tx.comment.update({
+      where: { id: commentId },
+      data: {
+        body:
+          body ||
+          (hasLocationAfter ? "(Vị trí)" : "(Đính kèm)"),
+        ...(locationTouched
+          ? locationToPrismaFields(parsedLocation ?? null)
+          : {}),
+      },
+    });
+  });
+
+  revalidatePath(`/matters/${comment.matterId}/report`);
+  revalidatePath(`/matters/${comment.matterId}/plan`);
+  revalidatePath(`/matters/${comment.matterId}`);
+  return { success: true };
+}
+
 export async function deleteCommentAction(commentId: string) {
   const user = await requireAuth();
 
   const comment = await prisma.comment.findUnique({
     where: { id: commentId },
-    select: { id: true, authorId: true, matterId: true },
+    select: {
+      id: true,
+      authorId: true,
+      matterId: true,
+      attachments: { select: { id: true, storageKey: true, fileName: true } },
+    },
   });
   if (!comment) return { error: "Không tìm thấy bình luận" };
 
-  const canDelete = comment.authorId === user.id || isManagerOrAbove(user.role);
-  if (!canDelete) return { error: "Không có quyền xóa bình luận này" };
+  if (!isAdmin(user.role)) {
+    return { error: "Chỉ quản trị viên mới được xóa bình luận" };
+  }
+
+  const archived = await assertMatterNotArchived(comment.matterId);
+  if (archived.error) return { error: archived.error };
+
+  for (const attachment of comment.attachments) {
+    try {
+      await deleteObject(attachment.storageKey);
+    } catch {
+      // Object may already be missing; still remove DB row via cascade.
+    }
+  }
 
   await prisma.comment.delete({ where: { id: commentId } });
 
+  await createAuditLog({
+    userId: user.id,
+    action: "DELETE",
+    entityType: "Comment",
+    entityId: commentId,
+    details: `Matter ${comment.matterId}`,
+  });
+
   revalidatePath(`/matters/${comment.matterId}/report`);
   revalidatePath(`/matters/${comment.matterId}/plan`);
+  revalidatePath(`/matters/${comment.matterId}`);
   return { success: true };
 }
 
@@ -654,19 +919,28 @@ export async function createMatterPlanStepAction(formData: FormData) {
     startedAt: formData.get("startedAt") || null,
     dueAt: formData.get("dueAt") || null,
     status: formData.get("status") || "NOT_STARTED",
+    priority: formData.get("priority") || "MEDIUM",
+    locationName: formData.get("locationName") || null,
+    locationAddress: formData.get("locationAddress") || null,
+    locationPlaceId: formData.get("locationPlaceId") || null,
+    locationLat: formData.get("locationLat") || null,
+    locationLng: formData.get("locationLng") || null,
+    locationCleared: formData.get("locationCleared") || null,
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Dữ liệu không hợp lệ" };
+    return { error: parsed.error.issues[0]?.message ?? (await actionError("invalidData")) };
   }
 
   const access = await assertCanEditMatterPlan(user.id, user.role, parsed.data.matterId);
-  if (access.error || !access.matter) return { error: access.error ?? "Không có quyền" };
+  if (access.error || !access.matter) return { error: access.error ?? (await actionError("noPermission")) };
 
   const last = await prisma.matterPlanStep.findFirst({
     where: { matterId: parsed.data.matterId },
     orderBy: { sortOrder: "desc" },
     select: { sortOrder: true },
   });
+
+  const location = parseLocationFromFormData(formData);
 
   try {
     const step = await prisma.matterPlanStep.create({
@@ -677,12 +951,24 @@ export async function createMatterPlanStepAction(formData: FormData) {
         startedAt: parsed.data.startedAt ? new Date(parsed.data.startedAt) : null,
         dueAt: parsed.data.dueAt ? new Date(parsed.data.dueAt) : null,
         status: parsed.data.status as MatterPlanStepStatus,
+        priority: parsed.data.priority,
         sortOrder: (last?.sortOrder ?? 0) + 1,
+        ...locationToPrismaFields(location),
       },
+    });
+
+    await createAuditLog({
+      userId: user.id,
+      action: "CREATE",
+      entityType: "MatterPlanStep",
+      entityId: step.id,
+      details: `${access.matter.code}: ${step.title}`,
     });
 
     revalidatePath(`/matters/${parsed.data.matterId}`);
     revalidatePath(`/matters/${parsed.data.matterId}/plan`);
+    revalidatePath("/calendar");
+    revalidatePath("/", "layout");
     return { success: true, stepId: step.id };
   } catch (error) {
     console.error("createMatterPlanStepAction failed:", error);
@@ -702,14 +988,33 @@ export async function updateMatterPlanStepAction(formData: FormData) {
     startedAt: formData.has("startedAt") ? formData.get("startedAt") || null : undefined,
     dueAt: formData.has("dueAt") ? formData.get("dueAt") || null : undefined,
     status: formData.get("status") || undefined,
+    priority: formData.get("priority") || undefined,
+    locationName: formData.has("locationName")
+      ? formData.get("locationName") || null
+      : undefined,
+    locationAddress: formData.has("locationAddress")
+      ? formData.get("locationAddress") || null
+      : undefined,
+    locationPlaceId: formData.has("locationPlaceId")
+      ? formData.get("locationPlaceId") || null
+      : undefined,
+    locationLat: formData.has("locationLat")
+      ? formData.get("locationLat") || null
+      : undefined,
+    locationLng: formData.has("locationLng")
+      ? formData.get("locationLng") || null
+      : undefined,
+    locationCleared: formData.has("locationCleared")
+      ? formData.get("locationCleared") || null
+      : undefined,
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Dữ liệu không hợp lệ" };
+    return { error: parsed.error.issues[0]?.message ?? (await actionError("invalidData")) };
   }
 
   const step = await prisma.matterPlanStep.findUnique({
     where: { id: parsed.data.id },
-    select: { id: true, matterId: true, status: true },
+    select: { id: true, matterId: true, status: true, title: true },
   });
   if (!step) return { error: "Không tìm thấy bước kế hoạch" };
 
@@ -719,6 +1024,15 @@ export async function updateMatterPlanStepAction(formData: FormData) {
   const nextStatus = parsed.data.status as MatterPlanStepStatus | undefined;
   const statusChanged =
     nextStatus !== undefined && nextStatus !== step.status;
+
+  const locationTouched =
+    formData.has("locationCleared") ||
+    formData.has("locationLat") ||
+    formData.has("locationLng") ||
+    formData.has("locationName");
+  const locationFields = locationTouched
+    ? locationToPrismaFields(parseLocationFromFormData(formData))
+    : null;
 
   await prisma.matterPlanStep.update({
     where: { id: step.id },
@@ -739,11 +1053,28 @@ export async function updateMatterPlanStepAction(formData: FormData) {
             ...(statusChanged ? { statusChangedAt: new Date() } : {}),
           }
         : {}),
+      ...(parsed.data.priority !== undefined ? { priority: parsed.data.priority } : {}),
+      ...(locationFields ?? {}),
     },
   });
 
+  const title = parsed.data.title?.trim() || step.title;
+  await createAuditLog({
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "MatterPlanStep",
+    entityId: step.id,
+    details: statusChanged
+      ? `${access.matter?.code ?? step.matterId}: ${title} → ${nextStatus}`
+      : `${access.matter?.code ?? step.matterId}: ${title}`,
+  });
+
+  revalidatePath("/dashboard");
+  revalidatePath("/calendar");
   revalidatePath(`/matters/${step.matterId}`);
   revalidatePath(`/matters/${step.matterId}/plan`);
+  // Layout (urgent reminders in header) refreshes via path revalidation
+  revalidatePath("/", "layout");
   return { success: true };
 }
 
@@ -751,7 +1082,7 @@ export async function deleteMatterPlanStepAction(stepId: string) {
   const user = await requireAuth();
   const step = await prisma.matterPlanStep.findUnique({
     where: { id: stepId },
-    select: { id: true, matterId: true },
+    select: { id: true, matterId: true, title: true, matter: { select: { code: true } } },
   });
   if (!step) return { error: "Không tìm thấy bước kế hoạch" };
 
@@ -759,6 +1090,15 @@ export async function deleteMatterPlanStepAction(stepId: string) {
   if (access.error) return { error: access.error };
 
   await prisma.matterPlanStep.delete({ where: { id: stepId } });
+
+  await createAuditLog({
+    userId: user.id,
+    action: "DELETE",
+    entityType: "MatterPlanStep",
+    entityId: stepId,
+    details: `${step.matter.code}: ${step.title}`,
+  });
+
   revalidatePath(`/matters/${step.matterId}`);
   revalidatePath(`/matters/${step.matterId}/plan`);
   return { success: true };
@@ -768,7 +1108,7 @@ export async function reorderMatterPlanStepsAction(matterId: string, orderedIds:
   const user = await requireAuth();
   const parsed = reorderMatterPlanStepsSchema.safeParse({ matterId, orderedIds });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Dữ liệu không hợp lệ" };
+    return { error: parsed.error.issues[0]?.message ?? (await actionError("invalidData")) };
   }
 
   const access = await assertCanEditMatterPlan(user.id, user.role, parsed.data.matterId);
@@ -803,7 +1143,7 @@ export async function reorderMatterPlanStepsAction(matterId: string, orderedIds:
 
 export async function updateMatterStatusAction(matterId: string, status: string) {
   const user = await requireAuth();
-  const allowed = ["NEW", "IN_PROGRESS", "ON_HOLD", "CLOSED"] as const;
+  const allowed = ["NEW", "IN_PROGRESS", "ON_HOLD", "CLOSED", "ARCHIVED"] as const;
   if (!allowed.includes(status as (typeof allowed)[number])) {
     return { error: "Trạng thái không hợp lệ" };
   }
@@ -812,7 +1152,7 @@ export async function updateMatterStatusAction(matterId: string, status: string)
     where: { id: matterId },
     include: { leadLawyer: true },
   });
-  if (!matter) return { error: "Không tìm thấy vụ việc" };
+  if (!matter) return { error: await actionError("matterNotFound") };
 
   const matterIds = await import("@/lib/access").then((m) =>
     m.getAccessibleMatterIds(user.id, user.role),
@@ -821,10 +1161,22 @@ export async function updateMatterStatusAction(matterId: string, status: string)
     return { error: "Không có quyền cập nhật vụ việc này" };
   }
 
+  const nextStatus = status as (typeof allowed)[number];
+  const leavingArchive = matter.status === "ARCHIVED" && nextStatus !== "ARCHIVED";
+  const enteringArchive = nextStatus === "ARCHIVED" && matter.status !== "ARCHIVED";
+
+  if ((enteringArchive || leavingArchive) && !isAdmin(user.role)) {
+    return { error: "Chỉ quản trị viên mới được lưu trữ hoặc tái kích hoạt vụ việc" };
+  }
+
+  if (matter.status === "ARCHIVED" && !isAdmin(user.role)) {
+    return { error: "Vụ việc đã lưu trữ — không thể đổi trạng thái" };
+  }
+
   const previousStatus = matter.status;
   const updated = await prisma.matter.update({
     where: { id: matterId },
-    data: { status: status as (typeof allowed)[number] },
+    data: { status: nextStatus },
   });
 
   if (previousStatus === "NEW" && updated.status === "IN_PROGRESS") {
@@ -850,6 +1202,15 @@ export async function updateMatterStatusAction(matterId: string, status: string)
   revalidatePath(`/matters/${matterId}`);
   revalidatePath(`/matters/${matterId}/plan`);
   revalidatePath(`/matters/${matterId}/report`);
+
+  await createAuditLog({
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "Matter",
+    entityId: matterId,
+    details: `${matter.code}: ${previousStatus} → ${nextStatus}`,
+  });
+
   return { success: true };
 }
 
@@ -866,7 +1227,7 @@ export async function createTaskAction(formData: FormData) {
   });
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Dữ liệu không hợp lệ" };
+    return { error: parsed.error.issues[0]?.message ?? (await actionError("invalidData")) };
   }
 
   const task = await prisma.task.create({
@@ -923,6 +1284,14 @@ export async function updateTaskStatusAction(id: string, status: string) {
     data: { status: status as "TODO" | "IN_PROGRESS" | "DONE" | "CANCELLED" },
   });
 
+  await createAuditLog({
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "Task",
+    entityId: id,
+    details: `${task.title}: ${task.status} → ${status}`,
+  });
+
   revalidateTasks();
   return { success: true };
 }
@@ -947,7 +1316,7 @@ export async function markAllNotificationsReadAction() {
 
 export async function createUserAction(formData: FormData) {
   const user = await requireRole(["ADMIN"]);
-  if (!canManageUsers(user.role)) return { error: "Không có quyền" };
+  if (!canManageUsers(user.role)) return { error: await actionError("noPermission") };
 
   const parsed = userSchema.safeParse({
     email: formData.get("email"),
@@ -959,7 +1328,7 @@ export async function createUserAction(formData: FormData) {
   });
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Dữ liệu không hợp lệ" };
+    return { error: parsed.error.issues[0]?.message ?? (await actionError("invalidData")) };
   }
 
   if (!parsed.data.password) return { error: "Vui lòng nhập mật khẩu" };
@@ -993,6 +1362,124 @@ export async function createUserAction(formData: FormData) {
   return { success: true };
 }
 
+export async function updateUserAction(userId: string, formData: FormData) {
+  const admin = await requireRole(["ADMIN"]);
+  if (!canManageUsers(admin.role)) return { error: await actionError("noPermission") };
+
+  const parsed = userSchema.safeParse({
+    email: formData.get("email"),
+    name: formData.get("name"),
+    role: formData.get("role"),
+    departmentId: formData.get("departmentId") || null,
+    isActive: formData.get("isActive") === "on",
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? (await actionError("invalidData")) };
+  }
+
+  const target = await prisma.user.findUnique({ where: { id: userId } });
+  if (!target) return { error: await actionError("userNotFoundStaff") };
+
+  if (parsed.data.email !== target.email) {
+    const existing = await prisma.user.findUnique({
+      where: { email: parsed.data.email },
+    });
+    if (existing) return { error: await actionError("emailInUse") };
+  }
+
+  if (userId === admin.id && !parsed.data.isActive) {
+    return { error: await actionError("cannotDeactivateSelf") };
+  }
+
+  if (
+    target.role === "ADMIN" &&
+    (parsed.data.role !== "ADMIN" || !parsed.data.isActive)
+  ) {
+    const adminCount = await prisma.user.count({
+      where: { role: "ADMIN", isActive: true },
+    });
+    if (adminCount <= 1) {
+      return { error: await actionError("cannotDemoteLastAdmin") };
+    }
+  }
+
+  try {
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        email: parsed.data.email,
+        name: parsed.data.name,
+        role: parsed.data.role,
+        departmentId: parsed.data.departmentId || null,
+        isActive: parsed.data.isActive,
+      },
+    });
+
+    await createAuditLog({
+      userId: admin.id,
+      action: "UPDATE",
+      entityType: "User",
+      entityId: updated.id,
+      details: updated.email,
+    });
+
+    revalidatePath("/admin/users");
+    return { success: true };
+  } catch (error) {
+    console.error("updateUserAction failed:", error);
+    return { error: await actionError("cannotUpdateUser") };
+  }
+}
+
+export async function setUserActiveAction(userId: string, isActive: boolean) {
+  const admin = await requireRole(["ADMIN"]);
+  if (!canManageUsers(admin.role)) return { error: await actionError("noPermission") };
+
+  if (userId === admin.id && !isActive) {
+    return { error: await actionError("cannotDeactivateSelf") };
+  }
+
+  const target = await prisma.user.findUnique({ where: { id: userId } });
+  if (!target) return { error: await actionError("userNotFoundStaff") };
+
+  if (target.isActive === isActive) {
+    return { success: true };
+  }
+
+  if (target.role === "ADMIN" && !isActive) {
+    const adminCount = await prisma.user.count({
+      where: { role: "ADMIN", isActive: true },
+    });
+    if (adminCount <= 1) {
+      return { error: await actionError("cannotDeactivateLastAdmin") };
+    }
+  }
+
+  try {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { isActive },
+    });
+
+    await createAuditLog({
+      userId: admin.id,
+      action: "UPDATE",
+      entityType: "User",
+      entityId: userId,
+      details: isActive
+        ? `Kích hoạt tài khoản ${target.email}`
+        : `Khóa tài khoản ${target.email}`,
+    });
+
+    revalidatePath("/admin/users");
+    return { success: true };
+  } catch (error) {
+    console.error("setUserActiveAction failed:", error);
+    return { error: await actionError("cannotUpdateUser") };
+  }
+}
+
 export async function resetUserPasswordAction(userId: string, formData: FormData) {
   const admin = await requireRole(["ADMIN"]);
   const newPassword = String(formData.get("newPassword") ?? "");
@@ -1023,7 +1510,7 @@ export async function resetUserPasswordAction(userId: string, formData: FormData
 
 export async function deleteUserAction(userId: string) {
   const admin = await requireRole(["ADMIN"]);
-  if (!canManageUsers(admin.role)) return { error: "Không có quyền" };
+  if (!canManageUsers(admin.role)) return { error: await actionError("noPermission") };
 
   if (userId === admin.id) {
     return { error: "Không thể xóa tài khoản của chính bạn" };
@@ -1090,7 +1577,7 @@ export async function createWorkTypeAction(formData: FormData) {
   });
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Dữ liệu không hợp lệ" };
+    return { error: parsed.error.issues[0]?.message ?? (await actionError("invalidData")) };
   }
 
   const workType = await prisma.workType.create({ data: parsed.data });
@@ -1106,6 +1593,142 @@ export async function createWorkTypeAction(formData: FormData) {
   return { success: true };
 }
 
+export async function updateWorkTypeAction(workTypeId: string, formData: FormData) {
+  const user = await requireRole(["ADMIN"]);
+  const parsed = workTypeSchema.safeParse({
+    name: formData.get("name"),
+    isActive: formData.get("isActive") === "on",
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? (await actionError("invalidData")) };
+  }
+
+  const existing = await prisma.workType.findUnique({ where: { id: workTypeId } });
+  if (!existing) return { error: await actionError("workTypeNotFound") };
+
+  if (parsed.data.name !== existing.name) {
+    const duplicate = await prisma.workType.findUnique({
+      where: { name: parsed.data.name },
+    });
+    if (duplicate) return { error: await actionError("workTypeNameInUse") };
+  }
+
+  try {
+    const workType = await prisma.workType.update({
+      where: { id: workTypeId },
+      data: {
+        name: parsed.data.name,
+        isActive: parsed.data.isActive,
+      },
+    });
+
+    await createAuditLog({
+      userId: user.id,
+      action: "UPDATE",
+      entityType: "WorkType",
+      entityId: workType.id,
+      details: workType.name,
+    });
+
+    revalidatePath("/admin/work-types");
+    return { success: true };
+  } catch (error) {
+    console.error("updateWorkTypeAction failed:", error);
+    return { error: await actionError("cannotUpdateWorkType") };
+  }
+}
+
+export async function setWorkTypeActiveAction(workTypeId: string, isActive: boolean) {
+  const user = await requireRole(["ADMIN"]);
+
+  const existing = await prisma.workType.findUnique({ where: { id: workTypeId } });
+  if (!existing) return { error: await actionError("workTypeNotFound") };
+
+  if (existing.isActive === isActive) {
+    return { success: true };
+  }
+
+  try {
+    await prisma.workType.update({
+      where: { id: workTypeId },
+      data: { isActive },
+    });
+
+    await createAuditLog({
+      userId: user.id,
+      action: "UPDATE",
+      entityType: "WorkType",
+      entityId: workTypeId,
+      details: isActive
+        ? `Kích hoạt loại công việc ${existing.name}`
+        : `Ngưng loại công việc ${existing.name}`,
+    });
+
+    revalidatePath("/admin/work-types");
+    return { success: true };
+  } catch (error) {
+    console.error("setWorkTypeActiveAction failed:", error);
+    return { error: await actionError("cannotUpdateWorkType") };
+  }
+}
+
+export async function deleteWorkTypeAction(workTypeId: string) {
+  const user = await requireRole(["ADMIN"]);
+
+  const existing = await prisma.workType.findUnique({
+    where: { id: workTypeId },
+    include: { _count: { select: { planSteps: true } } },
+  });
+  if (!existing) return { error: await actionError("workTypeNotFound") };
+
+  if (existing._count.planSteps > 0) {
+    return { error: await actionError("cannotDeleteWorkTypeInUse") };
+  }
+
+  try {
+    await prisma.workType.delete({ where: { id: workTypeId } });
+
+    await createAuditLog({
+      userId: user.id,
+      action: "DELETE",
+      entityType: "WorkType",
+      entityId: workTypeId,
+      details: existing.name,
+    });
+
+    revalidatePath("/admin/work-types");
+    return { success: true };
+  } catch (error) {
+    console.error("deleteWorkTypeAction failed:", error);
+    return { error: await actionError("cannotDeleteWorkType") };
+  }
+}
+
+export async function createAttachmentLabelAction(formData: FormData) {
+  const user = await requireRole(["ADMIN"]);
+  const parsed = attachmentLabelSchema.safeParse({
+    name: formData.get("name"),
+    isActive: formData.get("isActive") === "on",
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? (await actionError("invalidData")) };
+  }
+
+  const label = await prisma.attachmentLabel.create({ data: parsed.data });
+  await createAuditLog({
+    userId: user.id,
+    action: "CREATE",
+    entityType: "AttachmentLabel",
+    entityId: label.id,
+    details: label.name,
+  });
+
+  revalidatePath("/admin/attachment-labels");
+  return { success: true };
+}
+
 export async function createDepartmentAction(formData: FormData) {
   const user = await requireRole(["ADMIN"]);
   const parsed = departmentSchema.safeParse({
@@ -1113,7 +1736,7 @@ export async function createDepartmentAction(formData: FormData) {
   });
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Dữ liệu không hợp lệ" };
+    return { error: parsed.error.issues[0]?.message ?? (await actionError("invalidData")) };
   }
 
   const department = await prisma.department.create({ data: parsed.data });
@@ -1128,3 +1751,80 @@ export async function createDepartmentAction(formData: FormData) {
   revalidatePath("/admin/departments");
   return { success: true };
 }
+
+export async function updateDepartmentAction(departmentId: string, formData: FormData) {
+  const user = await requireRole(["ADMIN"]);
+  const parsed = departmentSchema.safeParse({
+    name: formData.get("name"),
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? (await actionError("invalidData")) };
+  }
+
+  const existing = await prisma.department.findUnique({ where: { id: departmentId } });
+  if (!existing) return { error: await actionError("departmentNotFound") };
+
+  if (parsed.data.name !== existing.name) {
+    const duplicate = await prisma.department.findUnique({
+      where: { name: parsed.data.name },
+    });
+    if (duplicate) return { error: await actionError("departmentNameInUse") };
+  }
+
+  try {
+    const department = await prisma.department.update({
+      where: { id: departmentId },
+      data: { name: parsed.data.name },
+    });
+
+    await createAuditLog({
+      userId: user.id,
+      action: "UPDATE",
+      entityType: "Department",
+      entityId: department.id,
+      details: department.name,
+    });
+
+    revalidatePath("/admin/departments");
+    revalidatePath("/admin/users");
+    return { success: true };
+  } catch (error) {
+    console.error("updateDepartmentAction failed:", error);
+    return { error: await actionError("cannotUpdateDepartment") };
+  }
+}
+
+export async function deleteDepartmentAction(departmentId: string) {
+  const user = await requireRole(["ADMIN"]);
+
+  const existing = await prisma.department.findUnique({
+    where: { id: departmentId },
+    include: { _count: { select: { users: true } } },
+  });
+  if (!existing) return { error: await actionError("departmentNotFound") };
+
+  if (existing._count.users > 0) {
+    return { error: await actionError("cannotDeleteDepartmentInUse") };
+  }
+
+  try {
+    await prisma.department.delete({ where: { id: departmentId } });
+
+    await createAuditLog({
+      userId: user.id,
+      action: "DELETE",
+      entityType: "Department",
+      entityId: departmentId,
+      details: existing.name,
+    });
+
+    revalidatePath("/admin/departments");
+    revalidatePath("/admin/users");
+    return { success: true };
+  } catch (error) {
+    console.error("deleteDepartmentAction failed:", error);
+    return { error: await actionError("cannotDeleteDepartment") };
+  }
+}
+

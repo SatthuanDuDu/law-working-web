@@ -2,28 +2,25 @@
 
 import { useEffect, useState } from "react";
 
+/**
+ * Enter: mount immediately (active=false one frame), then activate for CSS fade.
+ * Exit: deactivate first, unmount after durationMs.
+ */
 export function useOverlayAnimation(open: boolean, durationMs = 220) {
-  const [mounted, setMounted] = useState(open);
-  const [active, setActive] = useState(open);
+  const [rendered, setRendered] = useState(open);
 
   useEffect(() => {
     if (open) {
-      const mountTimer = window.setTimeout(() => {
-        setMounted(true);
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => setActive(true));
-        });
-      }, 0);
-      return () => window.clearTimeout(mountTimer);
+      const raf = window.requestAnimationFrame(() => setRendered(true));
+      return () => window.cancelAnimationFrame(raf);
     }
 
-    const deactivateTimer = window.setTimeout(() => setActive(false), 0);
-    const unmountTimer = window.setTimeout(() => setMounted(false), durationMs);
-    return () => {
-      window.clearTimeout(deactivateTimer);
-      window.clearTimeout(unmountTimer);
-    };
+    const unmountTimer = window.setTimeout(() => setRendered(false), durationMs);
+    return () => window.clearTimeout(unmountTimer);
   }, [open, durationMs]);
 
-  return { mounted, active };
+  return {
+    mounted: open || rendered,
+    active: open && rendered,
+  };
 }

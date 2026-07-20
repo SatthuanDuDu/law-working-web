@@ -4,6 +4,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -11,7 +12,7 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-type WorkloadRow = {
+export type WorkloadRow = {
   userId: string;
   name: string;
   department: string;
@@ -20,39 +21,60 @@ type WorkloadRow = {
 };
 
 export function WorkloadCharts({ rows }: { rows: WorkloadRow[] }) {
-  const taskData = rows.map((row) => ({
+  const sorted = [...rows]
+    .filter((r) => r.openTasks > 0 || r.overdueTasks > 0)
+    .sort(
+      (a, b) =>
+        b.openTasks + b.overdueTasks - (a.openTasks + a.overdueTasks),
+    );
+
+  const taskData = sorted.map((row) => ({
     name: row.name.split(" ").slice(-2).join(" ") || row.name,
     open: row.openTasks,
     overdue: row.overdueTasks,
   }));
-  const chartMinWidth = Math.max(320, taskData.length * 56);
+
+  const chartHeight = Math.max(220, taskData.length * 36);
+
+  if (taskData.length === 0) {
+    return (
+      <Card className="rounded-[5px]">
+        <CardHeader>
+          <CardTitle>Biểu đồ tải việc</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">Chưa có việc đang mở hoặc quá hạn.</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <Card>
+    <Card className="rounded-[5px]">
       <CardHeader>
-        <CardTitle>Số việc đang mở / quá hạn</CardTitle>
+        <CardTitle>Biểu đồ tải việc</CardTitle>
       </CardHeader>
-      <CardContent className="min-h-80 h-[22rem] sm:h-80">
-        <div className="-mx-2 overflow-x-auto px-2">
-          <div style={{ minWidth: chartMinWidth, height: "100%" }} className="h-72 sm:h-64">
+      <CardContent>
+        <div className="-mx-1 overflow-x-auto px-1">
+          <div style={{ minWidth: 280, height: chartHeight }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={taskData}
-                margin={{ top: 8, right: 8, left: 0, bottom: 48 }}
+                layout="vertical"
+                margin={{ top: 4, right: 12, left: 4, bottom: 4 }}
               >
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} />
+                <YAxis
+                  type="category"
                   dataKey="name"
-                  interval={0}
-                  angle={-35}
-                  textAnchor="end"
-                  height={60}
-                  tick={{ fontSize: 10 }}
+                  width={88}
+                  tick={{ fontSize: 11 }}
                 />
-                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} width={28} />
                 <Tooltip />
-                <Bar dataKey="open" fill="#14532d" name="Đang mở" radius={4} />
-                <Bar dataKey="overdue" fill="#ef4444" name="Quá hạn" radius={4} />
+                <Legend />
+                <Bar dataKey="open" fill="#14532d" name="Đang mở" radius={[0, 4, 4, 0]} stackId="a" />
+                <Bar dataKey="overdue" fill="#e11d48" name="Quá hạn" radius={[0, 4, 4, 0]} stackId="a" />
               </BarChart>
             </ResponsiveContainer>
           </div>

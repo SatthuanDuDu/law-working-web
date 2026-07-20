@@ -3,9 +3,10 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ArrowDown, ArrowUp, Check, ChevronDown, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MATTER_TYPE_LABELS } from "@/lib/constants";
+import { useLabelMaps } from "@/i18n/use-label-maps";
 import { cn } from "@/lib/utils";
 import type { MatterType } from "@prisma/client";
 
@@ -48,6 +49,9 @@ function SortToggle({
   label: string;
   className?: string;
 }) {
+  const t = useTranslations("filters");
+  const direction = sortDir === "asc" ? t("sortAsc") : t("sortDesc");
+
   return (
     <button
       type="button"
@@ -57,18 +61,18 @@ function SortToggle({
         onToggle();
       }}
       className={cn(
-        "interactive-press inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors",
-        "hover:bg-slate-100 hover:text-slate-700",
+        "interactive-press inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors",
+        "hover:bg-muted hover:text-foreground",
         active &&
           "bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary",
         className,
       )}
       aria-label={
         active
-          ? `${label}: đang ${sortDir === "asc" ? "tăng dần" : "giảm dần"} — nhấn để đổi`
-          : `${label}: sắp xếp`
+          ? t("sortActive", { label, direction })
+          : `${label}: ${t("sort")}`
       }
-      title={active ? (sortDir === "asc" ? "Tăng dần" : "Giảm dần") : "Sắp xếp"}
+      title={active ? direction : t("sort")}
     >
       {active && sortDir === "asc" ? (
         <ArrowUp className="h-3.5 w-3.5" strokeWidth={2.25} />
@@ -87,7 +91,7 @@ function MultiSelectFilter({
   sortActive,
   sortDir,
   onToggleSort,
-  emptyLabel = "Tất cả",
+  emptyLabel,
 }: {
   label: string;
   options: Option[];
@@ -96,8 +100,9 @@ function MultiSelectFilter({
   sortActive: boolean;
   sortDir: "asc" | "desc";
   onToggleSort: () => void;
-  emptyLabel?: string;
+  emptyLabel: string;
 }) {
+  const t = useTranslations("filters");
   const [open, setOpen] = useState(false);
   const [menuBox, setMenuBox] = useState<{
     top: number;
@@ -184,18 +189,18 @@ function MultiSelectFilter({
     values.length === 0
       ? emptyLabel
       : values.length === 1
-        ? (options.find((option) => option.value === values[0])?.label ?? "1 đã chọn")
-        : `${values.length} đã chọn`;
+        ? (options.find((option) => option.value === values[0])?.label ?? t("selectedOne"))
+        : t("selectedCount", { count: values.length });
 
   return (
     <div className="relative min-w-0 w-full" ref={rootRef}>
-      <p className="mb-1 truncate text-xs text-slate-500">{label}</p>
+      <p className="mb-1 truncate text-xs text-muted-foreground">{label}</p>
       <div
         ref={fieldRef}
         className={cn(
-          "interactive-field flex h-10 w-full cursor-pointer items-center rounded-lg border border-slate-300 bg-white pl-3 pr-1 text-sm",
-          "hover:border-primary/35 hover:bg-slate-50/90",
-          open && "border-primary/40 bg-slate-50/90",
+          "interactive-field flex h-10 w-full cursor-pointer items-center rounded-lg border border-border bg-surface pl-3 pr-1 text-sm",
+          "hover:border-primary/35 hover:bg-muted/90",
+          open && "border-primary/40 bg-muted/90",
           values.length > 0 && "border-primary/40 bg-primary-muted/40 hover:bg-primary-muted/55",
         )}
       >
@@ -220,7 +225,7 @@ function MultiSelectFilter({
           tabIndex={-1}
           aria-hidden
           onClick={toggleMenu}
-          className="interactive-press inline-flex h-7 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+          className="interactive-press inline-flex h-7 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <ChevronDown
             className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")}
@@ -239,10 +244,10 @@ function MultiSelectFilter({
                 left: menuBox.left,
                 width: menuBox.width,
               }}
-              className="fixed z-[60] max-h-56 overflow-y-auto rounded-[5px] border border-slate-200/80 bg-white py-1"
+              className="fixed z-[60] max-h-56 overflow-y-auto rounded-[5px] border border-border bg-surface py-1"
             >
               {options.length === 0 ? (
-                <li className="px-3 py-2 text-sm text-slate-500">Không có lựa chọn</li>
+                <li className="px-3 py-2 text-sm text-muted-foreground">{t("noOptions")}</li>
               ) : (
                 options.map((option) => {
                   const selected = values.includes(option.value);
@@ -251,8 +256,8 @@ function MultiSelectFilter({
                       <button
                         type="button"
                         className={cn(
-                          "interactive-press flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50",
-                          selected && "bg-slate-50 font-medium text-slate-900 hover:bg-slate-100",
+                          "interactive-press flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-muted",
+                          selected && "bg-muted font-medium text-foreground hover:bg-muted",
                         )}
                         onClick={() => toggle(option.value)}
                       >
@@ -261,7 +266,7 @@ function MultiSelectFilter({
                             "flex h-4 w-4 items-center justify-center rounded border transition-colors",
                             selected
                               ? "border-primary bg-primary text-white"
-                              : "border-slate-300 bg-white",
+                              : "border-border bg-surface",
                           )}
                           aria-hidden
                         >
@@ -309,6 +314,11 @@ export function MattersFiltersBar({
   members: { id: string; name: string }[];
   clients: { id: string; name: string }[];
 }) {
+  const t = useTranslations("matters");
+  const tFilters = useTranslations("filters");
+  const tCommon = useTranslations("common");
+  const labels = useLabelMaps();
+
   const hasActiveFilters =
     filters.types.length > 0 ||
     filters.lawyerIds.length > 0 ||
@@ -318,16 +328,17 @@ export function MattersFiltersBar({
     Boolean(filters.dateTo);
 
   return (
-    <div className="rounded-md border border-slate-200/80 bg-white px-3 py-3">
+    <div className="rounded-md border border-border bg-surface px-3 py-3">
       <div className="flex items-end gap-2 overflow-x-auto pb-0.5">
         <div className="min-w-[8.5rem] flex-1">
           <MultiSelectFilter
-            label="Loại hình"
+            label={t("filterType")}
+            emptyLabel={tCommon("all")}
             values={filters.types}
             onChange={(types) => onChange({ ...filters, types: types as MatterType[] })}
             options={typeOptions.map((type) => ({
               value: type,
-              label: MATTER_TYPE_LABELS[type],
+              label: labels.matterType[type],
             }))}
             sortActive={filters.sortBy === "type"}
             sortDir={filters.sortDir}
@@ -336,7 +347,8 @@ export function MattersFiltersBar({
         </div>
         <div className="min-w-[9rem] flex-1">
           <MultiSelectFilter
-            label="Luật sư phụ trách"
+            label={t("filterLeadLawyer")}
+            emptyLabel={tCommon("all")}
             values={filters.lawyerIds}
             onChange={(lawyerIds) => onChange({ ...filters, lawyerIds })}
             options={lawyers.map((lawyer) => ({
@@ -350,7 +362,8 @@ export function MattersFiltersBar({
         </div>
         <div className="min-w-[9rem] flex-1">
           <MultiSelectFilter
-            label="Thành viên cộng tác"
+            label={t("filterMembers")}
+            emptyLabel={tCommon("all")}
             values={filters.memberIds}
             onChange={(memberIds) => onChange({ ...filters, memberIds })}
             options={members.map((member) => ({
@@ -364,7 +377,8 @@ export function MattersFiltersBar({
         </div>
         <div className="min-w-[9rem] flex-1">
           <MultiSelectFilter
-            label="Khách hàng (công ty)"
+            label={t("filterClient")}
+            emptyLabel={tCommon("all")}
             values={filters.clientIds}
             onChange={(clientIds) => onChange({ ...filters, clientIds })}
             options={clients.map((client) => ({
@@ -379,24 +393,24 @@ export function MattersFiltersBar({
         <div className="min-w-[9rem] flex-1 sm:max-w-[11rem]">
           <label
             htmlFor="matter-filter-from"
-            className="mb-1 block truncate text-xs text-slate-500"
+            className="mb-1 block truncate text-xs text-muted-foreground"
           >
-            Từ ngày
+            {tFilters("dateFrom")}
           </label>
           <Input
             id="matter-filter-from"
             type="date"
             value={filters.dateFrom}
             onChange={(event) => onChange({ ...filters, dateFrom: event.target.value })}
-            className="cursor-pointer hover:border-primary/35 hover:bg-slate-50/90"
+            className="cursor-pointer hover:border-primary/35 hover:bg-muted/90"
           />
         </div>
         <div className="min-w-[10rem] flex-1 sm:max-w-[12rem]">
           <label
             htmlFor="matter-filter-to"
-            className="mb-1 block truncate text-xs text-slate-500"
+            className="mb-1 block truncate text-xs text-muted-foreground"
           >
-            Đến ngày
+            {tFilters("dateTo")}
           </label>
           <div className="relative">
             <Input
@@ -404,13 +418,13 @@ export function MattersFiltersBar({
               type="date"
               value={filters.dateTo}
               onChange={(event) => onChange({ ...filters, dateTo: event.target.value })}
-              className="cursor-pointer pr-9 hover:border-primary/35 hover:bg-slate-50/90"
+              className="cursor-pointer pr-9 hover:border-primary/35 hover:bg-muted/90"
             />
             <SortToggle
               active={filters.sortBy === "createdAt"}
               sortDir={filters.sortDir}
               onToggle={() => onChange(toggleSort(filters, "createdAt"))}
-              label="Ngày tạo"
+              label={t("filterCreatedAt")}
               className="absolute top-1/2 right-1.5 -translate-y-1/2"
             />
           </div>
@@ -422,7 +436,7 @@ export function MattersFiltersBar({
           tabIndex={hasActiveFilters ? 0 : -1}
           aria-hidden={!hasActiveFilters}
           aria-disabled={!hasActiveFilters}
-          aria-label="Xóa lọc"
+          aria-label={tFilters("clearFilters")}
           className={cn(
             "h-10 shrink-0 text-red-600 transition-[opacity,background-color,color] duration-500 ease-out hover:bg-red-50 hover:text-red-700",
             hasActiveFilters ? "opacity-100" : "pointer-events-none opacity-0",
@@ -437,7 +451,7 @@ export function MattersFiltersBar({
           }}
         >
           <X className="h-3.5 w-3.5" />
-          Xóa lọc
+          {tFilters("clearFilters")}
         </Button>
       </div>
     </div>

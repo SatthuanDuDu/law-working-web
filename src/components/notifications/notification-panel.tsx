@@ -3,13 +3,14 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { Bell, X } from "lucide-react";
+import { Bell, Clock, X } from "lucide-react";
 import type { Notification, NotificationType } from "@prisma/client";
 import {
   markAllNotificationsReadAction,
   markNotificationReadAction,
 } from "@/lib/actions";
-import { NOTIFICATION_TYPE_LABELS } from "@/lib/constants";
+import { useLabelMaps } from "@/i18n/use-label-maps";
+import { useLocale, useTranslations } from "next-intl";
 import { useOverlayAnimation } from "@/hooks/use-overlay-animation";
 import { Button } from "@/components/ui/button";
 import { Label, Select } from "@/components/ui/card";
@@ -17,18 +18,72 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/card";
 import { formatDateTime } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import type { UrgentReminderItem } from "@/components/layout/urgent-reminder-stack";
+import { isUrgentReminderActive } from "@/lib/urgent-reminder-window";
 
 type TabKey = "unread" | "read";
+type FilterType = NotificationType | "URGENT_DUE" | "";
 
-export function NotificationPanel({ unreadCount }: { unreadCount: number }) {
+function formatCountdown(
+  msRemaining: number,
+  t: ReturnType<typeof useTranslations>,
+  tCommon: ReturnType<typeof useTranslations>,
+): string {
+  if (msRemaining <= 0) return t("overdue");
+  const totalMinutes = Math.ceil(msRemaining / 60_000);
+  if (totalMinutes < 60) {
+    return t("remaining", { value: tCommon("minutes", { count: totalMinutes }) });
+  }
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (minutes === 0) {
+    return t("remaining", { value: tCommon("hours", { count: hours }) });
+  }
+  return t("remaining", {
+    value: tCommon("hoursMinutes", { hours, mins: minutes }),
+  });
+}
+
+function reminderCountdown(
+  item: UrgentReminderItem,
+  now: number,
+  t: ReturnType<typeof useTranslations>,
+  tCommon: ReturnType<typeof useTranslations>,
+): string {
+  const startsAt = new Date(item.startsAt).getTime();
+  if (now < startsAt) {
+    return formatCountdown(startsAt - now, t, tCommon);
+  }
+  if (item.endsAt) {
+    const endsAt = new Date(item.endsAt).getTime();
+    if (!Number.isNaN(endsAt)) {
+      return formatCountdown(endsAt - now, t, tCommon);
+    }
+  }
+  return t("overdue");
+}
+
+export function NotificationPanel({
+  unreadCount,
+  urgentReminders = [],
+}: {
+  unreadCount: number;
+  urgentReminders?: UrgentReminderItem[];
+}) {
+  const t = useTranslations("notifications");
+  const tReminder = useTranslations("reminder");
+  const tCommon = useTranslations("common");
+  const locale = useLocale();
+  const { notificationType } = useLabelMaps();
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<TabKey>("unread");
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
   const [filterDate, setFilterDate] = useState("");
-  const [filterType, setFilterType] = useState<NotificationType | "">("");
+  const [filterType, setFilterType] = useState<FilterType>("");
   const [readLocally, setReadLocally] = useState(0);
   const [isPending, startTransition] = useTransition();
+  const [now, setNow] = useState(() => Date.now());
   const rootRef = useRef<HTMLDivElement>(null);
   const [panelAnchor, setPanelAnchor] = useState<{
     top: number;
@@ -38,7 +93,21 @@ export function NotificationPanel({ unreadCount }: { unreadCount: number }) {
   const [isDesktopPanel, setIsDesktopPanel] = useState(false);
   const { mounted: panelMounted, active: panelActive } = useOverlayAnimation(open);
 
-  const displayedUnread = Math.max(0, unreadCount - readLocally);
+  const activeUrgent = useMemo(
+    () =>
+      urgentReminders.filter((item) =>
+        isUrgentReminderActive(now, item.startsAt, item.endsAt),
+      ),
+    [urgentReminders, now],
+  );
+
+  const displayedUnread = Math.max(0, unreadCount - readLocally) + activeUrgent.length;
+
+  useEffect(() => {
+    if (!open) return;
+    const id = window.setInterval(() => setNow(Date.now()), 10_000);
+    return () => window.clearInterval(id);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -74,10 +143,7 @@ export function NotificationPanel({ unreadCount }: { unreadCount: number }) {
   }, []);
 
   useEffect(() => {
-    if (!open || !isDesktopPanel) {
-      setPanelAnchor(null);
-      return;
-    }
+    if (!open || !isDesktopPanel) return;
 
     function measurePanel() {
       const rect = rootRef.current?.getBoundingClientRect();
@@ -98,6 +164,15 @@ export function NotificationPanel({ unreadCount }: { unreadCount: number }) {
     };
   }, [open, isDesktopPanel]);
 
+  const desktopPanelStyle =
+    open && isDesktopPanel && panelAnchor
+      ? {
+          top: panelAnchor.top,
+          right: panelAnchor.right,
+          width: panelAnchor.width,
+        }
+      : undefined;
+
   function loadNotifications() {
     setLoading(true);
     fetch("/api/notifications")
@@ -108,10 +183,21 @@ export function NotificationPanel({ unreadCount }: { unreadCount: number }) {
 
   function openPanel() {
     setOpen(true);
+    setNow(Date.now());
     loadNotifications();
   }
 
+  const filteredUrgent = useMemo(() => {
+    if (filterType && filterType !== "URGENT_DUE") return [];
+    return activeUrgent.filter((item) => {
+      if (!filterDate) return true;
+      const itemDate = new Date(item.startsAt).toISOString().split("T")[0];
+      return itemDate === filterDate;
+    });
+  }, [activeUrgent, filterType, filterDate]);
+
   const filtered = useMemo(() => {
+    if (filterType === "URGENT_DUE") return [];
     return notifications.filter((item) => {
       if (tab === "unread" && item.isRead) return false;
       if (tab === "read" && !item.isRead) return false;
@@ -123,6 +209,9 @@ export function NotificationPanel({ unreadCount }: { unreadCount: number }) {
       return true;
     });
   }, [notifications, tab, filterType, filterDate]);
+
+  const showUrgent = filteredUrgent.length > 0 && (tab === "unread" || tab === "read");
+  const listEmpty = !loading && filtered.length === 0 && !showUrgent;
 
   function markRead(id: string) {
     startTransition(async () => {
@@ -146,9 +235,9 @@ export function NotificationPanel({ unreadCount }: { unreadCount: number }) {
     <div ref={rootRef} className="relative">
       <button
         type="button"
-        aria-label="Thông báo"
+        aria-label={t("title")}
         aria-expanded={open}
-        className="interactive-press relative rounded-md p-2 text-slate-600 hover:bg-slate-100 hover:text-primary"
+        className="interactive-press relative rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-primary"
         onClick={() => (open ? setOpen(false) : openPanel())}
       >
         <Bell className="h-5 w-5" />
@@ -165,7 +254,7 @@ export function NotificationPanel({ unreadCount }: { unreadCount: number }) {
           <>
             <button
               type="button"
-              aria-label="Đóng thông báo"
+              aria-label={tCommon("close")}
               data-notification-panel
               className={cn(
                 "overlay-backdrop fixed inset-0 z-40 bg-slate-900/25 sm:hidden",
@@ -175,62 +264,56 @@ export function NotificationPanel({ unreadCount }: { unreadCount: number }) {
             />
             <aside
               data-notification-panel
-              style={
-                isDesktopPanel && panelAnchor
-                  ? {
-                      top: panelAnchor.top,
-                      right: panelAnchor.right,
-                      width: panelAnchor.width,
-                    }
-                  : undefined
-              }
+              style={desktopPanelStyle}
               className={cn(
-                "floating-panel fixed z-50 flex min-w-0 flex-col overflow-hidden border border-slate-200 bg-white shadow-[var(--shadow-overlay)]",
+                "floating-panel fixed z-50 flex min-w-0 flex-col overflow-hidden border border-border bg-surface shadow-[var(--shadow-overlay)]",
                 "inset-x-0 bottom-0 max-h-[min(88dvh,100%)] w-full rounded-t-lg sm:inset-auto sm:bottom-auto sm:max-h-[min(66vh,32rem)] sm:rounded-lg",
                 panelActive && "is-active",
               )}
             >
-            <div className="flex items-start justify-between gap-2 border-b border-slate-200 bg-white px-4 py-3">
+            <div className="flex items-start justify-between gap-2 border-b border-border bg-surface px-4 py-3">
               <div className="min-w-0 flex-1">
-                <h2 className="font-semibold text-slate-900">Thông báo</h2>
+                <h2 className="font-semibold text-foreground">{t("title")}</h2>
                 {displayedUnread > 0 && (
-                  <p className="text-xs text-slate-500">{displayedUnread} chưa đọc</p>
+                  <p className="text-xs text-muted-foreground">
+                    {displayedUnread} {t("unread").toLowerCase()}
+                  </p>
                 )}
               </div>
               <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={isPending || displayedUnread === 0}
+                  disabled={isPending || Math.max(0, unreadCount - readLocally) === 0}
                   onClick={markAllRead}
-                  aria-label="Đánh dấu đã đọc"
+                  aria-label={t("markAllRead")}
                 >
-                  <span className="sm:hidden">Đã đọc</span>
-                  <span className="hidden sm:inline">Đánh dấu đã đọc</span>
+                  <span className="sm:hidden">{t("markAllRead")}</span>
+                  <span className="hidden sm:inline">{t("markAllRead")}</span>
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setOpen(false)}
-                  aria-label="Đóng"
+                  aria-label={tCommon("close")}
                 >
                   <X className="h-4 w-4" />
                 </Button>
               </div>
             </div>
 
-            <div className="flex gap-1 overflow-x-auto border-b border-slate-200 bg-white px-4 py-2">
+            <div className="flex gap-1 overflow-x-auto border-b border-border bg-surface px-4 py-2">
               <button
                 type="button"
                 className={cn(
                   "interactive-press shrink-0 rounded-md px-3 py-1.5 text-sm",
                   tab === "unread"
                     ? "bg-primary text-white hover:bg-primary-hover"
-                    : "text-slate-600 hover:bg-slate-100",
+                    : "text-muted-foreground hover:bg-muted",
                 )}
                 onClick={() => setTab("unread")}
               >
-                Thông báo mới
+                {t("unread")}
               </button>
               <button
                 type="button"
@@ -238,15 +321,15 @@ export function NotificationPanel({ unreadCount }: { unreadCount: number }) {
                   "interactive-press shrink-0 rounded-md px-3 py-1.5 text-sm",
                   tab === "read"
                     ? "bg-primary text-white hover:bg-primary-hover"
-                    : "text-slate-600 hover:bg-slate-100",
+                    : "text-muted-foreground hover:bg-muted",
                 )}
                 onClick={() => setTab("read")}
               >
-                Đã đọc
+                {tCommon("all")}
               </button>
             </div>
 
-            <div className="grid min-w-0 grid-cols-1 gap-2 border-b border-slate-200 bg-white px-4 py-3 sm:grid-cols-2">
+            <div className="grid min-w-0 grid-cols-1 gap-2 border-b border-border bg-surface px-4 py-3 sm:grid-cols-2">
               <div className="space-y-1">
                 <Label htmlFor="filter-date" className="text-xs">
                   Lọc theo ngày
@@ -266,11 +349,12 @@ export function NotificationPanel({ unreadCount }: { unreadCount: number }) {
                   id="filter-type"
                   value={filterType}
                   onChange={(e) =>
-                    setFilterType(e.target.value as NotificationType | "")
+                    setFilterType(e.target.value as FilterType)
                   }
                 >
-                  <option value="">Tất cả</option>
-                  {Object.entries(NOTIFICATION_TYPE_LABELS).map(([value, label]) => (
+                  <option value="">{tCommon("all")}</option>
+                  <option value="URGENT_DUE">{t("urgentType")}</option>
+                  {Object.entries(notificationType).map(([value, label]) => (
                     <option key={value} value={value}>
                       {label}
                     </option>
@@ -279,34 +363,90 @@ export function NotificationPanel({ unreadCount }: { unreadCount: number }) {
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-white px-4 py-3">
+            <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-surface px-4 py-3">
               {loading ? (
-                <p className="text-sm text-slate-500">Đang tải...</p>
-              ) : filtered.length === 0 ? (
-                <p className="text-sm text-slate-500">Không có thông báo nào.</p>
+                <p className="text-sm text-muted-foreground">{tCommon("loading")}</p>
+              ) : listEmpty ? (
+                <p className="text-sm text-muted-foreground">{t("empty")}</p>
               ) : (
                 <div className="space-y-3">
+                  {showUrgent ? (
+                    <div className="space-y-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-rose-700 dark:text-rose-300">
+                        {t("urgentSection")}
+                      </p>
+                      {filteredUrgent.map((item) => {
+                        const countdown = reminderCountdown(
+                          item,
+                          now,
+                          tReminder,
+                          tCommon,
+                        );
+                        return (
+                          <div
+                            key={`urgent:${item.id}:${item.startsAt}`}
+                            className="rounded-md border border-rose-200 bg-rose-50 p-3 dark:border-rose-900/50 dark:bg-rose-950/30"
+                          >
+                            <div className="flex min-w-0 items-start justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <Link
+                                  href={item.href}
+                                  className="interactive-link break-words font-medium text-foreground"
+                                  onClick={() => setOpen(false)}
+                                >
+                                  {item.title}
+                                </Link>
+                                <p className="mt-1 flex min-w-0 items-center gap-1 break-words text-sm text-rose-800 dark:text-rose-200">
+                                  <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                                  <span>
+                                    {t("urgentMessage", {
+                                      time: item.timeLabel,
+                                      countdown,
+                                    })}
+                                  </span>
+                                </p>
+                                <p className="mt-2 break-words text-xs text-muted-foreground">
+                                  {t("urgentType")}
+                                </p>
+                                <Link
+                                  href={item.href}
+                                  className="interactive-link mt-2 inline-block text-sm text-primary"
+                                  onClick={() => setOpen(false)}
+                                >
+                                  {tCommon("details")}
+                                </Link>
+                              </div>
+                              <Badge variant="warning" className="shrink-0">
+                                {t("urgentSection")}
+                              </Badge>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+
                   {filtered.map((notification) => (
                     <div
                       key={notification.id}
                       className={cn(
                         "rounded-md border p-3",
                         notification.isRead
-                          ? "border-slate-200 bg-slate-50"
+                          ? "border-border bg-muted"
                           : "border-primary/20 bg-primary-muted",
                       )}
                     >
                       <div className="flex min-w-0 items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <p className="break-words font-medium text-slate-900">
+                          <p className="break-words font-medium text-foreground">
                             {notification.title}
                           </p>
-                          <p className="mt-1 break-words text-sm text-slate-600">
+                          <p className="mt-1 break-words text-sm text-muted-foreground">
                             {notification.message}
                           </p>
-                          <p className="mt-2 break-words text-xs text-slate-400">
-                            {formatDateTime(notification.createdAt)} •{" "}
-                            {NOTIFICATION_TYPE_LABELS[notification.type]}
+                          <p className="mt-2 break-words text-xs text-muted-foreground">
+                            {formatDateTime(notification.createdAt, locale)} •{" "}
+                            {notificationType[notification.type]}
                           </p>
                           {notification.link && (
                             <Link
@@ -317,13 +457,13 @@ export function NotificationPanel({ unreadCount }: { unreadCount: number }) {
                                 setOpen(false);
                               }}
                             >
-                              Xem chi tiết
+                              {tCommon("details")}
                             </Link>
                           )}
                         </div>
                         {!notification.isRead && (
                           <Badge variant="warning" className="shrink-0">
-                            Mới
+                            {t("unread")}
                           </Badge>
                         )}
                       </div>
@@ -335,7 +475,7 @@ export function NotificationPanel({ unreadCount }: { unreadCount: number }) {
                           disabled={isPending}
                           onClick={() => markRead(notification.id)}
                         >
-                          Đánh dấu đã đọc
+                          {t("markAllRead")}
                         </Button>
                       )}
                     </div>

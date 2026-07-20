@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Open_Sans } from "next/font/google";
+import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { Providers } from "@/components/providers";
 import "./globals.css";
 
@@ -9,10 +10,13 @@ const openSans = Open_Sans({
   weight: ["400", "500", "600", "700"],
 });
 
-export const metadata: Metadata = {
-  title: "NSLAW Work Manager",
-  description: "Hệ thống quản lý công việc nội bộ cho công ty luật",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("auth");
+  return {
+    title: "NSLAW Work Manager",
+    description: t("siteDescription"),
+  };
+}
 
 // Keep zoom enabled and layout stable; prevents iOS auto-zoom side effects.
 export const viewport: Viewport = {
@@ -21,15 +25,24 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="vi" className={`${openSans.variable} h-full antialiased`}>
+    <html
+      lang={locale}
+      className={`${openSans.variable} h-full antialiased`}
+      suppressHydrationWarning
+    >
       <body className="min-h-full font-sans">
-        <Providers>{children}</Providers>
+        <Providers locale={locale} messages={messages}>
+          {children}
+        </Providers>
       </body>
     </html>
   );

@@ -6,9 +6,11 @@ import { getAccessibleMatterIds } from "@/lib/access";
 import { getMatterFilterOptions } from "@/lib/matter-form-data";
 import { isManagerOrAbove } from "@/lib/permissions";
 import { MATTERS_LIST_LIMIT } from "@/lib/list-limits";
+import { getTranslations } from "next-intl/server";
 
 export default async function MattersPage() {
   const user = await requireAuth();
+  const tPages = await getTranslations("pages.matters");
   const matterIds = await getAccessibleMatterIds(user.id, user.role);
 
   const [filterOptions, matters] = await Promise.all([
@@ -67,8 +69,8 @@ export default async function MattersPage() {
   return (
     <>
       <PageHeaderSlot
-        title="Vụ việc"
-        description="Quản lý vụ việc và thành viên tham gia"
+        title={tPages("title")}
+        description={tPages("description")}
       />
       <MattersList
         matters={listItems}

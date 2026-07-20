@@ -4,9 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
 import { getAccessibleClientIds } from "@/lib/access";
 import { isManagerOrAbove } from "@/lib/permissions";
+import { getTranslations } from "next-intl/server";
 
 export default async function ClientsPage() {
   const user = await requireAuth();
+  const tPages = await getTranslations("pages.clients");
   const clientIds = await getAccessibleClientIds(user.id, user.role);
 
   const clients = await prisma.client.findMany({
@@ -32,12 +34,12 @@ export default async function ClientsPage() {
   return (
     <>
       <PageHeaderSlot
-        title="Khách hàng"
-        description="Quản lý thông tin khách hàng"
+        title={tPages("title")}
+        description={tPages("description")}
       />
       <ClientsList
         clients={listItems}
-        canDelete={isManagerOrAbove(user.role)}
+        canManage={isManagerOrAbove(user.role)}
       />
     </>
   );

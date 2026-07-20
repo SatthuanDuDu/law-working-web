@@ -3,7 +3,9 @@ import { PageHeaderSlot } from "@/components/layout/page-header-slot";
 import { CalendarMonth } from "@/components/calendar/calendar-month";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
+import { getAccessibleMatterIds } from "@/lib/access";
 import { isManagerOrAbove } from "@/lib/permissions";
+import { getTranslations } from "next-intl/server";
 
 export default async function CalendarPage({
   searchParams,
@@ -11,6 +13,7 @@ export default async function CalendarPage({
   searchParams: Promise<{ scope?: string }>;
 }) {
   const user = await requireAuth();
+  const tPages = await getTranslations("pages.calendar");
   const params = await searchParams;
   const canViewAll = isManagerOrAbove(user.role);
   const scope = canViewAll && params.scope === "all" ? "all" : "mine";
@@ -18,38 +21,71 @@ export default async function CalendarPage({
   const now = new Date();
   const rangeStart = startOfMonth(subMonths(now, 3));
   const rangeEnd = endOfMonth(addMonths(now, 12));
+  const accessibleMatterIds = await getAccessibleMatterIds(user.id, user.role);
 
-  const tasks = await prisma.task.findMany({
-    where: {
-      dueDate: { gte: rangeStart, lte: rangeEnd },
-      status: { in: ["TODO", "IN_PROGRESS"] },
-      ...(scope === "mine" ? { assigneeId: user.id } : {}),
-    },
-    select: {
-      id: true,
-      title: true,
-      description: true,
-      dueDate: true,
-      status: true,
-      priority: true,
-      assignee: { select: { name: true } },
-      matter: {
-        select: {
-          id: true,
-          code: true,
-          title: true,
-          client: { select: { name: true } },
-          leadLawyer: { select: { id: true, name: true } },
-          members: {
-            select: {
-              user: { select: { id: true, name: true } },
+  const [tasks, planSteps, matters, workTypes] = await Promise.all([
+    prisma.task.findMany({
+      where: {
+        dueDate: { gte: rangeStart, lte: rangeEnd },
+        status: { in: ["TODO", "IN_PROGRESS"] },
+        ...(scope === "mine" ? { assigneeId: user.id } : {}),
+      },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        dueDate: true,
+        status: true,
+        priority: true,
+        assignee: { select: { name: true } },
+        matter: {
+          select: {
+            id: true,
+            code: true,
+            title: true,
+            client: { select: { name: true } },
+            leadLawyer: { select: { id: true, name: true } },
+            members: {
+              select: {
+                user: { select: { id: true, name: true } },
+              },
             },
           },
         },
       },
-    },
-    orderBy: { dueDate: "asc" },
-  });
+      orderBy: { dueDate: "asc" },
+    }),
+    prisma.matterPlanStep.findMany({
+      where: {
+        dueAt: { gte: rangeStart, lte: rangeEnd },
+        ...(accessibleMatterIds
+          ? { matterId: { in: accessibleMatterIds } }
+          : {}),
+      },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        priority: true,
+        dueAt: true,
+        matter: { select: { id: true, code: true, title: true } },
+      },
+      orderBy: { dueAt: "asc" },
+    }),
+    prisma.matter.findMany({
+      where: {
+        status: { in: ["NEW", "IN_PROGRESS", "ON_HOLD"] },
+        ...(accessibleMatterIds ? { id: { in: accessibleMatterIds } } : {}),
+      },
+      select: { id: true, code: true, title: true },
+      orderBy: { updatedAt: "desc" },
+    }),
+    prisma.workType.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
 
   const serialized = tasks.map((task) => {
     const leadLawyerId = task.matter?.leadLawyer.id ?? null;
@@ -76,14 +112,30 @@ export default async function CalendarPage({
     };
   });
 
+  const serializedPlans = planSteps
+    .filter((step) => step.dueAt)
+    .map((step) => ({
+      id: step.id,
+      title: step.title,
+      status: step.status,
+      priority: step.priority,
+      dueAt: step.dueAt!.toISOString(),
+      matterId: step.matter.id,
+      matterCode: step.matter.code,
+      matterTitle: step.matter.title,
+    }));
+
   return (
     <>
       <PageHeaderSlot
-        title="Lịch & hạn"
-        description="Theo dõi deadline task và hạn công việc"
+        title={tPages("title")}
+        description={tPages("description")}
       />
       <CalendarMonth
         tasks={serialized}
+        planSteps={serializedPlans}
+        matters={matters}
+        workTypes={workTypes}
         showAllFilter={canViewAll}
         scope={scope}
       />

@@ -60,6 +60,13 @@ export const matterPlanStepSchema = z.object({
   status: z
     .enum(["NOT_STARTED", "IN_PROGRESS", "DONE", "BLOCKED"])
     .default("NOT_STARTED"),
+  priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).default("MEDIUM"),
+  locationName: z.string().optional().nullable(),
+  locationAddress: z.string().optional().nullable(),
+  locationPlaceId: z.string().optional().nullable(),
+  locationLat: z.string().optional().nullable(),
+  locationLng: z.string().optional().nullable(),
+  locationCleared: z.string().optional().nullable(),
 });
 
 export const matterPlanStepUpdateSchema = z.object({
@@ -69,6 +76,13 @@ export const matterPlanStepUpdateSchema = z.object({
   startedAt: z.string().optional().nullable(),
   dueAt: z.string().optional().nullable(),
   status: z.enum(["NOT_STARTED", "IN_PROGRESS", "DONE", "BLOCKED"]).optional(),
+  priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).optional(),
+  locationName: z.string().optional().nullable(),
+  locationAddress: z.string().optional().nullable(),
+  locationPlaceId: z.string().optional().nullable(),
+  locationLat: z.string().optional().nullable(),
+  locationLng: z.string().optional().nullable(),
+  locationCleared: z.string().optional().nullable(),
 });
 
 export const reorderMatterPlanStepsSchema = z.object({
@@ -112,6 +126,11 @@ export const userSchema = z.object({
 });
 
 export const workTypeSchema = z.object({
+  name: z.string().min(1),
+  isActive: z.boolean().default(true),
+});
+
+export const attachmentLabelSchema = z.object({
   name: z.string().min(1),
   isActive: z.boolean().default(true),
 });

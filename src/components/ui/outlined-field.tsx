@@ -4,10 +4,10 @@ import { Label, Select } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 export const outlinedFieldLabelClass =
-  "pointer-events-none absolute left-3 top-0 z-[1] -translate-y-1/2 bg-white px-1.5 text-sm font-medium text-slate-700";
+  "pointer-events-none absolute left-3 top-0 z-[1] -translate-y-1/2 bg-surface px-1.5 text-sm font-medium text-foreground";
 
 export const outlinedFieldControlClass =
-  "interactive-field w-full rounded-[5px] border border-slate-300 bg-white px-3 pb-2.5 pt-3 text-sm";
+  "interactive-field w-full rounded-[5px] border border-border bg-surface px-3 pb-2.5 pt-3 text-sm text-foreground";
 
 export function OutlinedField({
   label,
@@ -56,7 +56,7 @@ export function OutlinedSelect({
           {children}
         </Select>
         <ChevronDown
-          className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
+          className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
           aria-hidden
         />
       </div>

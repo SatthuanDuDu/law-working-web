@@ -5,9 +5,11 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
 import { getAccessibleMatterIds } from "@/lib/access";
 import { TASKS_LIST_LIMIT } from "@/lib/list-limits";
+import { getTranslations } from "next-intl/server";
 
 export default async function TasksPage() {
   const user = await requireAuth();
+  const tPages = await getTranslations("pages.tasks");
   const canViewAll = user.role === "ADMIN" || user.role === "MANAGER";
   const matterIds = await getAccessibleMatterIds(user.id, user.role);
 
@@ -48,8 +50,8 @@ export default async function TasksPage() {
   return (
     <>
       <PageHeaderSlot
-        title="Giao việc"
-        description="Tạo và theo dõi công việc nội bộ"
+        title={tPages("title")}
+        description={tPages("description")}
       />
       <div className="grid gap-8 xl:grid-cols-[380px_1fr]">
         <TaskForm users={users} matters={matters} />

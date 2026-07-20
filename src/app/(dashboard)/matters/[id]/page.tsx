@@ -2,12 +2,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ClipboardList, Route } from "lucide-react";
 import { PageHeaderSlot } from "@/components/layout/page-header-slot";
+import { AttachmentPanel } from "@/components/attachments/attachment-panel";
+import { MatterAiSummary } from "@/components/matters/matter-ai-summary";
 import { MatterInfoCard } from "@/components/matters/matter-info-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
 import { getAccessibleMatterIds } from "@/lib/access";
-import { isManagerOrAbove } from "@/lib/permissions";
+import { buildAttachmentOrigin } from "@/lib/attachment-origin";
+import { isAdmin, isManagerOrAbove } from "@/lib/permissions";
 
 export default async function MatterHubPage({
   params,
@@ -25,14 +28,47 @@ export default async function MatterHubPage({
       client: true,
       leadLawyer: true,
       members: { include: { user: true } },
+      attachments: {
+        include: {
+          uploadedBy: { select: { id: true, name: true } },
+          matterPlanStep: { select: { title: true } },
+          label: { select: { name: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      },
     },
   });
   if (!matter) notFound();
 
+  const isArchived = matter.status === "ARCHIVED";
+  const canEditContent =
+    !isArchived &&
+    (isManagerOrAbove(user.role) ||
+      matter.leadLawyerId === user.id ||
+      matter.members.some((member) => member.userId === user.id));
   const canEditStatus =
-    isManagerOrAbove(user.role) ||
-    matter.leadLawyerId === user.id ||
-    matter.members.some((member) => member.userId === user.id);
+    (!isArchived && canEditContent) || (isArchived && isAdmin(user.role));
+
+  const initialAttachments = matter.attachments.map((file) => ({
+    id: file.id,
+    fileName: file.fileName,
+    mimeType: file.mimeType,
+    sizeBytes: file.sizeBytes,
+    createdAt: file.createdAt.toISOString(),
+    uploadedBy: file.uploadedBy,
+    origin: buildAttachmentOrigin({
+      commentId: file.commentId,
+      matterPlanStepId: file.matterPlanStepId,
+      matterId: file.matterId,
+      taskId: file.taskId,
+      clientId: file.clientId,
+      matterCode: matter.code,
+      matterTitle: matter.title,
+      planStepTitle: file.matterPlanStep?.title,
+    }),
+    labelName: file.customLabel || file.label?.name || null,
+    isImportant: file.isImportant,
+  }));
 
   return (
     <>
@@ -43,7 +79,11 @@ export default async function MatterHubPage({
 
       <div className="grid gap-6 xl:grid-cols-3">
         <div className="xl:col-span-1">
-          <MatterInfoCard matter={matter} canEditStatus={canEditStatus} />
+          <MatterInfoCard
+            matter={matter}
+            canEditStatus={canEditStatus}
+            isAdmin={isAdmin(user.role)}
+          />
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 xl:col-span-2 xl:grid-cols-1 xl:content-start">
@@ -84,7 +124,20 @@ export default async function MatterHubPage({
               </CardContent>
             </Card>
           </Link>
+
+          <MatterAiSummary matterId={matter.id} className="sm:col-span-2 xl:col-span-1" />
         </div>
+      </div>
+
+      <div className="mt-8">
+        <AttachmentPanel
+          matterId={matter.id}
+          currentUserId={user.id}
+          canDeleteAll={isManagerOrAbove(user.role)}
+          canUpload={canEditContent}
+          canMarkImportant={isAdmin(user.role) && !isArchived}
+          initialAttachments={initialAttachments}
+        />
       </div>
     </>
   );

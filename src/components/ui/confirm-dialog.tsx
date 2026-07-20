@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { useOverlayAnimation } from "@/hooks/use-overlay-animation";
 import { cn } from "@/lib/utils";
@@ -10,8 +11,8 @@ export function ConfirmDialog({
   title,
   message,
   content,
-  confirmLabel = "Xác nhận",
-  cancelLabel = "Hủy",
+  confirmLabel,
+  cancelLabel,
   variant = "default",
   size = "default",
   onConfirm,
@@ -28,6 +29,9 @@ export function ConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const tCommon = useTranslations("common");
+  const resolvedConfirmLabel = confirmLabel ?? tCommon("confirm");
+  const resolvedCancelLabel = cancelLabel ?? tCommon("cancel");
   const { mounted, active } = useOverlayAnimation(open);
 
   useEffect(() => {
@@ -45,7 +49,7 @@ export function ConfirmDialog({
     <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
       <button
         type="button"
-        aria-label="Đóng"
+        aria-label={tCommon("close")}
         className={cn("overlay-backdrop absolute inset-0 bg-black/30", active && "is-active")}
         onClick={onCancel}
       />
@@ -54,26 +58,26 @@ export function ConfirmDialog({
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
         className={cn(
-          "overlay-panel relative z-10 w-full rounded-lg border border-slate-200 bg-white p-6 shadow-[var(--shadow-overlay)]",
+          "overlay-panel relative z-10 w-full rounded-lg border border-border bg-surface p-6 shadow-[var(--shadow-overlay)]",
           size === "large" ? "max-w-2xl" : "max-w-md",
           active && "is-active",
         )}
       >
-        <h2 id="confirm-dialog-title" className="text-lg font-semibold text-slate-900">
+        <h2 id="confirm-dialog-title" className="text-lg font-semibold text-foreground">
           {title}
         </h2>
-        {message ? <p className="mt-2 text-sm text-slate-600">{message}</p> : null}
+        {message ? <p className="mt-2 text-sm text-muted-foreground">{message}</p> : null}
         {content}
         <div className="mt-6 flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={onCancel}>
-            {cancelLabel}
+            {resolvedCancelLabel}
           </Button>
           <Button
             type="button"
             variant={variant === "destructive" ? "destructive" : "default"}
             onClick={onConfirm}
           >
-            {confirmLabel}
+            {resolvedConfirmLabel}
           </Button>
         </div>
       </div>

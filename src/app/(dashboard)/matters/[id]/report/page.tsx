@@ -7,9 +7,11 @@ import { Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
 import { getAccessibleMatterIds } from "@/lib/access";
-import { isManagerOrAbove } from "@/lib/permissions";
-import { TASK_STATUS_LABELS } from "@/lib/constants";
+import { isAdmin, isManagerOrAbove } from "@/lib/permissions";
 import { formatDate, formatDateTime } from "@/lib/utils";
+import { buildAttachmentOrigin } from "@/lib/attachment-origin";
+import { getLabelMaps } from "@/i18n/server-labels";
+import { getTranslations } from "next-intl/server";
 
 export default async function MatterReportPage({
   params,
@@ -21,38 +23,63 @@ export default async function MatterReportPage({
   const matterIds = await getAccessibleMatterIds(user.id, user.role);
   if (matterIds && !matterIds.includes(id)) notFound();
 
-  const matter = await prisma.matter.findUnique({
-    where: { id },
-    include: {
-      client: true,
-      leadLawyer: true,
-      members: { include: { user: true } },
-      planSteps: {
-        include: { workType: { select: { id: true, name: true } } },
-        orderBy: { sortOrder: "asc" },
+  const [matter, labels, tPages, tReport] = await Promise.all([
+    prisma.matter.findUnique({
+      where: { id },
+      include: {
+        client: true,
+        leadLawyer: true,
+        members: { include: { user: true } },
+        planSteps: {
+          include: { workType: { select: { id: true, name: true } } },
+          orderBy: { sortOrder: "asc" },
+        },
+        tasks: {
+          include: { assignee: true },
+          orderBy: { createdAt: "desc" },
+        },
+        attachments: {
+          include: {
+            uploadedBy: { select: { id: true, name: true } },
+            matterPlanStep: { select: { title: true } },
+            label: { select: { name: true } },
+          },
+          orderBy: { createdAt: "desc" },
+        },
+        comments: {
+          where: { matterPlanStepId: null },
+          include: {
+            author: { select: { id: true, name: true, avatarKey: true } },
+            attachments: {
+              select: {
+                id: true,
+                fileName: true,
+                mimeType: true,
+                sizeBytes: true,
+              },
+              orderBy: { createdAt: "asc" },
+            },
+          },
+          orderBy: { createdAt: "asc" },
+        },
       },
-      tasks: {
-        include: { assignee: true },
-        orderBy: { createdAt: "desc" },
-      },
-      attachments: {
-        include: { uploadedBy: { select: { id: true, name: true } } },
-        orderBy: { createdAt: "desc" },
-      },
-      comments: {
-        where: { matterPlanStepId: null },
-        include: { author: { select: { id: true, name: true } } },
-        orderBy: { createdAt: "asc" },
-      },
-    },
-  });
+    }),
+    getLabelMaps(),
+    getTranslations("pages.report"),
+    getTranslations("matters.report"),
+  ]);
 
   if (!matter) notFound();
 
+  const { taskStatus, planStepStatus } = labels;
+  const isArchived = matter.status === "ARCHIVED";
+  const canEditContent =
+    !isArchived &&
+    (isManagerOrAbove(user.role) ||
+      matter.leadLawyerId === user.id ||
+      matter.members.some((member) => member.userId === user.id));
   const canEditStatus =
-    isManagerOrAbove(user.role) ||
-    matter.leadLawyerId === user.id ||
-    matter.members.some((member) => member.userId === user.id);
+    (!isArchived && canEditContent) || (isArchived && isAdmin(user.role));
 
   const mentionUsers = Array.from(
     new Map(
@@ -70,7 +97,14 @@ export default async function MatterReportPage({
     id: comment.id,
     body: comment.body,
     createdAt: comment.createdAt.toISOString(),
+    updatedAt: comment.updatedAt.toISOString(),
     author: comment.author,
+    attachments: comment.attachments,
+    locationName: comment.locationName,
+    locationAddress: comment.locationAddress,
+    locationPlaceId: comment.locationPlaceId,
+    locationLat: comment.locationLat,
+    locationLng: comment.locationLng,
   }));
 
   const initialAttachments = matter.attachments.map((file) => ({
@@ -80,6 +114,17 @@ export default async function MatterReportPage({
     sizeBytes: file.sizeBytes,
     createdAt: file.createdAt.toISOString(),
     uploadedBy: file.uploadedBy,
+    origin: buildAttachmentOrigin({
+      commentId: file.commentId,
+      matterPlanStepId: file.matterPlanStepId,
+      matterId: file.matterId,
+      taskId: file.taskId,
+      clientId: file.clientId,
+      matterCode: matter.code,
+      matterTitle: matter.title,
+      planStepTitle: file.matterPlanStep?.title,
+    }),
+    labelName: file.customLabel || file.label?.name || null,
   }));
 
   const timeline = [
@@ -88,14 +133,14 @@ export default async function MatterReportPage({
       type: "task" as const,
       date: task.createdAt,
       title: task.title,
-      subtitle: `${task.assignee.name} • ${TASK_STATUS_LABELS[task.status]}`,
+      subtitle: `${task.assignee.name} • ${taskStatus[task.status]}`,
     })),
     ...matter.planSteps.map((step) => ({
       id: step.id,
       type: "plan" as const,
       date: step.updatedAt,
       title: step.title,
-      subtitle: `${step.workType?.name ?? "Kế hoạch"} • ${step.status}`,
+      subtitle: `${step.workType?.name ?? tReport("planFallback")} • ${planStepStatus[step.status]}`,
     })),
   ].sort((a, b) => b.date.getTime() - a.date.getTime());
 
@@ -108,36 +153,40 @@ export default async function MatterReportPage({
   return (
     <>
       <PageHeaderSlot
-        title="Báo cáo vụ việc"
+        title={tPages("title")}
         description={`${matter.code} • ${matter.title}`}
       />
 
       <div className="grid gap-6 xl:grid-cols-3">
         <div className="xl:col-span-1">
-          <MatterInfoCard matter={matter} canEditStatus={canEditStatus} />
+          <MatterInfoCard
+            matter={matter}
+            canEditStatus={canEditStatus}
+            isAdmin={isAdmin(user.role)}
+          />
         </div>
 
         <Card className="rounded-[5px] xl:col-span-2">
           <CardHeader>
-            <CardTitle>Tình hình hiện tại</CardTitle>
+            <CardTitle>{tReport("currentStatus")}</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-[5px] border border-slate-200 p-3">
-              <p className="text-xs text-slate-500">Bước kế hoạch</p>
-              <p className="mt-1 text-2xl font-semibold text-slate-900">
+            <div className="rounded-[5px] border border-border p-3">
+              <p className="text-xs text-muted-foreground">{tReport("planSteps")}</p>
+              <p className="mt-1 text-2xl font-semibold text-foreground">
                 {matter.planSteps.length}
               </p>
             </div>
-            <div className="rounded-[5px] border border-slate-200 p-3">
-              <p className="text-xs text-slate-500">Đang thực hiện</p>
+            <div className="rounded-[5px] border border-border p-3">
+              <p className="text-xs text-muted-foreground">{tReport("inProgress")}</p>
               <p className="mt-1 text-2xl font-semibold text-sky-600">{inProgressSteps}</p>
             </div>
-            <div className="rounded-[5px] border border-slate-200 p-3">
-              <p className="text-xs text-slate-500">Hoàn thành</p>
+            <div className="rounded-[5px] border border-border p-3">
+              <p className="text-xs text-muted-foreground">{tReport("done")}</p>
               <p className="mt-1 text-2xl font-semibold text-emerald-600">{doneSteps}</p>
             </div>
-            <div className="rounded-[5px] border border-slate-200 p-3">
-              <p className="text-xs text-slate-500">Bị chặn</p>
+            <div className="rounded-[5px] border border-border p-3">
+              <p className="text-xs text-muted-foreground">{tReport("blocked")}</p>
               <p className="mt-1 text-2xl font-semibold text-red-600">{blockedSteps}</p>
             </div>
           </CardContent>
@@ -149,6 +198,7 @@ export default async function MatterReportPage({
           matterId={matter.id}
           currentUserId={user.id}
           canDeleteAll={isManagerOrAbove(user.role)}
+          canUpload={canEditContent}
           initialAttachments={initialAttachments}
         />
       </div>
@@ -156,11 +206,11 @@ export default async function MatterReportPage({
       <div className="mt-8 grid gap-6 xl:grid-cols-2">
         <Card className="rounded-[5px]">
           <CardHeader>
-            <CardTitle>Hoạt động gần đây</CardTitle>
+            <CardTitle>{tReport("recentActivity")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {timeline.length === 0 ? (
-              <p className="text-sm text-slate-500">Chưa có hoạt động nào.</p>
+              <p className="text-sm text-muted-foreground">{tReport("noActivity")}</p>
             ) : (
               timeline.map((item) => (
                 <div
@@ -169,8 +219,8 @@ export default async function MatterReportPage({
                 >
                   <div>
                     <p className="font-medium">{item.title}</p>
-                    <p className="text-sm text-slate-500">{item.subtitle}</p>
-                    <p className="text-xs text-slate-400">{formatDateTime(item.date)}</p>
+                    <p className="text-sm text-muted-foreground">{item.subtitle}</p>
+                    <p className="text-xs text-muted-foreground/70">{formatDateTime(item.date)}</p>
                   </div>
                 </div>
               ))
@@ -180,20 +230,20 @@ export default async function MatterReportPage({
 
         <Card className="rounded-[5px]">
           <CardHeader>
-            <CardTitle>Task liên quan</CardTitle>
+            <CardTitle>{tReport("relatedTasks")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {matter.tasks.length === 0 ? (
-              <p className="text-sm text-slate-500">Chưa có task liên quan.</p>
+              <p className="text-sm text-muted-foreground">{tReport("noRelatedTasks")}</p>
             ) : (
               matter.tasks.map((task) => (
-                <div key={task.id} className="rounded-[5px] border p-3 text-sm">
+                <div key={task.id} className="rounded-[5px] border border-border p-3 text-sm">
                   <p className="font-medium">{task.title}</p>
-                  <p className="text-slate-500">
+                  <p className="text-muted-foreground">
                     {task.assignee.name}
-                    {task.dueDate ? ` • Hạn: ${formatDate(task.dueDate)}` : ""}
+                    {task.dueDate ? ` • ${tReport("dueLabel", { date: formatDate(task.dueDate) })}` : ""}
                   </p>
-                  <Badge variant="info">{TASK_STATUS_LABELS[task.status]}</Badge>
+                  <Badge variant="info">{taskStatus[task.status]}</Badge>
                 </div>
               ))
             )}
@@ -204,14 +254,14 @@ export default async function MatterReportPage({
       <div className="mt-8">
         <Card className="rounded-[5px]">
           <CardHeader>
-            <CardTitle>Trao đổi / Bình luận</CardTitle>
+            <CardTitle>{tReport("commentsTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
             <CommentThread
               matterId={matter.id}
               currentUserId={user.id}
-              canModerate={isManagerOrAbove(user.role)}
-              canPost={canEditStatus}
+              canDeleteAsAdmin={isAdmin(user.role)}
+              canPost={canEditContent}
               mentionUsers={mentionUsers}
               comments={matterComments}
             />

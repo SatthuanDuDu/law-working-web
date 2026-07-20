@@ -351,19 +351,70 @@ export function ChatWorkspace({
 
   useEffect(() => {
     if (!activeId) return;
-    const timer = window.setInterval(() => {
+
+    let timer: number | undefined;
+    const MESSAGE_POLL_MS = 8_000;
+
+    const tick = () => {
       if (document.visibilityState !== "visible") return;
       void loadMessages(activeId, { after: lastIdRef.current });
-    }, 4000);
-    return () => window.clearInterval(timer);
+    };
+
+    const arm = () => {
+      window.clearInterval(timer);
+      if (document.visibilityState === "visible") {
+        timer = window.setInterval(tick, MESSAGE_POLL_MS);
+      }
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        tick();
+        arm();
+      } else {
+        window.clearInterval(timer);
+      }
+    };
+
+    arm();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [activeId, loadMessages]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
+    let timer: number | undefined;
+    const CONVERSATION_POLL_MS = 30_000;
+
+    const tick = () => {
       if (document.visibilityState !== "visible") return;
       void refreshConversations();
-    }, 12000);
-    return () => window.clearInterval(timer);
+    };
+
+    const arm = () => {
+      window.clearInterval(timer);
+      if (document.visibilityState === "visible") {
+        timer = window.setInterval(tick, CONVERSATION_POLL_MS);
+      }
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        tick();
+        arm();
+      } else {
+        window.clearInterval(timer);
+      }
+    };
+
+    arm();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [refreshConversations]);
 
   useEffect(() => {

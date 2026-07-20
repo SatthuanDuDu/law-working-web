@@ -1,5 +1,5 @@
+import dynamic from "next/dynamic";
 import { PageHeaderSlot } from "@/components/layout/page-header-slot";
-import { WorkloadCharts } from "@/components/workload/workload-charts";
 import {
   WorkloadDepartmentCards,
   WorkloadKpiStrip,
@@ -9,6 +9,15 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { getTranslations } from "next-intl/server";
 
+const WorkloadCharts = dynamic(
+  () =>
+    import("@/components/workload/workload-charts").then((m) => m.WorkloadCharts),
+  {
+    loading: () => (
+      <div className="h-72 animate-pulse rounded-md bg-muted" />
+    ),
+  },
+);
 export default async function WorkloadPage() {
   await requireRole(["ADMIN", "MANAGER"]);
   const tPages = await getTranslations("pages.workload");

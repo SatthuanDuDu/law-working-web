@@ -106,6 +106,10 @@ ADMIN_EMAIL=... ADMIN_PASSWORD=... npm run db:admin
    `Authorization: Bearer <CRON_SECRET>`  
    (hoặc gọi thủ công: `curl -H "Authorization: Bearer $CRON_SECRET" https://YOUR-APP.vercel.app/api/cron/deadlines`).
 
+6. (Tuỳ chọn) Giữ Neon ấm: gọi định kỳ  
+   `GET /api/cron/ping` với cùng `Authorization: Bearer <CRON_SECRET>`  
+   (UptimeRobot / cron-job.org mỗi 5–10 phút). Hobby Vercel chỉ cho 1 cron/ngày nên không gắn sẵn trong `vercel.json`.
+
 ---
 
 ## 4. Kiểm tra sau publish

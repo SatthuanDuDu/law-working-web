@@ -1,8 +1,8 @@
+import dynamic from "next/dynamic";
 import { notFound } from "next/navigation";
 import { PageHeaderSlot } from "@/components/layout/page-header-slot";
 import { AttachmentPanel } from "@/components/attachments/attachment-panel";
 import { MatterInfoCard } from "@/components/matters/matter-info-card";
-import { CommentThread } from "@/components/comments/comment-thread";
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
@@ -13,6 +13,15 @@ import { buildAttachmentOrigin } from "@/lib/attachment-origin";
 import { getLabelMaps } from "@/i18n/server-labels";
 import { getTranslations } from "next-intl/server";
 
+const CommentThread = dynamic(
+  () =>
+    import("@/components/comments/comment-thread").then((m) => m.CommentThread),
+  {
+    loading: () => (
+      <div className="h-48 animate-pulse rounded-md bg-muted" />
+    ),
+  },
+);
 export default async function MatterReportPage({
   params,
 }: {

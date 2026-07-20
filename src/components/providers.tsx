@@ -15,7 +15,7 @@ export function Providers({
   messages: AbstractIntlMessages;
 }) {
   return (
-    <SessionProvider>
+    <SessionProvider refetchOnWindowFocus={false} refetchInterval={0}>
       <NextIntlClientProvider locale={locale} messages={messages} timeZone="Asia/Ho_Chi_Minh">
         <ThemeProvider
           attribute="class"

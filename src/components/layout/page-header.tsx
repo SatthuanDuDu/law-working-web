@@ -7,22 +7,14 @@ import { Button } from "@/components/ui/button";
 import { getBreadcrumbs } from "@/lib/navigation";
 import { NotificationPanel } from "@/components/notifications/notification-panel";
 import { CreateMatterButton } from "@/components/matters/create-matter-button";
-import {
-  UrgentReminderStack,
-  type UrgentReminderItem,
-} from "@/components/layout/urgent-reminder-stack";
+import { UrgentReminderStack } from "@/components/layout/urgent-reminder-stack";
 import { usePageMeta } from "@/contexts/page-meta-context";
 import { useSidebar } from "@/contexts/sidebar-context";
 import { useVisitHistoryNav } from "@/hooks/use-visit-history-nav";
+import { useShellAlerts } from "@/hooks/use-shell-alerts";
 import { useTranslations } from "next-intl";
 
-export function PageHeader({
-  unreadCount,
-  urgentReminders,
-}: {
-  unreadCount: number;
-  urgentReminders: UrgentReminderItem[];
-}) {
+export function PageHeader() {
   const pathname = usePathname();
   const { meta } = usePageMeta();
   const tNav = useTranslations("nav");
@@ -31,6 +23,7 @@ export function PageHeader({
   const breadcrumbs = getBreadcrumbs(pathname, tNav, tCommon);
   const { canGoBack, canGoForward, goBack, goForward } = useVisitHistoryNav();
   const { openMobile } = useSidebar();
+  const { unreadCount, urgentReminders } = useShellAlerts();
 
   return (
     <header className="page-header-shell sticky top-0 z-20">

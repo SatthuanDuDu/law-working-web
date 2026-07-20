@@ -2,7 +2,6 @@
 
 import { Sidebar } from "@/components/layout/sidebar";
 import { PageHeader } from "@/components/layout/page-header";
-import type { UrgentReminderItem } from "@/components/layout/urgent-reminder-stack";
 import { PageMetaProvider, usePageMeta } from "@/contexts/page-meta-context";
 import { SidebarProvider } from "@/contexts/sidebar-context";
 import { getPageMeta } from "@/lib/page-meta";
@@ -25,13 +24,9 @@ function PathnameMetaSync() {
 
 export function DashboardShell({
   user,
-  unreadCount,
-  urgentReminders,
   children,
 }: {
   user: SessionUser;
-  unreadCount: number;
-  urgentReminders: UrgentReminderItem[];
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -48,10 +43,7 @@ export function DashboardShell({
           </div>
           <Sidebar user={user} variant="mobile" />
           <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-            <PageHeader
-              unreadCount={unreadCount}
-              urgentReminders={urgentReminders}
-            />
+            <PageHeader />
             <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
           </div>
         </div>

@@ -22,7 +22,11 @@ export default async function AdminUsersPage() {
   const listItems = users.map((item) => ({
     id: item.id,
     name: item.name,
+    username: item.username,
     email: item.email,
+    phone: item.phone,
+    dateOfBirth: item.dateOfBirth?.toISOString() ?? null,
+    gender: item.gender,
     role: item.role,
     isActive: item.isActive,
     avatarKey: item.avatarKey,

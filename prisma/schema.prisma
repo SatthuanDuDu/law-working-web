@@ -14,6 +14,12 @@ enum Role {
   SUPPORT
 }
 
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
 enum MatterStatus {
   NEW
   IN_PROGRESS
@@ -76,6 +82,11 @@ enum AuditAction {
   LOGOUT
 }
 
+enum ConversationType {
+  DIRECT
+  GROUP
+}
+
 model Department {
   id        String   @id @default(cuid())
   name      String   @unique
@@ -85,30 +96,39 @@ model Department {
 }
 
 model User {
-  id               String         @id @default(cuid())
-  email            String         @unique
-  password         String
-  name             String
-  role             Role           @default(SUPPORT)
-  departmentId     String?
-  department       Department?    @relation(fields: [departmentId], references: [id])
-  avatarKey        String?
-  isActive         Boolean        @default(true)
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-  assignedTasks    Task[]         @relation("AssignedTasks")
-  createdTasks     Task[]         @relation("CreatedTasks")
-  ledMatters       Matter[]       @relation("LeadLawyer")
-  matterMembers    MatterMember[]
-  notifications    Notification[]
-  auditLogs        AuditLog[]
-  uploadedFiles    Attachment[]
-  comments         Comment[]
-  commentMentions  CommentMention[]
+  id                     String               @id @default(cuid())
+  username               String               @unique
+  email                  String               @unique
+  password               String
+  name                   String
+  phone                  String?
+  dateOfBirth            DateTime?
+  gender                 Gender?
+  role                   Role                 @default(SUPPORT)
+  departmentId           String?
+  department             Department?          @relation(fields: [departmentId], references: [id])
+  avatarKey              String?
+  isActive               Boolean              @default(true)
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+  assignedTasks          Task[]               @relation("AssignedTasks")
+  createdTasks           Task[]               @relation("CreatedTasks")
+  ledMatters             Matter[]             @relation("LeadLawyer")
+  matterMembers          MatterMember[]
+  notifications          Notification[]
+  auditLogs              AuditLog[]
+  uploadedFiles          Attachment[]
+  comments               Comment[]
+  commentMentions        CommentMention[]
+  conversationsCreated   Conversation[]       @relation("ConversationCreator")
+  conversationMembers    ConversationMember[]
+  chatMessages           ChatMessage[]
+  chatMessageMentions    ChatMessageMention[]
 }
 
 model Client {
   id           String              @id @default(cuid())
+  code         String              @unique
   name         String
   email        String?
   phone        String?
@@ -242,6 +262,10 @@ model Attachment {
   matterPlanStep   MatterPlanStep?  @relation(fields: [matterPlanStepId], references: [id], onDelete: Cascade)
   commentId        String?
   comment          Comment?         @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  conversationId   String?
+  conversation     Conversation?    @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  chatMessageId    String?
+  chatMessage      ChatMessage?     @relation(fields: [chatMessageId], references: [id], onDelete: Cascade)
   labelId          String?
   label            AttachmentLabel? @relation(fields: [labelId], references: [id], onDelete: SetNull)
   customLabel      String?
@@ -252,6 +276,8 @@ model Attachment {
 
   @@index([matterPlanStepId])
   @@index([commentId])
+  @@index([conversationId])
+  @@index([chatMessageId])
   @@index([labelId])
   @@index([isImportant])
 }
@@ -302,6 +328,66 @@ model CommentMention {
   createdAt DateTime @default(now())
 
   @@unique([commentId, userId])
+  @@index([userId])
+}
+
+model Conversation {
+  id          String               @id @default(cuid())
+  type        ConversationType
+  name        String?
+  createdById String
+  createdBy   User                 @relation("ConversationCreator", fields: [createdById], references: [id])
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  members     ConversationMember[]
+  messages    ChatMessage[]
+  attachments Attachment[]
+
+  @@index([updatedAt])
+}
+
+model ConversationMember {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt       DateTime     @default(now())
+  lastReadAt     DateTime?
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+}
+
+model ChatMessage {
+  id               String               @id @default(cuid())
+  conversationId   String
+  conversation     Conversation         @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId         String
+  sender           User                 @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  body             String               @default("")
+  locationName     String?
+  locationAddress  String?
+  locationPlaceId  String?
+  locationLat      Float?
+  locationLng      Float?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  mentions         ChatMessageMention[]
+  attachments      Attachment[]
+
+  @@index([conversationId, createdAt])
+}
+
+model ChatMessageMention {
+  id        String      @id @default(cuid())
+  messageId String
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now())
+
+  @@unique([messageId, userId])
   @@index([userId])
 }
 

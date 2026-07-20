@@ -19,6 +19,7 @@ import {
   LogOut,
   CalendarDays,
   Gauge,
+  MessageCircle,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
@@ -57,6 +58,7 @@ const iconMap = {
   ScrollText,
   CalendarDays,
   Gauge,
+  MessageCircle,
 };
 
 function SidebarTooltip({

@@ -1,9 +1,13 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
-
-const DEMO_ADMIN_EMAIL = "admin@admin.com";
-const DEMO_ADMIN_PASSWORD = "admin";
+import {
+  DEMO_ADMIN_EMAIL,
+  DEMO_ADMIN_PASSWORD,
+  DEMO_ADMIN_USERNAME,
+  deriveUsernameFromEmail,
+} from "../src/lib/username";
+import { buildClientCode } from "../src/lib/client-code";
 
 const prisma = new PrismaClient();
 
@@ -34,7 +38,7 @@ async function main() {
     }),
   ]);
 
-  const workTypes = await Promise.all(
+  await Promise.all(
     [
       "Soạn thảo",
       "Họp khách",
@@ -54,11 +58,13 @@ async function main() {
   const admin = await prisma.user.upsert({
     where: { email: DEMO_ADMIN_EMAIL },
     update: {
+      username: DEMO_ADMIN_USERNAME,
       password: demoPassword,
       role: "ADMIN",
       isActive: true,
     },
     create: {
+      username: DEMO_ADMIN_USERNAME,
       email: DEMO_ADMIN_EMAIL,
       password: demoPassword,
       name: "Quản trị viên",
@@ -69,8 +75,9 @@ async function main() {
 
   const manager = await prisma.user.upsert({
     where: { email: "quanly@luat.vn" },
-    update: {},
+    update: { username: "quanly" },
     create: {
+      username: "quanly",
       email: "quanly@luat.vn",
       password,
       name: "Trần Thị Quản Lý",
@@ -81,8 +88,9 @@ async function main() {
 
   const lawyer1 = await prisma.user.upsert({
     where: { email: "luatsu1@luat.vn" },
-    update: {},
+    update: { username: "luatsu1" },
     create: {
+      username: "luatsu1",
       email: "luatsu1@luat.vn",
       password,
       name: "Lê Văn Luật Sư",
@@ -93,8 +101,9 @@ async function main() {
 
   const lawyer2 = await prisma.user.upsert({
     where: { email: "luatsu2@luat.vn" },
-    update: {},
+    update: { username: "luatsu2" },
     create: {
+      username: "luatsu2",
       email: "luatsu2@luat.vn",
       password,
       name: "Phạm Thị Luật Sư",
@@ -105,8 +114,9 @@ async function main() {
 
   const support = await prisma.user.upsert({
     where: { email: "hotro@luat.vn" },
-    update: {},
+    update: { username: "hotro" },
     create: {
+      username: "hotro",
       email: "hotro@luat.vn",
       password,
       name: "Hoàng Văn Hỗ Trợ",
@@ -115,11 +125,32 @@ async function main() {
     },
   });
 
+  // Backfill usernames for any other users still on cuid defaults / missing nice names
+  const allUsers = await prisma.user.findMany({ select: { id: true, email: true, username: true } });
+  const used = new Set(allUsers.map((u) => u.username));
+  for (const u of allUsers) {
+    const looksGenerated = u.username.length >= 20 && !u.username.includes("_") && !/^[a-z]+\d*$/.test(u.username);
+    if (!looksGenerated && used.has(u.username)) continue;
+    let base = deriveUsernameFromEmail(u.email);
+    let candidate = base;
+    let n = 1;
+    while (used.has(candidate) && candidate !== u.username) {
+      candidate = `${base}${n}`.slice(0, 32);
+      n += 1;
+    }
+    if (candidate !== u.username) {
+      await prisma.user.update({ where: { id: u.id }, data: { username: candidate } });
+      used.delete(u.username);
+      used.add(candidate);
+    }
+  }
+
   const client1 = await prisma.client.upsert({
     where: { id: "seed-client-1" },
-    update: {},
+    update: { code: "KH-2026-0001" },
     create: {
       id: "seed-client-1",
+      code: "KH-2026-0001",
       name: "Công ty TNHH ABC",
       email: "contact@abc.vn",
       phone: "0901234567",
@@ -130,15 +161,30 @@ async function main() {
 
   const client2 = await prisma.client.upsert({
     where: { id: "seed-client-2" },
-    update: {},
+    update: { code: "KH-2026-0002" },
     create: {
       id: "seed-client-2",
+      code: "KH-2026-0002",
       name: "Nguyễn Văn B",
       email: "nguyenvanb@gmail.com",
       phone: "0912345678",
       address: "TP. Hồ Chí Minh",
     },
   });
+
+  // Backfill client codes that still look like cuid
+  const clients = await prisma.client.findMany({ select: { id: true, code: true } });
+  let seq = 3;
+  for (const c of clients) {
+    if (/^KH-\d{4}-\d{4}$/.test(c.code)) continue;
+    let code = buildClientCode("2026", seq);
+    while (await prisma.client.findFirst({ where: { code, NOT: { id: c.id } } })) {
+      seq += 1;
+      code = buildClientCode("2026", seq);
+    }
+    await prisma.client.update({ where: { id: c.id }, data: { code } });
+    seq += 1;
+  }
 
   const matter1 = await prisma.matter.upsert({
     where: { code: "HS-2026-001" },
@@ -195,16 +241,16 @@ async function main() {
     data: [
       {
         title: "Hoàn thiện đơn khởi kiện",
-        description: "Rà soát và gửi bản cuối cho luật sư phụ trách",
+        description: "Soạn thảo và hoàn thiện đơn khởi kiện",
         status: "IN_PROGRESS",
         priority: "HIGH",
         dueDate: tomorrow,
-        assigneeId: support.id,
-        createdById: lawyer1.id,
+        assigneeId: lawyer1.id,
+        createdById: manager.id,
         matterId: matter1.id,
       },
       {
-        title: "Chuẩn bị hồ sơ thành lập công ty",
+        title: "Chuẩn bị hồ sơ thành lập",
         status: "TODO",
         priority: "MEDIUM",
         dueDate: tomorrow,
@@ -215,48 +261,13 @@ async function main() {
     ],
   });
 
-  await prisma.notification.deleteMany({
-    where: {
-      userId: { in: [support.id, lawyer2.id] },
-      type: "TASK_ASSIGNED",
-    },
+  console.log("Seed OK", {
+    admin: admin.username,
+    manager: manager.username,
+    lawyer1: lawyer1.username,
+    lawyer2: lawyer2.username,
+    support: support.username,
   });
-
-  await prisma.notification.createMany({
-    data: [
-      {
-        userId: support.id,
-        type: "TASK_ASSIGNED",
-        title: "Được giao việc mới",
-        message: "Bạn được giao: Hoàn thiện đơn khởi kiện",
-        link: "/tasks",
-      },
-      {
-        userId: lawyer2.id,
-        type: "TASK_ASSIGNED",
-        title: "Được giao việc mới",
-        message: "Bạn được giao: Chuẩn bị hồ sơ thành lập công ty",
-        link: "/tasks",
-      },
-    ],
-  });
-
-  await prisma.auditLog.create({
-    data: {
-      userId: admin.id,
-      action: "CREATE",
-      entityType: "System",
-      details: "Khởi tạo dữ liệu mẫu",
-    },
-  });
-
-  console.log("Seed completed.");
-  console.log(`Demo admin: admin / ${DEMO_ADMIN_PASSWORD}`);
-  console.log("Other demo accounts (password: password123):");
-  console.log("- quanly@luat.vn (Quản lý)");
-  console.log("- luatsu1@luat.vn (Luật sư)");
-  console.log("- luatsu2@luat.vn (Luật sư)");
-  console.log("- hotro@luat.vn (Hỗ trợ)");
 }
 
 main()

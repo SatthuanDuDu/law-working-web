@@ -112,6 +112,7 @@ export async function POST(request: Request) {
     taskId,
     clientId,
     matterPlanStepId,
+    conversationId,
     labelId,
     customLabel,
   } = body as {
@@ -122,6 +123,7 @@ export async function POST(request: Request) {
     taskId?: string | null;
     clientId?: string | null;
     matterPlanStepId?: string | null;
+    conversationId?: string | null;
     labelId?: string | null;
     customLabel?: string | null;
   };
@@ -130,10 +132,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Thiếu thông tin file" }, { status: 400 });
   }
 
+  const isChatUpload = Boolean(conversationId);
   const trimmedCustom =
     typeof customLabel === "string" ? customLabel.trim() : "";
   const hasLabelId = typeof labelId === "string" && labelId.length > 0;
-  if (!hasLabelId && !trimmedCustom) {
+  if (!isChatUpload && !hasLabelId && !trimmedCustom) {
     return NextResponse.json(
       { error: "Vui lòng chọn nhãn tài liệu hoặc nhập nhãn Khác" },
       { status: 400 },
@@ -173,7 +176,7 @@ export async function POST(request: Request) {
     resolvedMatterId = step.matterId;
   }
 
-  if (!resolvedMatterId && !taskId && !clientId) {
+  if (!resolvedMatterId && !taskId && !clientId && !conversationId) {
     return NextResponse.json({ error: "Thiếu tham chiếu entity" }, { status: 400 });
   }
 
@@ -190,41 +193,57 @@ export async function POST(request: Request) {
     }
   }
 
-  const allowed = await canAccessAttachmentTarget(user.id, user.role, {
-    matterId: resolvedMatterId,
-    taskId,
-    clientId,
-  });
-  if (!allowed) {
-    return NextResponse.json({ error: "Không có quyền upload" }, { status: 403 });
-  }
-
-  const storageKey = buildStorageKey(fileName);
-  const uploadUrl = await createUploadUrl(storageKey, mimeType);
-
-  const attachment = await prisma.attachment.create({
-    data: {
-      fileName,
-      mimeType,
-      sizeBytes,
-      storageKey,
+  let uploadUrl: string;
+  try {
+    const allowed = await canAccessAttachmentTarget(user.id, user.role, {
       matterId: resolvedMatterId,
-      taskId: taskId || null,
-      clientId: clientId || null,
-      matterPlanStepId: matterPlanStepId || null,
-      labelId: hasLabelId ? labelId! : null,
-      customLabel: hasLabelId ? null : trimmedCustom,
-      uploadedById: user.id,
-    },
-  });
+      taskId,
+      clientId,
+      conversationId,
+    });
+    if (!allowed) {
+      return NextResponse.json({ error: "Không có quyền upload" }, { status: 403 });
+    }
 
-  await createAuditLog({
-    userId: user.id,
-    action: "CREATE",
-    entityType: "Attachment",
-    entityId: attachment.id,
-    details: fileName,
-  });
+    const storageKey = buildStorageKey(fileName);
+    uploadUrl = await createUploadUrl(storageKey, mimeType);
 
-  return NextResponse.json({ attachment, uploadUrl });
+    const attachment = await prisma.attachment.create({
+      data: {
+        fileName,
+        mimeType,
+        sizeBytes,
+        storageKey,
+        matterId: resolvedMatterId,
+        taskId: taskId || null,
+        clientId: clientId || null,
+        matterPlanStepId: matterPlanStepId || null,
+        conversationId: conversationId || null,
+        labelId: hasLabelId ? labelId! : null,
+        customLabel: hasLabelId
+          ? null
+          : isChatUpload
+            ? trimmedCustom || "Chat"
+            : trimmedCustom,
+        uploadedById: user.id,
+      },
+    });
+
+    await createAuditLog({
+      userId: user.id,
+      action: "CREATE",
+      entityType: "Attachment",
+      entityId: attachment.id,
+      details: fileName,
+    });
+
+    return NextResponse.json({ attachment, uploadUrl });
+  } catch (error) {
+    console.error("attachment prepare failed:", error);
+    const message =
+      error instanceof Error && /S3_|Missing required env/i.test(error.message)
+        ? "Kho lưu trữ chưa cấu hình (S3/R2). Liên hệ admin."
+        : "Không thể tạo phiên upload. Kiểm tra cấu hình lưu trữ hoặc CORS.";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

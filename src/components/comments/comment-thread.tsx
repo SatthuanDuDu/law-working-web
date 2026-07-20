@@ -750,13 +750,13 @@ function CommentComposer({
         method: "PUT",
         headers: { "Content-Type": file.type || "application/octet-stream" },
         body: file,
-      });
+      }).catch(() => null);
 
-      if (!upload.ok) {
+      if (!upload || !upload.ok) {
         await fetch(`/api/attachments/${prepared.attachment.id}`, {
           method: "DELETE",
         });
-        setError(t("uploadFailed"));
+        setError(!upload ? t("uploadCorsFailed") : t("uploadFailed"));
         return;
       }
 

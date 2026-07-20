@@ -7,6 +7,7 @@ export type MatterFormData = {
   todayMatterCount: number;
   clients: {
     id: string;
+    code: string;
     name: string;
     phone: string | null;
     address: string | null;
@@ -23,6 +24,7 @@ export async function getMatterFilterOptions(): Promise<MatterFilterOptions> {
     prisma.client.findMany({
       select: {
         id: true,
+        code: true,
         name: true,
         phone: true,
         address: true,
@@ -50,6 +52,7 @@ export async function getMatterFormData(user: SessionUser): Promise<MatterFormDa
     prisma.client.findMany({
       select: {
         id: true,
+        code: true,
         name: true,
         phone: true,
         address: true,

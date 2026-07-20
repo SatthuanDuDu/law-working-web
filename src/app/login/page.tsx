@@ -24,7 +24,7 @@ export default function LoginPage() {
 
     const formData = new FormData(e.currentTarget);
     const result = await signIn("credentials", {
-      email: formData.get("email"),
+      username: formData.get("username"),
       password: formData.get("password"),
       redirect: false,
     });
@@ -41,7 +41,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary via-primary-hover to-[#0b3a20] p-6">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary via-primary-hover to-[#0b3a20] p-4 sm:p-6">
       <Card className="w-full max-w-md border-border shadow-[var(--shadow-overlay)]">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-surface ring-1 ring-border">
@@ -62,14 +62,15 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">{t("email")}</Label>
+              <Label htmlFor="username">{t("username")}</Label>
               <Input
-                id="email"
-                name="email"
+                id="username"
+                name="username"
                 type="text"
                 autoComplete="username"
                 placeholder="admin"
                 required
+                className="text-base sm:text-sm"
               />
             </div>
             <div className="space-y-2">
@@ -78,27 +79,16 @@ export default function LoginPage() {
                 id="password"
                 name="password"
                 type="password"
-                placeholder="••••••••"
+                autoComplete="current-password"
                 required
+                className="text-base sm:text-sm"
               />
             </div>
-            {error && (
-              <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
-                {error}
-              </p>
-            )}
-            <Button type="submit" className="w-full" disabled={loading}>
+            {error ? <p className="text-sm text-rose-600">{error}</p> : null}
+            <Button type="submit" className="interactive-press w-full" disabled={loading}>
               {loading ? t("signingIn") : t("signIn")}
             </Button>
           </form>
-          <div className="mt-6 rounded-lg bg-muted p-4 text-xs text-muted-foreground">
-            {process.env.NODE_ENV === "development" && (
-              <>
-                <p className="font-medium text-primary">Demo (local seed):</p>
-                <p>admin / admin</p>
-              </>
-            )}
-          </div>
         </CardContent>
       </Card>
     </div>

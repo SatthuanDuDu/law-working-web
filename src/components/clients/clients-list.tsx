@@ -20,6 +20,7 @@ import type { ClientBusinessType } from "@prisma/client";
 
 export type ClientListItem = {
   id: string;
+  code: string;
   name: string;
   email: string | null;
   phone: string | null;
@@ -385,6 +386,7 @@ export function ClientsList({
   function openEdit(client: ClientListItem) {
     setEditClient({
       id: client.id,
+      code: client.code,
       name: client.name,
       email: client.email,
       phone: client.phone,
@@ -604,6 +606,9 @@ export function ClientsList({
                       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-4">
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="rounded-md bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-primary">
+                              {client.code}
+                            </span>
                             <h3 className="truncate text-sm font-semibold text-foreground">
                               {client.name}
                             </h3>

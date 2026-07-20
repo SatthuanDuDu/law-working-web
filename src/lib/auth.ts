@@ -5,26 +5,26 @@ import type { Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit";
 import { authConfig } from "@/lib/auth.config";
-import { resolveLoginEmail } from "@/lib/demo-admin";
+import { normalizeUsername } from "@/lib/username";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   providers: [
     Credentials({
       credentials: {
-        email: { label: "Email", type: "email" },
+        username: { label: "Username", type: "text" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const login = credentials?.email as string | undefined;
+        const login = credentials?.username as string | undefined;
         const password = credentials?.password as string | undefined;
 
         if (!login || !password) return null;
 
-        const email = resolveLoginEmail(login);
+        const username = normalizeUsername(login);
 
         const user = await prisma.user.findUnique({
-          where: { email },
+          where: { username },
         });
 
         if (!user || !user.isActive) return null;
@@ -37,7 +37,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           action: "LOGIN",
           entityType: "User",
           entityId: user.id,
-          details: `Đăng nhập: ${user.email}`,
+          details: `Đăng nhập: ${user.username}`,
         });
 
         return {

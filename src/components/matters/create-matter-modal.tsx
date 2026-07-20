@@ -950,7 +950,7 @@ export function CreateMatterModal({
                             <option value="">{t("selectClientPlaceholder")}</option>
                             {formData.clients.map((client) => (
                               <option key={client.id} value={client.id}>
-                                {client.name}
+                                {client.code ? `${client.code} · ${client.name}` : client.name}
                               </option>
                             ))}
                           </Select>

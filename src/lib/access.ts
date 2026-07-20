@@ -49,8 +49,22 @@ export async function canAccessAttachmentTarget(
     matterId?: string | null;
     taskId?: string | null;
     clientId?: string | null;
+    conversationId?: string | null;
   },
 ) {
+  if (target.conversationId) {
+    const member = await prisma.conversationMember.findUnique({
+      where: {
+        conversationId_userId: {
+          conversationId: target.conversationId,
+          userId,
+        },
+      },
+      select: { id: true },
+    });
+    return Boolean(member);
+  }
+
   if (canViewAllMatters(role)) return true;
 
   const matterIds = await getAccessibleMatterIds(userId, role);

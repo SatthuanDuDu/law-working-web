@@ -17,9 +17,11 @@ import {
   userSchema,
   workTypeSchema,
   attachmentLabelSchema,
+  parseDateOfBirthInput,
 } from "@/lib/validations";
 import { canManageUsers, isAdmin, isManagerOrAbove } from "@/lib/permissions";
 import { generateMatterCode } from "@/lib/matter-code";
+import { generateClientCode } from "@/lib/client-code";
 import { getAccessibleClientIds, getAccessibleMatterIds, assertMatterNotArchived } from "@/lib/access";
 import { deleteObject } from "@/lib/storage";
 import { actionError } from "@/i18n/server-labels";
@@ -28,6 +30,11 @@ import {
   locationToPrismaFields,
   parseLocationFromFormData,
 } from "@/lib/location";
+import {
+  allocateUniqueUsername,
+  isValidUsername,
+  normalizeUsername,
+} from "@/lib/username";
 
 function revalidateClients() {
   revalidatePath("/clients");
@@ -85,6 +92,7 @@ export async function changePasswordAction(formData: FormData) {
 export async function createClientAction(formData: FormData) {
   const user = await requireAuth();
   const parsed = clientSchema.safeParse({
+    code: formData.get("code"),
     name: formData.get("name"),
     email: formData.get("email"),
     phone: formData.get("phone"),
@@ -98,8 +106,21 @@ export async function createClientAction(formData: FormData) {
     return { error: parsed.error.issues[0]?.message ?? (await actionError("invalidData")) };
   }
 
+  const manualCode = parsed.data.code?.trim() || "";
+  let code = manualCode;
+  if (code) {
+    const existingCode = await prisma.client.findUnique({
+      where: { code },
+      select: { id: true },
+    });
+    if (existingCode) return { error: "Mã khách hàng đã được sử dụng" };
+  } else {
+    code = await generateClientCode(prisma);
+  }
+
   const client = await prisma.client.create({
     data: {
+      code,
       name: parsed.data.name,
       email: parsed.data.email || null,
       phone: parsed.data.phone || null,
@@ -115,7 +136,7 @@ export async function createClientAction(formData: FormData) {
     action: "CREATE",
     entityType: "Client",
     entityId: client.id,
-    details: client.name,
+    details: `${client.code} · ${client.name}`,
   });
 
   revalidateClients();
@@ -135,11 +156,12 @@ export async function updateClientAction(clientId: string, formData: FormData) {
 
   const existing = await prisma.client.findUnique({
     where: { id: clientId },
-    select: { id: true, name: true },
+    select: { id: true, name: true, code: true },
   });
   if (!existing) return { error: await actionError("clientNotFound") };
 
   const parsed = clientSchema.safeParse({
+    code: formData.get("code"),
     name: formData.get("name"),
     email: formData.get("email"),
     phone: formData.get("phone"),
@@ -153,10 +175,20 @@ export async function updateClientAction(clientId: string, formData: FormData) {
     return { error: parsed.error.issues[0]?.message ?? (await actionError("invalidData")) };
   }
 
+  const nextCode = parsed.data.code?.trim() || existing.code;
+  if (nextCode !== existing.code) {
+    const codeTaken = await prisma.client.findUnique({
+      where: { code: nextCode },
+      select: { id: true },
+    });
+    if (codeTaken) return { error: "Mã khách hàng đã được sử dụng" };
+  }
+
   try {
     const client = await prisma.client.update({
       where: { id: clientId },
       data: {
+        code: nextCode,
         name: parsed.data.name,
         email: parsed.data.email || null,
         phone: parsed.data.phone || null,
@@ -172,7 +204,7 @@ export async function updateClientAction(clientId: string, formData: FormData) {
       action: "UPDATE",
       entityType: "Client",
       entityId: client.id,
-      details: client.name,
+      details: `${client.code} · ${client.name}`,
     });
 
     revalidateClients();
@@ -293,6 +325,7 @@ export async function createMatterAction(formData: FormData) {
     if (parsed.data.clientMode === "new") {
       const client = await prisma.client.create({
         data: {
+          code: await generateClientCode(prisma),
           name: parsed.data.clientName!.trim(),
           phone: parsed.data.clientPhone?.trim() || null,
           address: parsed.data.clientAddress?.trim() || null,
@@ -428,6 +461,7 @@ export async function updateMatterAction(matterId: string, formData: FormData) {
     if (parsed.data.clientMode === "new") {
       const client = await prisma.client.create({
         data: {
+          code: await generateClientCode(prisma),
           name: parsed.data.clientName!.trim(),
           phone: parsed.data.clientPhone?.trim() || null,
           address: parsed.data.clientAddress?.trim() || null,
@@ -1319,8 +1353,12 @@ export async function createUserAction(formData: FormData) {
   if (!canManageUsers(user.role)) return { error: await actionError("noPermission") };
 
   const parsed = userSchema.safeParse({
+    username: formData.get("username"),
     email: formData.get("email"),
     name: formData.get("name"),
+    phone: formData.get("phone"),
+    dateOfBirth: formData.get("dateOfBirth"),
+    gender: formData.get("gender"),
     password: formData.get("password"),
     role: formData.get("role"),
     departmentId: formData.get("departmentId") || null,
@@ -1333,16 +1371,37 @@ export async function createUserAction(formData: FormData) {
 
   if (!parsed.data.password) return { error: "Vui lòng nhập mật khẩu" };
 
-  const existing = await prisma.user.findUnique({
-    where: { email: parsed.data.email },
+  const username = await allocateUniqueUsername({
+    fullName: parsed.data.name,
+    preferred: parsed.data.username,
+    isTaken: async (candidate) => {
+      const existing = await prisma.user.findUnique({
+        where: { username: candidate },
+        select: { id: true },
+      });
+      return Boolean(existing);
+    },
   });
-  if (existing) return { error: "Email đã được sử dụng" };
+
+  if (!username) {
+    return { error: "Không tạo được tên người dùng unique từ họ tên" };
+  }
+
+  const existingEmail = await prisma.user.findUnique({
+    where: { email: parsed.data.email },
+    select: { id: true },
+  });
+  if (existingEmail) return { error: "Email đã được sử dụng" };
 
   const password = await bcrypt.hash(parsed.data.password, 10);
   const created = await prisma.user.create({
     data: {
+      username,
       email: parsed.data.email,
       name: parsed.data.name,
+      phone: parsed.data.phone?.trim() || null,
+      dateOfBirth: parseDateOfBirthInput(parsed.data.dateOfBirth),
+      gender: parsed.data.gender ?? null,
       password,
       role: parsed.data.role,
       departmentId: parsed.data.departmentId || null,
@@ -1355,7 +1414,7 @@ export async function createUserAction(formData: FormData) {
     action: "CREATE",
     entityType: "User",
     entityId: created.id,
-    details: created.email,
+    details: `${created.username} · ${created.email}`,
   });
 
   revalidatePath("/admin/users");
@@ -1367,8 +1426,12 @@ export async function updateUserAction(userId: string, formData: FormData) {
   if (!canManageUsers(admin.role)) return { error: await actionError("noPermission") };
 
   const parsed = userSchema.safeParse({
+    username: formData.get("username"),
     email: formData.get("email"),
     name: formData.get("name"),
+    phone: formData.get("phone"),
+    dateOfBirth: formData.get("dateOfBirth"),
+    gender: formData.get("gender"),
     role: formData.get("role"),
     departmentId: formData.get("departmentId") || null,
     isActive: formData.get("isActive") === "on",
@@ -1380,6 +1443,21 @@ export async function updateUserAction(userId: string, formData: FormData) {
 
   const target = await prisma.user.findUnique({ where: { id: userId } });
   if (!target) return { error: await actionError("userNotFoundStaff") };
+
+  const username = normalizeUsername(parsed.data.username);
+
+  if (username !== target.username) {
+    if (!isValidUsername(username)) {
+      return {
+        error: "Tên người dùng tối thiểu 8 ký tự và phải có dấu chấm (vd. vinh.tran)",
+      };
+    }
+    const existing = await prisma.user.findUnique({
+      where: { username },
+      select: { id: true },
+    });
+    if (existing) return { error: "Tên người dùng đã được sử dụng" };
+  }
 
   if (parsed.data.email !== target.email) {
     const existing = await prisma.user.findUnique({
@@ -1408,8 +1486,12 @@ export async function updateUserAction(userId: string, formData: FormData) {
     const updated = await prisma.user.update({
       where: { id: userId },
       data: {
+        username,
         email: parsed.data.email,
         name: parsed.data.name,
+        phone: parsed.data.phone?.trim() || null,
+        dateOfBirth: parseDateOfBirthInput(parsed.data.dateOfBirth),
+        gender: parsed.data.gender ?? null,
         role: parsed.data.role,
         departmentId: parsed.data.departmentId || null,
         isActive: parsed.data.isActive,
@@ -1421,7 +1503,7 @@ export async function updateUserAction(userId: string, formData: FormData) {
       action: "UPDATE",
       entityType: "User",
       entityId: updated.id,
-      details: updated.email,
+      details: `${updated.username} · ${updated.email}`,
     });
 
     revalidatePath("/admin/users");

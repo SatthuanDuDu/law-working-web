@@ -17,12 +17,17 @@ import {
   outlinedFieldControlClass,
 } from "@/components/ui/outlined-field";
 import { cn } from "@/lib/utils";
-import type { Role } from "@prisma/client";
+import type { Gender, Role } from "@prisma/client";
+import { formatDateOfBirthInput } from "@/lib/validations";
 
 export type EditUserInitial = {
   id: string;
   name: string;
+  username: string;
   email: string;
+  phone: string | null;
+  dateOfBirth: string | null;
+  gender: Gender | null;
   role: Role;
   isActive: boolean;
   department: { id: string; name: string } | null;
@@ -44,7 +49,7 @@ export function EditUserModal({
   const tUsers = useTranslations("admin.users");
   const tSettings = useTranslations("settings");
   const tCommon = useTranslations("common");
-  const { roles } = useLabelMaps();
+  const { roles, gender: genders } = useLabelMaps();
   const [error, setError] = useState("");
   const [formKey, setFormKey] = useState(0);
   const [isPending, startTransition] = useTransition();
@@ -160,6 +165,19 @@ export function EditUserModal({
                   className={cn(outlinedFieldControlClass, "h-auto")}
                 />
               </OutlinedField>
+              <OutlinedField label={tSettings("username")} htmlFor="edit-user-username">
+                <Input
+                  id="edit-user-username"
+                  name="username"
+                  required
+                  minLength={3}
+                  maxLength={32}
+                  pattern="[a-z0-9]+(\.[a-z0-9]+)*"
+                  defaultValue={user.username}
+                  placeholder="vinh.t"
+                  className={cn(outlinedFieldControlClass, "h-auto")}
+                />
+              </OutlinedField>
               <OutlinedField label={tSettings("email")} htmlFor="edit-user-email">
                 <Input
                   id="edit-user-email"
@@ -170,6 +188,39 @@ export function EditUserModal({
                   className={cn(outlinedFieldControlClass, "h-auto")}
                 />
               </OutlinedField>
+              <OutlinedField label={tSettings("phone")} htmlFor="edit-user-phone">
+                <Input
+                  id="edit-user-phone"
+                  name="phone"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  defaultValue={user.phone ?? ""}
+                  className={cn(outlinedFieldControlClass, "h-auto")}
+                />
+              </OutlinedField>
+              <OutlinedField label={tSettings("dateOfBirth")} htmlFor="edit-user-dob">
+                <Input
+                  id="edit-user-dob"
+                  name="dateOfBirth"
+                  type="date"
+                  defaultValue={formatDateOfBirthInput(user.dateOfBirth)}
+                  className={cn(outlinedFieldControlClass, "h-auto")}
+                />
+              </OutlinedField>
+              <OutlinedSelect
+                id="edit-user-gender"
+                name="gender"
+                label={tSettings("gender")}
+                defaultValue={user.gender ?? ""}
+              >
+                <option value="">{tSettings("genderPlaceholder")}</option>
+                {Object.entries(genders).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </OutlinedSelect>
               <OutlinedSelect
                 id="edit-user-role"
                 name="role"

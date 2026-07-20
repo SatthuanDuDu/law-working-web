@@ -21,12 +21,14 @@ async function main() {
   const user = await prisma.user.upsert({
     where: { email },
     update: {
+      username: process.env.ADMIN_USERNAME?.trim().toLowerCase() || "admin",
       name,
       password: hashed,
       role: "ADMIN",
       isActive: true,
     },
     create: {
+      username: process.env.ADMIN_USERNAME?.trim().toLowerCase() || "admin",
       email,
       name,
       password: hashed,
@@ -35,7 +37,7 @@ async function main() {
     },
   });
 
-  console.log(`Admin ready: login "admin" hoặc ${user.email} / ${password}`);
+  console.log(`Admin ready: username "${user.username}" / ${password}`);
 }
 
 main()

@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import type { Role } from "@prisma/client";
+import type { Gender, Role } from "@prisma/client";
 
 export function useLabelMaps() {
   const t = useTranslations("labels");
@@ -12,6 +12,11 @@ export function useLabelMaps() {
       LAWYER: t("roles.LAWYER"),
       SUPPORT: t("roles.SUPPORT"),
     } satisfies Record<Role, string>,
+    gender: {
+      MALE: t("gender.MALE"),
+      FEMALE: t("gender.FEMALE"),
+      OTHER: t("gender.OTHER"),
+    } satisfies Record<Gender, string>,
     matterStatus: {
       NEW: t("matterStatus.NEW"),
       IN_PROGRESS: t("matterStatus.IN_PROGRESS"),

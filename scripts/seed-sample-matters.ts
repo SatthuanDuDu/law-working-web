@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { generateMatterCode } from "../src/lib/matter-code";
+import { generateClientCode } from "../src/lib/client-code";
 
 const prisma = new PrismaClient();
 
@@ -16,6 +17,7 @@ async function createSampleMatter(input: {
 }) {
   const client = await prisma.client.create({
     data: {
+      code: await generateClientCode(prisma),
       name: input.clientName,
       phone: input.phone,
       city: input.city,

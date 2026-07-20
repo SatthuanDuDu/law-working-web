@@ -23,6 +23,7 @@ import type { ClientBusinessType } from "@prisma/client";
 
 export type ClientFormInitial = {
   id: string;
+  code: string;
   name: string;
   email: string | null;
   phone: string | null;
@@ -156,7 +157,16 @@ export function ClientFormModal({
             className="flex min-h-0 flex-1 flex-col"
           >
             <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5 sm:px-6">
-              <OutlinedField label={t("name")} htmlFor="name" className="mt-1">
+              <OutlinedField label={t("code")} htmlFor="code" className="mt-1">
+                <Input
+                  id="code"
+                  name="code"
+                  defaultValue={initial?.code ?? ""}
+                  placeholder={isEdit ? undefined : t("codeAutoHint")}
+                  className={cn(outlinedFieldControlClass, "h-auto")}
+                />
+              </OutlinedField>
+              <OutlinedField label={t("name")} htmlFor="name">
                 <Input
                   id="name"
                   name="name"

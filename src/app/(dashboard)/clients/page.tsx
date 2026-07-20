@@ -21,6 +21,7 @@ export default async function ClientsPage() {
 
   const listItems = clients.map((client) => ({
     id: client.id,
+    code: client.code,
     name: client.name,
     email: client.email,
     phone: client.phone,

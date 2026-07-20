@@ -59,6 +59,7 @@
     "dashboard": "Dashboard",
     "matters": "Vụ việc",
     "clients": "Khách hàng",
+    "chat": "Trò chuyện",
     "tasks": "Giao việc",
     "calendar": "Lịch & hạn",
     "settings": "Cài đặt",
@@ -93,6 +94,10 @@
     "clients": {
       "title": "Khách hàng",
       "description": "Quản lý thông tin khách hàng"
+    },
+    "chat": {
+      "title": "Trò chuyện",
+      "description": "Nhắn tin nội bộ giữa nhân viên"
     },
     "tasks": {
       "title": "Giao việc",
@@ -145,6 +150,11 @@
       "LAWYER": "Luật sư",
       "SUPPORT": "Nhân viên hỗ trợ"
     },
+    "gender": {
+      "MALE": "Nam",
+      "FEMALE": "Nữ",
+      "OTHER": "Khác"
+    },
     "matterStatus": {
       "NEW": "Mới",
       "IN_PROGRESS": "Đang xử lý",
@@ -196,11 +206,12 @@
   "auth": {
     "loginTitle": "Đăng nhập",
     "loginSubtitle": "Hệ thống quản lý công việc nội bộ NSLAW",
+    "username": "Tên người dùng",
     "email": "Email",
     "password": "Mật khẩu",
     "signIn": "Đăng nhập",
     "signingIn": "Đang đăng nhập...",
-    "invalidCredentials": "Email hoặc mật khẩu không đúng",
+    "invalidCredentials": "Tên người dùng hoặc mật khẩu không đúng",
     "siteDescription": "Hệ thống quản lý công việc nội bộ cho công ty luật"
   },
   "settings": {
@@ -211,7 +222,12 @@
     "confirmPassword": "Xác nhận mật khẩu mới",
     "passwordUpdated": "Đã cập nhật mật khẩu",
     "name": "Họ tên",
+    "username": "Tên người dùng",
     "email": "Email",
+    "phone": "Số điện thoại",
+    "dateOfBirth": "Ngày sinh",
+    "gender": "Giới tính",
+    "genderPlaceholder": "— Chọn giới tính —",
     "role": "Vai trò",
     "department": "Phòng ban",
     "avatarHint": "Ảnh đại diện hiển thị trong bình luận và hồ sơ của bạn.",
@@ -419,6 +435,12 @@
     "openInOsm": "Mở OpenStreetMap",
     "openInGoogleMaps": "Mở Google Maps",
     "searchFailed": "Không tìm được địa điểm. Thử từ khóa khác.",
+    "useCurrent": "Vị trí hiện tại",
+    "locating": "Đang lấy GPS...",
+    "geoDenied": "Bạn đã từ chối quyền vị trí. Hãy bật GPS trong trình duyệt.",
+    "geoUnavailable": "Không lấy được vị trí hiện tại.",
+    "geoUnsupported": "Trình duyệt không hỗ trợ GPS.",
+    "reverseFailed": "Không xác định được địa chỉ từ GPS.",
     "attribution": "© OpenStreetMap contributors"
   },
   "notifications": {
@@ -432,6 +454,8 @@
   },
   "clients": {
     "create": "Thêm khách hàng",
+    "code": "Mã khách hàng",
+    "codeAutoHint": "Để trống để tự tạo",
     "name": "Tên khách hàng",
     "businessType": "Loại hình",
     "city": "Tỉnh / Thành phố",
@@ -574,7 +598,7 @@
       "staffCount": "{count} nhân viên",
       "staffCountFiltered": "{visible}/{total} nhân viên",
       "searchLabel": "Tìm kiếm",
-      "searchPlaceholder": "Tên, email, vai trò…",
+      "searchPlaceholder": "Tên, username, email, SĐT…",
       "allRoles": "Tất cả vai trò",
       "allStatuses": "Tất cả trạng thái",
       "allDepartments": "Tất cả phòng ban",
@@ -785,6 +809,7 @@
     "fileTooLarge": "File phải nhỏ hơn 25MB",
     "uploadSessionFailed": "Không thể tạo phiên upload",
     "uploadFailed": "Upload lên kho lưu trữ thất bại",
+    "uploadCorsFailed": "Upload bị chặn (CORS/R2). Kiểm tra CORS bucket và S3_PUBLIC_ENDPOINT trên Vercel.",
     "sending": "Đang gửi...",
     "placeholderExtended": "Viết bình luận... gõ @ để nhắc, dán ảnh hoặc đính kèm file"
   },
@@ -866,5 +891,38 @@
     "genericError": "Đã xảy ra lỗi",
     "passwordMismatch": "Mật khẩu xác nhận không khớp",
     "passwordTooShort": "Mật khẩu mới phải có ít nhất 8 ký tự"
+  },
+  "chat": {
+    "title": "Trò chuyện",
+    "conversations": "Hội thoại",
+    "empty": "Chưa có hội thoại",
+    "emptyHint": "Chọn một hội thoại hoặc tìm người để nhắn tin.",
+    "newDm": "Chat riêng",
+    "newGroup": "Tạo nhóm",
+    "groupName": "Tên nhóm",
+    "selectMembers": "Chọn thành viên",
+    "searchStaff": "Tìm nhân viên...",
+    "searchUser": "Tìm người dùng để nhắn tin...",
+    "searchUserHint": "Gõ tên hoặc @username ở thanh tìm kiếm bên trái.",
+    "clearSearch": "Xóa tìm kiếm",
+    "people": "Người dùng",
+    "noSearchResults": "Không tìm thấy kết quả",
+    "today": "Hôm nay",
+    "yesterday": "Hôm qua",
+    "memberCount": "{count} thành viên",
+    "addLocation": "Thêm vị trí",
+    "placeholder": "Nhắn tin... gõ @username để gắn thẻ",
+    "send": "Gửi",
+    "attach": "Đính kèm",
+    "noMessages": "Chưa có tin nhắn",
+    "back": "Danh sách",
+    "you": "Bạn",
+    "create": "Tạo",
+    "cancel": "Hủy",
+    "fileTooLarge": "File phải nhỏ hơn 25MB",
+    "uploadFailed": "Không tải được file",
+    "sendFailed": "Không gửi được tin nhắn",
+    "openFile": "Mở file",
+    "unread": "Chưa đọc"
   }
 }

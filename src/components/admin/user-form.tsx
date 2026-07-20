@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type FormEvent } from "react";
+import { useRef, useState, useTransition, type FormEvent } from "react";
 import { createUserAction } from "@/lib/actions";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useLabelMaps } from "@/i18n/use-label-maps";
 import { useTranslations } from "next-intl";
+import { generateUsernameFromFullName } from "@/lib/username";
 
 export function UserForm({
   departments,
@@ -21,21 +22,49 @@ export function UserForm({
 }) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
   const [isPending, startTransition] = useTransition();
+  const usernameTouchedRef = useRef(false);
   const { confirm, dialog } = useConfirmDialog();
   const t = useTranslations("admin");
   const tSettings = useTranslations("settings");
   const tCommon = useTranslations("common");
-  const { roles } = useLabelMaps();
+  const { roles, gender: genders } = useLabelMaps();
+
+  function handleNameChange(next: string) {
+    setName(next);
+    if (!usernameTouchedRef.current) {
+      setUsername(generateUsernameFromFullName(next));
+    }
+  }
+
+  function handleUsernameChange(next: string) {
+    usernameTouchedRef.current = true;
+    setUsername(next.toLowerCase().replace(/[^a-z0-9.]/g, ""));
+  }
+
+  function resetFormFields() {
+    setName("");
+    setUsername("");
+    usernameTouchedRef.current = false;
+    (document.getElementById("user-form") as HTMLFormElement | null)?.reset();
+    // Keep controlled fields in sync after native reset
+    setName("");
+    setUsername("");
+  }
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const name = String(formData.get("name") ?? "");
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    formData.set("name", name.trim());
+    formData.set("username", username.trim());
+    const displayName = name.trim();
 
     confirm({
       title: tCommon("confirm"),
-      message: `${t("createUser")}: "${name}"?`,
+      message: `${t("createUser")}: "${displayName}"?`,
       confirmLabel: t("createUser"),
       onConfirm: () => {
         setError("");
@@ -47,7 +76,7 @@ export function UserForm({
             return;
           }
           setSuccess(t("createUser"));
-          (document.getElementById("user-form") as HTMLFormElement)?.reset();
+          resetFormFields();
         });
       },
     });
@@ -62,6 +91,24 @@ export function UserForm({
             id="name"
             name="name"
             required
+            value={name}
+            onChange={(e) => handleNameChange(e.target.value)}
+            placeholder="Trần Công Vinh"
+            className={cn(outlinedFieldControlClass, "h-auto")}
+          />
+        </OutlinedField>
+        <OutlinedField label={tSettings("username")} htmlFor="username">
+          <Input
+            id="username"
+            name="username"
+            required
+            minLength={3}
+            maxLength={32}
+            pattern="[a-z0-9]+\.[a-z0-9]+(\.[a-z0-9]+)*"
+            autoComplete="off"
+            value={username}
+            onChange={(e) => handleUsernameChange(e.target.value)}
+            placeholder="vinh.t"
             className={cn(outlinedFieldControlClass, "h-auto")}
           />
         </OutlinedField>
@@ -74,6 +121,33 @@ export function UserForm({
             className={cn(outlinedFieldControlClass, "h-auto")}
           />
         </OutlinedField>
+        <OutlinedField label={tSettings("phone")} htmlFor="phone">
+          <Input
+            id="phone"
+            name="phone"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            placeholder="0901234567"
+            className={cn(outlinedFieldControlClass, "h-auto")}
+          />
+        </OutlinedField>
+        <OutlinedField label={tSettings("dateOfBirth")} htmlFor="dateOfBirth">
+          <Input
+            id="dateOfBirth"
+            name="dateOfBirth"
+            type="date"
+            className={cn(outlinedFieldControlClass, "h-auto")}
+          />
+        </OutlinedField>
+        <OutlinedSelect id="gender" name="gender" label={tSettings("gender")} defaultValue="">
+          <option value="">{tSettings("genderPlaceholder")}</option>
+          {Object.entries(genders).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </OutlinedSelect>
         <OutlinedField label={tSettings("newPassword")} htmlFor="password">
           <Input
             id="password"

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { Loader2, MapPin, X } from "lucide-react";
+import { Crosshair, Loader2, MapPin, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -33,7 +33,8 @@ export function LocationPicker({
   const [results, setResults] = useState<SearchResult[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
+  const [geoLoading, setGeoLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(-1);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -47,7 +48,7 @@ export function LocationPicker({
       const controller = new AbortController();
       abortRef.current = controller;
       setLoading(true);
-      setError(false);
+      setError(null);
 
       void fetch(`/api/geocode/search?q=${encodeURIComponent(searchQuery)}`, {
         signal: controller.signal,
@@ -64,7 +65,7 @@ export function LocationPicker({
         .catch((err: unknown) => {
           if (err instanceof DOMException && err.name === "AbortError") return;
           setResults([]);
-          setError(true);
+          setError(t("searchFailed"));
         })
         .finally(() => {
           if (!controller.signal.aborted) setLoading(false);
@@ -75,7 +76,7 @@ export function LocationPicker({
       window.clearTimeout(timer);
       abortRef.current?.abort();
     };
-  }, [searchQuery]);
+  }, [searchQuery, t]);
 
   function pick(result: SearchResult) {
     onChange(result);
@@ -83,7 +84,7 @@ export function LocationPicker({
     setResults([]);
     setOpen(false);
     setActiveIndex(-1);
-    setError(false);
+    setError(null);
   }
 
   function handleQueryChange(next: string) {
@@ -92,11 +93,66 @@ export function LocationPicker({
       setResults([]);
       setOpen(false);
       setLoading(false);
-      setError(false);
+      setError(null);
       setActiveIndex(-1);
       abortRef.current?.abort();
     } else {
       setOpen(true);
+    }
+  }
+
+  async function locateCurrent() {
+    if (disabled) return;
+    if (!navigator.geolocation) {
+      setError(t("geoUnsupported"));
+      return;
+    }
+
+    setGeoLoading(true);
+    setError(null);
+
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 60_000,
+        });
+      });
+
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+
+      const res = await fetch(
+        `/api/geocode/reverse?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
+      );
+      const data = (await res.json().catch(() => ({}))) as {
+        result?: LocationValue;
+        error?: string;
+      };
+
+      if (!res.ok || !data.result) {
+        pick({
+          name: t("useCurrent"),
+          address: `${lat.toFixed(5)}, ${lng.toFixed(5)}`,
+          placeId: `gps:${lat},${lng}`,
+          lat,
+          lng,
+        });
+        if (!res.ok) setError(t("reverseFailed"));
+        return;
+      }
+
+      pick(data.result);
+    } catch (err) {
+      const code =
+        err && typeof err === "object" && "code" in err
+          ? Number((err as GeolocationPositionError).code)
+          : null;
+      if (code === 1) setError(t("geoDenied"));
+      else setError(t("geoUnavailable"));
+    } finally {
+      setGeoLoading(false);
     }
   }
 
@@ -119,7 +175,7 @@ export function LocationPicker({
             type="button"
             variant="ghost"
             size="icon"
-            className="h-8 w-8 shrink-0"
+            className="interactive-press h-8 w-8 shrink-0"
             disabled={disabled}
             onClick={() => onChange(null)}
             aria-label={t("clear")}
@@ -134,51 +190,70 @@ export function LocationPicker({
         <label htmlFor={inputId} className="sr-only">
           {t("search")}
         </label>
-        <div className="relative">
-          <input
-            id={inputId}
-            type="text"
-            value={query}
-            disabled={disabled}
-            placeholder={t("placeholder")}
-            onChange={(e) => handleQueryChange(e.target.value)}
-            onFocus={() => {
-              if (results.length > 0) setOpen(true);
-            }}
-            onBlur={() => {
-              window.setTimeout(() => setOpen(false), 150);
-            }}
-            onKeyDown={(e) => {
-              if (!open || results.length === 0) return;
-              if (e.key === "ArrowDown") {
-                e.preventDefault();
-                setActiveIndex((i) => Math.min(i + 1, results.length - 1));
-              } else if (e.key === "ArrowUp") {
-                e.preventDefault();
-                setActiveIndex((i) => Math.max(i - 1, 0));
-              } else if (e.key === "Enter" && activeIndex >= 0) {
-                e.preventDefault();
-                pick(results[activeIndex]);
-              } else if (e.key === "Escape") {
-                setOpen(false);
-              }
-            }}
-            autoComplete="off"
-            role="combobox"
-            aria-expanded={open && results.length > 0}
-            aria-controls={listId}
-            aria-autocomplete="list"
-            className={cn(
-              "interactive-field h-11 w-full min-w-0 rounded-[5px] border border-border bg-surface px-3 pr-9 text-base text-foreground sm:text-sm",
-              "placeholder:text-muted-foreground",
-            )}
-          />
-          {loading ? (
-            <Loader2
-              className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground"
-              aria-hidden
+        <div className="flex gap-2">
+          <div className="relative min-w-0 flex-1">
+            <input
+              id={inputId}
+              type="text"
+              value={query}
+              disabled={disabled || geoLoading}
+              placeholder={t("placeholder")}
+              onChange={(e) => handleQueryChange(e.target.value)}
+              onFocus={() => {
+                if (results.length > 0) setOpen(true);
+              }}
+              onBlur={() => {
+                window.setTimeout(() => setOpen(false), 150);
+              }}
+              onKeyDown={(e) => {
+                if (!open || results.length === 0) return;
+                if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  setActiveIndex((i) => Math.min(i + 1, results.length - 1));
+                } else if (e.key === "ArrowUp") {
+                  e.preventDefault();
+                  setActiveIndex((i) => Math.max(i - 1, 0));
+                } else if (e.key === "Enter" && activeIndex >= 0) {
+                  e.preventDefault();
+                  pick(results[activeIndex]);
+                } else if (e.key === "Escape") {
+                  setOpen(false);
+                }
+              }}
+              autoComplete="off"
+              role="combobox"
+              aria-expanded={open && results.length > 0}
+              aria-controls={listId}
+              aria-autocomplete="list"
+              className={cn(
+                "interactive-field h-11 w-full min-w-0 rounded-[5px] border border-border bg-surface px-3 pr-9 text-base text-foreground sm:text-sm",
+                "placeholder:text-muted-foreground",
+              )}
             />
-          ) : null}
+            {loading ? (
+              <Loader2
+                className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground"
+                aria-hidden
+              />
+            ) : null}
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="interactive-press h-11 shrink-0 gap-1.5 px-3"
+            disabled={disabled || geoLoading}
+            onClick={() => void locateCurrent()}
+            title={t("useCurrent")}
+          >
+            {geoLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            ) : (
+              <Crosshair className="h-4 w-4" aria-hidden />
+            )}
+            <span className="hidden sm:inline">
+              {geoLoading ? t("locating") : t("useCurrent")}
+            </span>
+          </Button>
         </div>
 
         {open && results.length > 0 ? (
@@ -214,9 +289,7 @@ export function LocationPicker({
           </ul>
         ) : null}
 
-        {error ? (
-          <p className="mt-1 text-xs text-rose-600">{t("searchFailed")}</p>
-        ) : null}
+        {error ? <p className="mt-1 text-xs text-rose-600">{error}</p> : null}
         <p className="mt-1 text-[10px] text-muted-foreground">{t("attribution")}</p>
       </div>
     </div>

@@ -13,12 +13,16 @@ import { Input } from "@/components/ui/input";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { useLabelMaps } from "@/i18n/use-label-maps";
 import { cn, formatDate } from "@/lib/utils";
-import type { Role } from "@prisma/client";
+import type { Gender, Role } from "@prisma/client";
 
 export type AdminUserListItem = {
   id: string;
   name: string;
+  username: string;
   email: string;
+  phone: string | null;
+  dateOfBirth: string | null;
+  gender: Gender | null;
   role: Role;
   isActive: boolean;
   avatarKey: string | null;
@@ -43,7 +47,7 @@ export function UsersList({
   const tCommon = useTranslations("common");
   const tNav = useTranslations("nav");
   const locale = useLocale();
-  const { roles } = useLabelMaps();
+  const { roles, gender: genders } = useLabelMaps();
 
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<Role | "all">("all");
@@ -79,7 +83,10 @@ export function UsersList({
       if (!normalized) return true;
       const haystack = [
         user.name,
+        user.username,
         user.email,
+        user.phone ?? "",
+        user.gender ? genders[user.gender] : "",
         roles[user.role],
         user.department?.name ?? "",
       ]
@@ -87,7 +94,7 @@ export function UsersList({
         .toLowerCase();
       return haystack.includes(normalized);
     });
-  }, [users, query, roleFilter, statusFilter, departmentFilter, roles]);
+  }, [users, query, roleFilter, statusFilter, departmentFilter, roles, genders]);
 
   return (
     <>
@@ -172,8 +179,10 @@ export function UsersList({
           ) : (
             visibleUsers.map((item) => {
               const meta = [
+                item.phone,
+                item.gender ? genders[item.gender] : null,
+                item.dateOfBirth ? formatDate(item.dateOfBirth, locale) : null,
                 item.department?.name,
-                formatDate(item.createdAt),
               ]
                 .filter(Boolean)
                 .join(" · ");
@@ -210,7 +219,8 @@ export function UsersList({
                           </span>
                         </div>
                         <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                          {item.email}
+                          @{item.username}
+                          {` · ${item.email}`}
                           {meta ? ` · ${meta}` : ""}
                         </p>
                       </div>

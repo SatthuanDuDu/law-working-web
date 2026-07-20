@@ -103,6 +103,7 @@ export const NAV_ITEMS = [
   { href: "/dashboard", labelKey: "dashboard" as const, icon: "LayoutDashboard" },
   { href: "/matters", labelKey: "matters" as const, icon: "Briefcase" },
   { href: "/clients", labelKey: "clients" as const, icon: "Users" },
+  { href: "/chat", labelKey: "chat" as const, icon: "MessageCircle" },
   { href: "/calendar", labelKey: "calendar" as const, icon: "CalendarDays" },
 ] as const;
 

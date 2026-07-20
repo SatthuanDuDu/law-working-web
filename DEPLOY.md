@@ -45,14 +45,20 @@ ADMIN_EMAIL=ban@congty.vn ADMIN_PASSWORD='MatKhauManh!' npm run db:admin
 ```json
 [
   {
-    "AllowedOrigins": ["https://YOUR-APP.vercel.app", "http://localhost:3000"],
-    "AllowedMethods": ["GET", "PUT", "HEAD"],
+    "AllowedOrigins": [
+      "https://law-working-web-pi.vercel.app",
+      "https://YOUR-APP.vercel.app",
+      "http://localhost:3000"
+    ],
+    "AllowedMethods": ["GET", "PUT", "HEAD", "DELETE"],
     "AllowedHeaders": ["*"],
     "ExposeHeaders": ["ETag"],
     "MaxAgeSeconds": 3600
   }
 ]
 ```
+
+> Nếu comment/chat upload fail trên production: kiểm tra CORS origin khớp đúng domain Vercel, và `S3_PUBLIC_ENDPOINT` **không** trỏ `localhost`.
 
 Env:
 

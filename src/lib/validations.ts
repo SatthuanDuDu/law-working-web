@@ -1,7 +1,13 @@
 import { z } from "zod";
 
 export const loginSchema = z.object({
-  email: z.string().email("Email không hợp lệ"),
+  username: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(3)
+    .max(32)
+    .regex(/^[a-z0-9]+(?:\.[a-z0-9]+)*$/, "Tên người dùng không hợp lệ"),
   password: z.string().min(6, "Mật khẩu tối thiểu 6 ký tự"),
 });
 
@@ -91,6 +97,16 @@ export const reorderMatterPlanStepsSchema = z.object({
 });
 
 export const clientSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .optional()
+    .nullable()
+    .or(z.literal(""))
+    .refine(
+      (value) => !value || (/^[A-Za-z0-9_-]{2,32}$/.test(value)),
+      "Mã chỉ gồm chữ, số, _ hoặc - (2–32 ký tự)",
+    ),
   name: z.string().min(1, "Vui lòng nhập tên khách hàng"),
   email: z.string().email().optional().nullable().or(z.literal("")),
   phone: z.string().optional().nullable(),
@@ -117,13 +133,62 @@ export const taskSchema = z.object({
 });
 
 export const userSchema = z.object({
+  username: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(8, "Tên người dùng tối thiểu 8 ký tự")
+    .max(32, "Tên người dùng tối đa 32 ký tự")
+    .regex(
+      /^[a-z0-9]+\.[a-z0-9]+(?:\.[a-z0-9]+)*$/,
+      "Tên người dùng phải có dấu chấm (vd. vinh.tran)",
+    ),
   email: z.string().email(),
   name: z.string().min(1),
+  phone: z
+    .string()
+    .trim()
+    .optional()
+    .nullable()
+    .or(z.literal(""))
+    .refine(
+      (value) => !value || /^[0-9+\-\s()]{8,20}$/.test(value),
+      "Số điện thoại không hợp lệ",
+    ),
+  dateOfBirth: z
+    .string()
+    .optional()
+    .nullable()
+    .or(z.literal(""))
+    .refine(
+      (value) => !value || /^\d{4}-\d{2}-\d{2}$/.test(value),
+      "Ngày sinh không hợp lệ",
+    ),
+  gender: z.preprocess(
+    (value) => (value === "" || value == null ? null : value),
+    z.enum(["MALE", "FEMALE", "OTHER"]).nullable().optional(),
+  ),
   password: z.string().min(6).optional(),
   role: z.enum(["ADMIN", "MANAGER", "LAWYER", "SUPPORT"]),
   departmentId: z.string().optional().nullable(),
   isActive: z.boolean().default(true),
 });
+
+/** Parse HTML date input (YYYY-MM-DD) to Date at UTC noon to avoid TZ day-shift. */
+export function parseDateOfBirthInput(raw: string | null | undefined): Date | null {
+  const value = raw?.trim() || "";
+  if (!value) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const date = new Date(`${value}T12:00:00.000Z`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+export function formatDateOfBirthInput(date: Date | string | null | undefined): string {
+  if (!date) return "";
+  const d = typeof date === "string" ? new Date(date) : date;
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toISOString().slice(0, 10);
+}
 
 export const workTypeSchema = z.object({
   name: z.string().min(1),

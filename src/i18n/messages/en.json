@@ -59,6 +59,7 @@
     "dashboard": "Dashboard",
     "matters": "Matters",
     "clients": "Clients",
+    "chat": "Chat",
     "tasks": "Tasks",
     "calendar": "Calendar & deadlines",
     "settings": "Settings",
@@ -93,6 +94,10 @@
     "clients": {
       "title": "Clients",
       "description": "Manage client information"
+    },
+    "chat": {
+      "title": "Chat",
+      "description": "Internal messaging between staff"
     },
     "tasks": {
       "title": "Tasks",
@@ -145,6 +150,11 @@
       "LAWYER": "Lawyer",
       "SUPPORT": "Support staff"
     },
+    "gender": {
+      "MALE": "Male",
+      "FEMALE": "Female",
+      "OTHER": "Other"
+    },
     "matterStatus": {
       "NEW": "New",
       "IN_PROGRESS": "In progress",
@@ -196,11 +206,12 @@
   "auth": {
     "loginTitle": "Sign in",
     "loginSubtitle": "NSLAW internal work management system",
+    "username": "Username",
     "email": "Email",
     "password": "Password",
     "signIn": "Sign in",
     "signingIn": "Signing in...",
-    "invalidCredentials": "Invalid email or password",
+    "invalidCredentials": "Invalid username or password",
     "siteDescription": "Internal work management system for law firms"
   },
   "settings": {
@@ -211,7 +222,12 @@
     "confirmPassword": "Confirm new password",
     "passwordUpdated": "Password updated",
     "name": "Full name",
+    "username": "Username",
     "email": "Email",
+    "phone": "Phone number",
+    "dateOfBirth": "Date of birth",
+    "gender": "Gender",
+    "genderPlaceholder": "— Select gender —",
     "role": "Role",
     "department": "Department",
     "avatarHint": "Your avatar appears in comments and on your profile.",
@@ -419,6 +435,12 @@
     "openInOsm": "Open OpenStreetMap",
     "openInGoogleMaps": "Open Google Maps",
     "searchFailed": "No places found. Try a different search.",
+    "useCurrent": "Current location",
+    "locating": "Getting GPS...",
+    "geoDenied": "Location permission denied. Enable GPS in the browser.",
+    "geoUnavailable": "Could not get your current location.",
+    "geoUnsupported": "This browser does not support GPS.",
+    "reverseFailed": "Could not resolve an address from GPS.",
     "attribution": "© OpenStreetMap contributors"
   },
   "notifications": {
@@ -432,6 +454,8 @@
   },
   "clients": {
     "create": "Add client",
+    "code": "Client code",
+    "codeAutoHint": "Leave blank to auto-generate",
     "name": "Client name",
     "businessType": "Business type",
     "city": "City / Province",
@@ -574,7 +598,7 @@
       "staffCount": "{count} staff",
       "staffCountFiltered": "{visible}/{total} staff",
       "searchLabel": "Search",
-      "searchPlaceholder": "Name, email, role…",
+      "searchPlaceholder": "Name, username, email, phone…",
       "allRoles": "All roles",
       "allStatuses": "All statuses",
       "allDepartments": "All departments",
@@ -785,6 +809,7 @@
     "fileTooLarge": "File must be smaller than 25MB",
     "uploadSessionFailed": "Could not start upload session",
     "uploadFailed": "Upload to storage failed",
+    "uploadCorsFailed": "Upload blocked (CORS/R2). Check bucket CORS and S3_PUBLIC_ENDPOINT on Vercel.",
     "sending": "Sending...",
     "placeholderExtended": "Write a comment... type @ to mention, paste an image, or attach a file"
   },
@@ -866,5 +891,38 @@
     "genericError": "Something went wrong",
     "passwordMismatch": "Password confirmation does not match",
     "passwordTooShort": "New password must be at least 8 characters"
+  },
+  "chat": {
+    "title": "Chat",
+    "conversations": "Conversations",
+    "empty": "No conversations yet",
+    "emptyHint": "Pick a conversation or search for someone to message.",
+    "newDm": "Direct message",
+    "newGroup": "New group",
+    "groupName": "Group name",
+    "selectMembers": "Select members",
+    "searchStaff": "Search staff...",
+    "searchUser": "Search users to message...",
+    "searchUserHint": "Type a name or @username in the left search box.",
+    "clearSearch": "Clear search",
+    "people": "People",
+    "noSearchResults": "No results found",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "memberCount": "{count} members",
+    "addLocation": "Add location",
+    "placeholder": "Message... type @username to mention",
+    "send": "Send",
+    "attach": "Attach",
+    "noMessages": "No messages yet",
+    "back": "Back",
+    "you": "You",
+    "create": "Create",
+    "cancel": "Cancel",
+    "fileTooLarge": "File must be smaller than 25MB",
+    "uploadFailed": "Could not upload file",
+    "sendFailed": "Could not send message",
+    "openFile": "Open file",
+    "unread": "Unread"
   }
 }

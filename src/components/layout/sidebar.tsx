@@ -45,6 +45,7 @@ import { useSidebar } from "@/contexts/sidebar-context";
 import { useLabelMaps } from "@/i18n/use-label-maps";
 import { setLocaleAction } from "@/lib/locale-actions";
 import type { Locale } from "@/i18n/config";
+import { useShellAlerts } from "@/hooks/use-shell-alerts";
 
 const iconMap = {
   LayoutDashboard,
@@ -162,25 +163,61 @@ function SidebarEdgeToggle({
   );
 }
 
+function formatNavBadge(count: number) {
+  if (count <= 0) return null;
+  return count > 9 ? "9+" : String(count);
+}
+
 function NavLinkContent({
   Icon,
   label,
   collapsed,
+  badge,
+  active,
 }: {
   Icon: (typeof iconMap)[keyof typeof iconMap];
   label: string;
   collapsed: boolean;
+  badge?: number;
+  active: boolean;
 }) {
   const { pending } = useLinkStatus();
+  const badgeText = formatNavBadge(badge ?? 0);
 
   return (
     <>
-      {pending ? (
-        <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
-      ) : (
-        <Icon className="h-4 w-4 shrink-0" />
-      )}
-      {!collapsed && <span className="flex-1 truncate">{label}</span>}
+      <span className="relative shrink-0">
+        {pending ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Icon className="h-4 w-4" />
+        )}
+        {collapsed && badgeText ? (
+          <span
+            className={cn(
+              "absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full px-0.5 text-[10px] font-semibold leading-none",
+              active
+                ? "bg-primary text-primary-foreground"
+                : "bg-accent text-white",
+            )}
+          >
+            {badgeText}
+          </span>
+        ) : null}
+      </span>
+      {!collapsed && <span className="min-w-0 flex-1 truncate">{label}</span>}
+      {!collapsed && badgeText ? (
+        <span
+          className={cn(
+            "ml-auto shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
+            active
+              ? "bg-primary/15 text-primary"
+              : "bg-white/20 text-white",
+          )}
+        >
+          {badgeText}
+        </span>
+      ) : null}
     </>
   );
 }
@@ -192,6 +229,8 @@ function NavLink({
   active,
   collapsed,
   onNavigate,
+  badge,
+  ariaLabel,
 }: {
   href: string;
   label: string;
@@ -199,14 +238,17 @@ function NavLink({
   active: boolean;
   collapsed: boolean;
   onNavigate?: () => void;
+  badge?: number;
+  ariaLabel?: string;
 }) {
   const Icon = iconMap[icon];
 
   return (
-    <SidebarTooltip label={label} show={collapsed}>
+    <SidebarTooltip label={ariaLabel || label} show={collapsed}>
       <Link
         href={href}
         onClick={onNavigate}
+        aria-label={ariaLabel || label}
         className={cn(
           "interactive-press flex min-h-10 items-center rounded-md text-sm",
           collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2.5",
@@ -215,7 +257,13 @@ function NavLink({
             : "text-white/80 hover:bg-white/10 hover:text-white",
         )}
       >
-        <NavLinkContent Icon={Icon} label={label} collapsed={collapsed} />
+        <NavLinkContent
+          Icon={Icon}
+          label={label}
+          collapsed={collapsed}
+          badge={badge}
+          active={active}
+        />
       </Link>
     </SidebarTooltip>
   );
@@ -612,6 +660,7 @@ function SidebarContent({
 }) {
   const tAccount = useTranslations("account");
   const tNav = useTranslations("nav");
+  const { unreadChatCount, upcomingDueCount } = useShellAlerts();
 
   return (
     <>
@@ -646,16 +695,31 @@ function SidebarContent({
         {NAV_ITEMS.map((item) => {
           const active =
             pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const label = tNav(item.labelKey);
+          const badge =
+            item.href === "/chat"
+              ? unreadChatCount
+              : item.href === "/calendar"
+                ? upcomingDueCount
+                : undefined;
+          const ariaLabel =
+            item.href === "/chat" && unreadChatCount > 0
+              ? tNav("chatUnread", { count: unreadChatCount })
+              : item.href === "/calendar" && upcomingDueCount > 0
+                ? tNav("calendarDue", { count: upcomingDueCount })
+                : label;
 
           return (
             <NavLink
               key={item.href}
               href={item.href}
-              label={tNav(item.labelKey)}
+              label={label}
               icon={item.icon as keyof typeof iconMap}
               active={active}
               collapsed={collapsed}
               onNavigate={onNavigate}
+              badge={badge}
+              ariaLabel={ariaLabel}
             />
           );
         })}

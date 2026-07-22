@@ -60,8 +60,10 @@
     "matters": "Matters",
     "clients": "Clients",
     "chat": "Chat",
+    "chatUnread": "Chat, {count} unread",
     "tasks": "Tasks",
     "calendar": "Calendar & deadlines",
+    "calendarDue": "Calendar & deadlines, {count} upcoming",
     "settings": "Settings",
     "workload": "Workload",
     "users": "Staff",
@@ -200,7 +202,17 @@
       "TASK_ASSIGNED": "Task assigned",
       "TASK_DUE": "Task due",
       "GENERAL": "General",
-      "MENTION": "Mention"
+      "MENTION": "Mention",
+      "CHAT_MESSAGE": "Chat"
+    },
+    "expenseType": {
+      "COURT_FEE": "Court fee",
+      "NOTARY": "Notary",
+      "TRAVEL": "Travel",
+      "TRANSLATION": "Translation",
+      "DOCUMENT": "Documents / copies",
+      "EXPERTISE": "Expert appraisal",
+      "OTHER": "Other"
     }
   },
   "auth": {
@@ -890,7 +902,26 @@
     "noPermission": "Permission denied",
     "genericError": "Something went wrong",
     "passwordMismatch": "Password confirmation does not match",
-    "passwordTooShort": "New password must be at least 8 characters"
+    "passwordTooShort": "New password must be at least 8 characters",
+    "matterNotOpen": "This matter is closed or archived and cannot accept expenses",
+    "cannotCreateExpense": "Unable to save expense"
+  },
+  "expense": {
+    "fabLabel": "Add expense",
+    "dialogTitle": "Register matter expense",
+    "type": "Expense type",
+    "typePlaceholder": "Select expense type",
+    "customType": "Other expense type",
+    "customTypePlaceholder": "Enter expense type name",
+    "matter": "Matter",
+    "matterPlaceholder": "Select an open matter",
+    "noOpenMatters": "No open matters available for expenses.",
+    "amount": "Amount (VND)",
+    "amountPlaceholder": "Enter amount",
+    "suggestions": "Quick suggestions",
+    "confirm": "Confirm expense",
+    "saving": "Saving...",
+    "success": "Expense saved"
   },
   "chat": {
     "title": "Chat",
@@ -923,6 +954,10 @@
     "uploadFailed": "Could not upload file",
     "sendFailed": "Could not send message",
     "openFile": "Open file",
-    "unread": "Unread"
+    "unread": "Unread",
+    "chatAll": "@all",
+    "chatAllBadge": "Everyone",
+    "chatAllHint": "Company-wide channel for all staff",
+    "openChatAll": "Open @all"
   }
 }

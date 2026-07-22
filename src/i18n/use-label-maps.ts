@@ -55,6 +55,7 @@ export function useLabelMaps() {
       TASK_DUE: t("notificationType.TASK_DUE"),
       GENERAL: t("notificationType.GENERAL"),
       MENTION: t("notificationType.MENTION"),
+      CHAT_MESSAGE: t("notificationType.CHAT_MESSAGE"),
     },
     clientBusinessType: {
       LLC: t("clientBusinessType.LLC"),
@@ -63,6 +64,15 @@ export function useLabelMaps() {
       PARTNERSHIP: t("clientBusinessType.PARTNERSHIP"),
       INDIVIDUAL: t("clientBusinessType.INDIVIDUAL"),
       OTHER: t("clientBusinessType.OTHER"),
+    },
+    expenseType: {
+      COURT_FEE: t("expenseType.COURT_FEE"),
+      NOTARY: t("expenseType.NOTARY"),
+      TRAVEL: t("expenseType.TRAVEL"),
+      TRANSLATION: t("expenseType.TRANSLATION"),
+      DOCUMENT: t("expenseType.DOCUMENT"),
+      EXPERTISE: t("expenseType.EXPERTISE"),
+      OTHER: t("expenseType.OTHER"),
     },
   };
 }

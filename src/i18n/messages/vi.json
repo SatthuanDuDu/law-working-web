@@ -60,8 +60,10 @@
     "matters": "Vụ việc",
     "clients": "Khách hàng",
     "chat": "Trò chuyện",
+    "chatUnread": "Trò chuyện, {count} tin chưa đọc",
     "tasks": "Giao việc",
     "calendar": "Lịch & hạn",
+    "calendarDue": "Lịch & hạn, {count} sắp tới hạn",
     "settings": "Cài đặt",
     "workload": "Workload",
     "users": "Nhân viên",
@@ -200,7 +202,17 @@
       "TASK_ASSIGNED": "Giao việc",
       "TASK_DUE": "Hạn công việc",
       "GENERAL": "Chung",
-      "MENTION": "Nhắc đến"
+      "MENTION": "Nhắc đến",
+      "CHAT_MESSAGE": "Tin nhắn"
+    },
+    "expenseType": {
+      "COURT_FEE": "Án phí",
+      "NOTARY": "Công chứng",
+      "TRAVEL": "Đi lại",
+      "TRANSLATION": "Dịch thuật",
+      "DOCUMENT": "Sao y / hồ sơ",
+      "EXPERTISE": "Giám định",
+      "OTHER": "Khác"
     }
   },
   "auth": {
@@ -890,7 +902,26 @@
     "noPermission": "Không có quyền",
     "genericError": "Đã xảy ra lỗi",
     "passwordMismatch": "Mật khẩu xác nhận không khớp",
-    "passwordTooShort": "Mật khẩu mới phải có ít nhất 8 ký tự"
+    "passwordTooShort": "Mật khẩu mới phải có ít nhất 8 ký tự",
+    "matterNotOpen": "Vụ việc đã đóng hoặc lưu trữ, không thể thêm chi phí",
+    "cannotCreateExpense": "Không thể lưu chi phí"
+  },
+  "expense": {
+    "fabLabel": "Thêm chi phí",
+    "dialogTitle": "Đăng ký chi phí vụ việc",
+    "type": "Loại chi phí",
+    "typePlaceholder": "Chọn loại chi phí",
+    "customType": "Loại chi phí khác",
+    "customTypePlaceholder": "Nhập tên loại chi phí",
+    "matter": "Vụ việc",
+    "matterPlaceholder": "Chọn vụ việc đang diễn ra",
+    "noOpenMatters": "Không có vụ việc đang diễn ra để gắn chi phí.",
+    "amount": "Số tiền (VND)",
+    "amountPlaceholder": "Nhập số tiền",
+    "suggestions": "Đề xuất nhanh",
+    "confirm": "Xác nhận chi phí",
+    "saving": "Đang lưu...",
+    "success": "Đã lưu chi phí"
   },
   "chat": {
     "title": "Trò chuyện",
@@ -923,6 +954,10 @@
     "uploadFailed": "Không tải được file",
     "sendFailed": "Không gửi được tin nhắn",
     "openFile": "Mở file",
-    "unread": "Chưa đọc"
+    "unread": "Chưa đọc",
+    "chatAll": "@all",
+    "chatAllBadge": "Tất cả",
+    "chatAllHint": "Kênh chung — nhắn cho toàn bộ nhân viên",
+    "openChatAll": "Mở @all"
   }
 }

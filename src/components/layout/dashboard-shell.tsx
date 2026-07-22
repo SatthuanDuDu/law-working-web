@@ -2,6 +2,7 @@
 
 import { Sidebar } from "@/components/layout/sidebar";
 import { PageHeader } from "@/components/layout/page-header";
+import { AddExpenseFab } from "@/components/expenses/add-expense-fab";
 import { PageMetaProvider, usePageMeta } from "@/contexts/page-meta-context";
 import { SidebarProvider } from "@/contexts/sidebar-context";
 import { getPageMeta } from "@/lib/page-meta";
@@ -46,6 +47,7 @@ export function DashboardShell({
             <PageHeader />
             <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
           </div>
+          <AddExpenseFab />
         </div>
       </PageMetaProvider>
     </SidebarProvider>

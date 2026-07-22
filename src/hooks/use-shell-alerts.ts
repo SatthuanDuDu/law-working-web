@@ -6,9 +6,16 @@ import type { UrgentReminderItem } from "@/components/layout/urgent-reminder-sta
 type ShellAlerts = {
   unreadCount: number;
   urgentReminders: UrgentReminderItem[];
+  unreadChatCount: number;
+  upcomingDueCount: number;
 };
 
-const EMPTY: ShellAlerts = { unreadCount: 0, urgentReminders: [] };
+const EMPTY: ShellAlerts = {
+  unreadCount: 0,
+  urgentReminders: [],
+  unreadChatCount: 0,
+  upcomingDueCount: 0,
+};
 const REFRESH_MS = 60_000;
 
 async function fetchShellAlerts(): Promise<ShellAlerts | null> {
@@ -21,6 +28,10 @@ async function fetchShellAlerts(): Promise<ShellAlerts | null> {
       urgentReminders: Array.isArray(data.urgentReminders)
         ? data.urgentReminders
         : [],
+      unreadChatCount:
+        typeof data.unreadChatCount === "number" ? data.unreadChatCount : 0,
+      upcomingDueCount:
+        typeof data.upcomingDueCount === "number" ? data.upcomingDueCount : 0,
     };
   } catch {
     return null;

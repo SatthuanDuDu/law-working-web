@@ -23,7 +23,15 @@ export const authConfig = {
         return true;
       }
 
-      return isLoggedIn;
+      if (!isLoggedIn) {
+        // Redirect using the request host — never AUTH_URL — so a shell/Vercel
+        // AUTH_URL leftover cannot send local /dashboard to production login.
+        const loginUrl = new URL("/login", nextUrl.origin);
+        loginUrl.searchParams.set("callbackUrl", `${nextUrl.pathname}${nextUrl.search}`);
+        return Response.redirect(loginUrl);
+      }
+
+      return true;
     },
     redirect({ url, baseUrl }) {
       if (url.startsWith("/")) return `${baseUrl}${url}`;

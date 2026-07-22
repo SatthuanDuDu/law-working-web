@@ -30,81 +30,181 @@ async function assertConversationMember(userId: string, conversationId: string) 
   return Boolean(member);
 }
 
-export async function listConversationsAction() {
-  const user = await requireAuth();
+const ALL_CHAT_NAME = "Tất cả";
 
-  const memberships = await prisma.conversationMember.findMany({
-    where: { userId: user.id },
-    include: {
-      conversation: {
-        include: {
-          members: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  username: true,
-                  avatarKey: true,
-                  isActive: true,
+/** Ensure a single company-wide ALL conversation exists and includes every active user. */
+export async function ensureAllConversation() {
+  const activeUsers = await prisma.user.findMany({
+    where: { isActive: true },
+    select: { id: true },
+    orderBy: { createdAt: "asc" },
+  });
+  if (activeUsers.length === 0) return null;
+
+  let all = await prisma.conversation.findFirst({
+    where: { type: "ALL" },
+    select: { id: true },
+  });
+
+  if (!all) {
+    const creatorId = activeUsers[0]!.id;
+    all = await prisma.conversation.create({
+      data: {
+        type: "ALL",
+        name: ALL_CHAT_NAME,
+        createdById: creatorId,
+        members: {
+          create: activeUsers.map((u) => ({ userId: u.id })),
+        },
+      },
+      select: { id: true },
+    });
+    return all.id;
+  }
+
+  const existing = await prisma.conversationMember.findMany({
+    where: { conversationId: all.id },
+    select: { userId: true },
+  });
+  const existingIds = new Set(existing.map((e) => e.userId));
+  const missing = activeUsers.filter((u) => !existingIds.has(u.id));
+  if (missing.length > 0) {
+    await prisma.conversationMember.createMany({
+      data: missing.map((u) => ({
+        conversationId: all!.id,
+        userId: u.id,
+      })),
+      skipDuplicates: true,
+    });
+  }
+
+  await prisma.conversation.update({
+    where: { id: all.id },
+    data: { name: ALL_CHAT_NAME },
+  });
+
+  return all.id;
+}
+
+/** Add a newly created staff user to the All chat (if it exists). */
+export async function addUserToAllConversation(userId: string) {
+  const all = await prisma.conversation.findFirst({
+    where: { type: "ALL" },
+    select: { id: true },
+  });
+  if (!all) {
+    await ensureAllConversation();
+    return;
+  }
+  await prisma.conversationMember.upsert({
+    where: {
+      conversationId_userId: {
+        conversationId: all.id,
+        userId,
+      },
+    },
+    create: { conversationId: all.id, userId },
+    update: {},
+  });
+}
+
+function stripMentionMarkup(body: string) {
+  return body.replace(/@\[([^\]]+)\]\([^)]+\)/g, "@$1").trim();
+}
+
+export async function listConversationsAction() {
+  try {
+    const user = await requireAuth();
+    try {
+      await ensureAllConversation();
+    } catch (error) {
+      console.error("ensureAllConversation failed:", error);
+    }
+
+    const memberships = await prisma.conversationMember.findMany({
+      where: { userId: user.id },
+      include: {
+        conversation: {
+          include: {
+            members: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    username: true,
+                    avatarKey: true,
+                    isActive: true,
+                  },
                 },
               },
             },
-          },
-          messages: {
-            orderBy: { createdAt: "desc" },
-            take: 1,
-            include: {
-              sender: { select: { id: true, name: true, username: true } },
+            messages: {
+              orderBy: { createdAt: "desc" },
+              take: 1,
+              include: {
+                sender: { select: { id: true, name: true, username: true } },
+              },
             },
           },
         },
       },
-    },
-    orderBy: { conversation: { updatedAt: "desc" } },
-  });
+      orderBy: { conversation: { updatedAt: "desc" } },
+    });
 
-  const items = memberships.map((m) => {
-    const conv = m.conversation;
-    const last = conv.messages[0] ?? null;
-    const others = conv.members
-      .filter((mem) => mem.userId !== user.id)
-      .map((mem) => mem.user);
-    const title =
-      conv.type === "GROUP"
-        ? conv.name || "Nhóm"
-        : others[0]?.name || others[0]?.username || "Trò chuyện";
-    const unread =
-      last &&
-      last.senderId !== user.id &&
-      (!m.lastReadAt || last.createdAt > m.lastReadAt);
+    const items = memberships.map((m) => {
+      const conv = m.conversation;
+      const last = conv.messages[0] ?? null;
+      const others = conv.members
+        .filter((mem) => mem.userId !== user.id)
+        .map((mem) => mem.user);
+      const title =
+        conv.type === "ALL"
+          ? ALL_CHAT_NAME
+          : conv.type === "GROUP"
+            ? conv.name || "Nhóm"
+            : others[0]?.name || others[0]?.username || "Trò chuyện";
+      const unread =
+        last &&
+        last.senderId !== user.id &&
+        (!m.lastReadAt || last.createdAt > m.lastReadAt);
 
-    return {
-      id: conv.id,
-      type: conv.type,
-      name: conv.name,
-      title,
-      updatedAt: conv.updatedAt.toISOString(),
-      members: conv.members.map((mem) => ({
-        id: mem.user.id,
-        name: mem.user.name,
-        username: mem.user.username,
-        avatarKey: mem.user.avatarKey,
-      })),
-      lastMessage: last
-        ? {
-            id: last.id,
-            body: last.body,
-            createdAt: last.createdAt.toISOString(),
-            senderId: last.senderId,
-            senderName: last.sender.name,
-          }
-        : null,
-      unread: Boolean(unread),
-    };
-  });
+      return {
+        id: conv.id,
+        type: conv.type,
+        name: conv.name,
+        title,
+        updatedAt: conv.updatedAt.toISOString(),
+        members: conv.members.map((mem) => ({
+          id: mem.user.id,
+          name: mem.user.name,
+          username: mem.user.username,
+          avatarKey: mem.user.avatarKey,
+        })),
+        lastMessage: last
+          ? {
+              id: last.id,
+              body: last.body,
+              createdAt: last.createdAt.toISOString(),
+              senderId: last.senderId,
+              senderName: last.sender.name,
+            }
+          : null,
+        unread: Boolean(unread),
+      };
+    });
 
-  return { conversations: items };
+    items.sort((a, b) => {
+      if (a.type === "ALL" && b.type !== "ALL") return -1;
+      if (b.type === "ALL" && a.type !== "ALL") return 1;
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
+
+    return { conversations: items };
+  } catch (error) {
+    console.error("listConversationsAction failed:", error);
+    return { error: "Không tải được danh sách hội thoại", conversations: [] as never[] };
+  }
 }
 
 export async function listStaffForChatAction() {
@@ -376,22 +476,85 @@ export async function sendChatMessageAction(
       data: { lastReadAt: new Date() },
     });
 
+    return message;
+  });
+
+  // Notifications after commit — never block sending if notify fails.
+  try {
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { type: true, name: true },
+    });
+    const preview =
+      stripMentionMarkup(body).slice(0, 120) ||
+      (attachmentIds.length > 0
+        ? "Đã gửi tệp đính kèm"
+        : location
+          ? "Đã gửi vị trí"
+          : "Tin nhắn mới");
+    const link = `/chat?c=${conversationId}`;
+    const mentionSet = new Set(validMentions);
+    const recipients = members
+      .map((m) => m.userId)
+      .filter((id) => id !== user.id);
+
     if (validMentions.length > 0) {
-      const preview = body.slice(0, 120) || "Đã gắn thẻ bạn trong trò chuyện";
-      await tx.notification.createMany({
+      const mentionTitle = `${user.name} đã gắn thẻ bạn trong chat`;
+      await prisma.notification.createMany({
         data: validMentions.map((userId) => ({
           userId,
-          type: "MENTION" as const,
-          title: "Được gắn thẻ trong chat",
+          type: "MENTION",
+          title: mentionTitle,
           message: preview,
-          link: `/chat?c=${conversationId}`,
+          link,
         })),
       });
     }
 
-    return message;
-  });
+    const chatRecipients = recipients.filter((id) => !mentionSet.has(id));
+    const chatTitle =
+      conversation?.type === "ALL"
+        ? `Chat tất cả · ${user.name}`
+        : conversation?.type === "GROUP"
+          ? `${conversation.name || "Nhóm"} · ${user.name}`
+          : `Tin nhắn từ ${user.name}`;
+
+    for (const recipientId of chatRecipients) {
+      const existing = await prisma.notification.findFirst({
+        where: {
+          userId: recipientId,
+          type: "CHAT_MESSAGE",
+          link,
+          isRead: false,
+        },
+        select: { id: true },
+      });
+      if (existing) {
+        await prisma.notification.update({
+          where: { id: existing.id },
+          data: {
+            title: chatTitle,
+            message: preview,
+            createdAt: new Date(),
+          },
+        });
+      } else {
+        await prisma.notification.create({
+          data: {
+            userId: recipientId,
+            type: "CHAT_MESSAGE",
+            title: chatTitle,
+            message: preview,
+            link,
+          },
+        });
+      }
+    }
+  } catch (error) {
+    console.error("chat notification failed:", error);
+  }
 
   revalidatePath("/chat");
+  revalidatePath("/", "layout");
   return { success: true, messageId: created.id };
 }

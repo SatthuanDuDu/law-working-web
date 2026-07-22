@@ -203,3 +203,34 @@ export const attachmentLabelSchema = z.object({
 export const departmentSchema = z.object({
   name: z.string().min(1),
 });
+
+export const EXPENSE_TYPES = [
+  "COURT_FEE",
+  "NOTARY",
+  "TRAVEL",
+  "TRANSLATION",
+  "DOCUMENT",
+  "EXPERTISE",
+  "OTHER",
+] as const;
+
+export const matterExpenseSchema = z
+  .object({
+    matterId: z.string().min(1, "Vui lòng chọn vụ việc"),
+    type: z.enum(EXPENSE_TYPES),
+    customTypeLabel: z.string().optional().nullable(),
+    amountVnd: z
+      .string()
+      .trim()
+      .regex(/^\d+$/, "Số tiền không hợp lệ")
+      .refine((v) => BigInt(v) > BigInt(0), "Số tiền phải lớn hơn 0"),
+  })
+  .superRefine((data, ctx) => {
+    if (data.type === "OTHER" && !data.customTypeLabel?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Vui lòng nhập loại chi phí",
+        path: ["customTypeLabel"],
+      });
+    }
+  });

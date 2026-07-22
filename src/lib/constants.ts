@@ -85,6 +85,7 @@ export const NOTIFICATION_TYPE_LABELS = {
   TASK_DUE: "Hạn công việc",
   GENERAL: "Chung",
   MENTION: "Nhắc đến",
+  CHAT_MESSAGE: "Tin nhắn",
 } as const;
 
 export type NavLabelKey =

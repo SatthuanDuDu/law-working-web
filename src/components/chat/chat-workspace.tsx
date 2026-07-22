@@ -7,11 +7,14 @@ import {
   useRef,
   useState,
   useTransition,
+  type ReactNode,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
+  FileText,
   MapPin,
+  Megaphone,
   MessageCircle,
   Paperclip,
   Search,
@@ -32,6 +35,7 @@ import {
 } from "@/lib/chat-actions";
 import { LocationPicker } from "@/components/location/location-picker";
 import { LocationChip } from "@/components/location/location-chip";
+import { AttachmentViewer } from "@/components/attachments/attachment-viewer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -40,8 +44,16 @@ import {
   appendLocationToFormData,
   type LocationValue,
 } from "@/lib/location";
+import { removeVietnameseDiacritics } from "@/lib/username";
 
 const MAX_SIZE_BYTES = 25 * 1024 * 1024;
+
+function normalizeSearchText(value: string) {
+  return removeVietnameseDiacritics(value)
+    .toLowerCase()
+    .replace(/^@+/, "")
+    .trim();
+}
 
 type Staff = {
   id: string;
@@ -53,7 +65,7 @@ type Staff = {
 
 type ConversationItem = {
   id: string;
-  type: "DIRECT" | "GROUP";
+  type: "DIRECT" | "GROUP" | "ALL";
   name: string | null;
   title: string;
   updatedAt: string;
@@ -93,30 +105,214 @@ type PendingFile = {
   fileName: string;
   mimeType: string;
   sizeBytes: number;
+  previewUrl?: string;
 };
 
-function encodeMentions(text: string, staff: Staff[]) {
-  let body = text;
-  const used = staff.filter((m) => text.includes(`@${m.username}`));
-  for (const m of used) {
-    body = body.split(`@${m.username}`).join(`@[${m.username}](${m.id})`);
-  }
-  return { body, mentionedUserIds: used.map((m) => m.id) };
+function isImageMime(mimeType: string) {
+  return mimeType.startsWith("image/");
 }
 
-function renderBody(body: string) {
-  const parts = body.split(/(@\[[^\]]+\]\([^)]+\))/g);
-  return parts.map((part, i) => {
-    const match = part.match(/^@\[([^\]]+)\]\(([^)]+)\)$/);
-    if (match) {
-      return (
-        <span key={i} className="font-semibold text-primary">
-          @{match[1]}
-        </span>
-      );
-    }
-    return <span key={i}>{part}</span>;
+function namedClipboardFile(file: File) {
+  if (file.name && file.name.trim() && file.name !== "image.png") {
+    return file;
+  }
+  const ext =
+    file.type === "image/png"
+      ? "png"
+      : file.type === "image/jpeg"
+        ? "jpg"
+        : file.type === "image/webp"
+          ? "webp"
+          : file.type === "image/gif"
+            ? "gif"
+            : "bin";
+  return new File([file], `paste-${Date.now()}.${ext}`, {
+    type: file.type || "application/octet-stream",
   });
+}
+
+function ChatAttachmentPreview({
+  attachment,
+  tone,
+}: {
+  attachment: {
+    id: string;
+    fileName: string;
+    mimeType: string;
+  };
+  tone: "mine" | "theirs";
+}) {
+  const t = useTranslations("chat");
+  const [thumbUrl, setThumbUrl] = useState<string | null>(null);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const isImage = isImageMime(attachment.mimeType);
+
+  useEffect(() => {
+    if (!isImage) return;
+    let cancelled = false;
+    async function load() {
+      const res = await fetch(`/api/attachments/${attachment.id}?mode=preview`);
+      const data = await res.json().catch(() => ({}));
+      if (cancelled || !res.ok) return;
+      setThumbUrl(data.url || data.downloadUrl || null);
+    }
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [attachment.id, isImage]);
+
+  return (
+    <>
+      <AttachmentViewer
+        attachment={attachment}
+        open={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+      />
+      {isImage && thumbUrl ? (
+        <button
+          type="button"
+          onClick={() => setViewerOpen(true)}
+          className="interactive-press block max-w-full overflow-hidden rounded-md ring-1 ring-border/60"
+          aria-label={`${t("openFile")}: ${attachment.fileName}`}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={thumbUrl}
+            alt={attachment.fileName}
+            className="max-h-48 max-w-full object-contain"
+          />
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setViewerOpen(true)}
+          className={cn(
+            "interactive-press flex w-full max-w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-medium",
+            tone === "mine"
+              ? "bg-primary-foreground/15 text-primary-foreground hover:bg-primary-foreground/25"
+              : "bg-surface text-primary ring-1 ring-primary/20 hover:bg-primary-muted",
+          )}
+          aria-label={`${t("openFile")}: ${attachment.fileName}`}
+        >
+          <FileText className="h-3.5 w-3.5 shrink-0" />
+          <span className="min-w-0 truncate underline-offset-2 hover:underline">
+            {attachment.fileName}
+          </span>
+        </button>
+      )}
+    </>
+  );
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Encode @username → @[username](id).
+ * Optionally supports @all → mention every user in the pool (group chats only).
+ * Longest username first so "vinh" does not break "vinh.tran".
+ */
+function encodeMentions(
+  text: string,
+  staff: Staff[],
+  options?: { allowAll?: boolean },
+) {
+  const allowAll = Boolean(options?.allowAll);
+  const hasAllMention =
+    allowAll && /(^|[\s])@all(?=$|[\s.,!?;:])/i.test(text);
+  let body = allowAll
+    ? text.replace(/(^|[\s])@all(?=$|[\s.,!?;:])/gi, "$1@[all](all)")
+    : text;
+
+  const sorted = [...staff].sort(
+    (a, b) => b.username.length - a.username.length,
+  );
+  const used: Staff[] = [];
+
+  for (const m of sorted) {
+    if (!m.username) continue;
+    const re = new RegExp(
+      `(^|[\\s])@${escapeRegExp(m.username)}(?=$|[\\s.,!?;:])`,
+      "gi",
+    );
+    if (!re.test(body)) continue;
+    re.lastIndex = 0;
+    body = body.replace(re, (full, lead: string) => {
+      used.push(m);
+      return `${lead}@[${m.username}](${m.id})`;
+    });
+  }
+
+  if (hasAllMention) {
+    return {
+      body,
+      mentionedUserIds: staff.map((m) => m.id).filter(Boolean),
+    };
+  }
+
+  const unique = Array.from(new Map(used.map((u) => [u.id, u])).values());
+  return { body, mentionedUserIds: unique.map((m) => m.id) };
+}
+
+function renderMentionLabel(label: string, key: string) {
+  return (
+    <span key={key} className="font-bold">
+      @{label}
+    </span>
+  );
+}
+
+/** Render @[user](id) and plain @username (fallback) as bold. */
+function renderBody(body: string, knownUsernames: string[] = []) {
+  const nodes: ReactNode[] = [];
+  const markupRe = /@\[([^\]]+)\]\(([^)]+)\)/g;
+  let last = 0;
+  let match: RegExpExecArray | null;
+  let key = 0;
+
+  const pushPlain = (plain: string) => {
+    if (!plain) return;
+    const names = [...knownUsernames]
+      .filter(Boolean)
+      .sort((a, b) => b.length - a.length);
+    if (names.length === 0) {
+      nodes.push(<span key={`t-${key++}`}>{plain}</span>);
+      return;
+    }
+    const plainRe = new RegExp(
+      `@(?:${names.map(escapeRegExp).join("|")})(?=$|[\\s.,!?;:])`,
+      "gi",
+    );
+    let pLast = 0;
+    let pMatch: RegExpExecArray | null;
+    while ((pMatch = plainRe.exec(plain)) !== null) {
+      if (pMatch.index > pLast) {
+        nodes.push(
+          <span key={`t-${key++}`}>{plain.slice(pLast, pMatch.index)}</span>,
+        );
+      }
+      const token = pMatch[0];
+      nodes.push(renderMentionLabel(token.slice(1), `m-${key++}`));
+      pLast = pMatch.index + token.length;
+    }
+    if (pLast < plain.length) {
+      nodes.push(<span key={`t-${key++}`}>{plain.slice(pLast)}</span>);
+    }
+  };
+
+  while ((match = markupRe.exec(body)) !== null) {
+    if (match.index > last) {
+      pushPlain(body.slice(last, match.index));
+    }
+    nodes.push(renderMentionLabel(match[1]!, `mk-${key++}`));
+    last = match.index + match[0].length;
+  }
+  if (last < body.length) {
+    pushPlain(body.slice(last));
+  }
+  return nodes.length > 0 ? nodes : body;
 }
 
 function sameCalendarDay(a: Date, b: Date) {
@@ -197,7 +393,7 @@ export function ChatWorkspace({
 
   const mentionCandidates = useMemo(() => {
     const pool =
-      active?.type === "GROUP"
+      active?.type === "GROUP" || active?.type === "ALL"
         ? active.members
             .filter((m) => m.id !== meId)
             .map((m) => ({
@@ -208,51 +404,88 @@ export function ChatWorkspace({
             }))
         : staff;
     if (mentionQuery == null) return [];
-    const q = mentionQuery.toLowerCase();
-    return pool
-      .filter(
-        (s) =>
-          s.username.toLowerCase().includes(q) ||
-          s.name.toLowerCase().includes(q),
-      )
+    const q = normalizeSearchText(mentionQuery);
+    const people = pool
+      .filter((s) => {
+        const name = normalizeSearchText(s.name);
+        const username = normalizeSearchText(s.username);
+        return !q || name.includes(q) || username.includes(q);
+      })
       .slice(0, 6);
-  }, [active, staff, mentionQuery, meId]);
+    const allowAllMention =
+      active?.type === "GROUP" || active?.type === "ALL";
+    const allMatches = !q || "all".startsWith(q);
+    if (allowAllMention && allMatches) {
+      return [
+        {
+          id: "__all__",
+          name: t("chatAllBadge"),
+          username: "all",
+          avatarKey: null,
+        },
+        ...people.slice(0, 5),
+      ];
+    }
+    return people;
+  }, [active, staff, mentionQuery, meId, t]);
+
+  const mentionNamePool = useMemo(() => {
+    const names = new Set<string>();
+    if (active?.type === "GROUP" || active?.type === "ALL") {
+      names.add("all");
+    }
+    for (const m of active?.members ?? []) {
+      if (m.username) names.add(m.username);
+    }
+    for (const s of staff) {
+      if (s.username) names.add(s.username);
+    }
+    return [...names];
+  }, [active?.members, active?.type, staff]);
 
   const filteredConversations = useMemo(() => {
-    const q = sidebarQuery.trim().toLowerCase();
-    if (!q) return conversations;
-    return conversations.filter((c) => {
-      const hay = [
-        c.title,
-        c.name ?? "",
-        ...c.members.map((m) => `${m.name} ${m.username}`),
-        c.lastMessage?.body ?? "",
-      ]
-        .join(" ")
-        .toLowerCase();
-      return hay.includes(q);
+    const q = normalizeSearchText(sidebarQuery);
+    const list = !q
+      ? conversations
+      : conversations.filter((c) => {
+          const hay = normalizeSearchText(
+            [
+              c.title,
+              c.name ?? "",
+              c.type === "ALL" ? "tat ca all everyone @all" : "",
+              ...c.members.map((m) => `${m.name} ${m.username}`),
+              c.lastMessage?.body ?? "",
+            ].join(" "),
+          );
+          return hay.includes(q);
+        });
+    return [...list].sort((a, b) => {
+      if (a.type === "ALL" && b.type !== "ALL") return -1;
+      if (b.type === "ALL" && a.type !== "ALL") return 1;
+      return 0;
     });
   }, [conversations, sidebarQuery]);
 
   const staffMatches = useMemo(() => {
-    const q = sidebarQuery.trim().toLowerCase();
-    if (q.length < 1) return [];
+    const q = normalizeSearchText(sidebarQuery);
+    if (!q) return [];
     return staff
-      .filter(
-        (s) =>
-          s.name.toLowerCase().includes(q) ||
-          s.username.toLowerCase().includes(q),
-      )
+      .filter((s) => {
+        const name = normalizeSearchText(s.name);
+        const username = normalizeSearchText(s.username);
+        return name.includes(q) || username.includes(q);
+      })
       .slice(0, 8);
   }, [staff, sidebarQuery]);
 
   const groupStaff = useMemo(() => {
-    const q = groupQuery.trim().toLowerCase();
+    const q = normalizeSearchText(groupQuery);
     if (!q) return staff;
-    return staff.filter(
-      (s) =>
-        s.name.toLowerCase().includes(q) || s.username.toLowerCase().includes(q),
-    );
+    return staff.filter((s) => {
+      const name = normalizeSearchText(s.name);
+      const username = normalizeSearchText(s.username);
+      return name.includes(q) || username.includes(q);
+    });
   }, [staff, groupQuery]);
 
   const messageItems = useMemo(() => {
@@ -280,8 +513,14 @@ export function ChatWorkspace({
   }, [messages, locale, t]);
 
   const refreshConversations = useCallback(async () => {
-    const res = await listConversationsAction();
-    if ("conversations" in res) setConversations(res.conversations);
+    try {
+      const res = await listConversationsAction();
+      if ("conversations" in res && Array.isArray(res.conversations)) {
+        setConversations(res.conversations);
+      }
+    } catch (error) {
+      console.error("refreshConversations failed:", error);
+    }
   }, []);
 
   const loadMessages = useCallback(
@@ -312,13 +551,27 @@ export function ChatWorkspace({
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const [convRes, staffRes] = await Promise.all([
+      const [convRes, staffRes] = await Promise.allSettled([
         listConversationsAction(),
         listStaffForChatAction(),
       ]);
       if (cancelled) return;
-      if ("conversations" in convRes) setConversations(convRes.conversations);
-      if ("staff" in staffRes) setStaff(staffRes.staff);
+      if (convRes.status === "fulfilled") {
+        const value = convRes.value;
+        if ("conversations" in value && Array.isArray(value.conversations)) {
+          setConversations(value.conversations);
+        }
+        if ("error" in value && value.error) {
+          console.error("listConversationsAction:", value.error);
+        }
+      } else {
+        console.error("listConversationsAction failed:", convRes.reason);
+      }
+      if (staffRes.status === "fulfilled" && "staff" in staffRes.value) {
+        setStaff(staffRes.value.staff);
+      } else if (staffRes.status === "rejected") {
+        console.error("listStaffForChatAction failed:", staffRes.reason);
+      }
     })();
     return () => {
       cancelled = true;
@@ -423,7 +676,7 @@ export function ChatWorkspace({
 
   function updateDraft(next: string) {
     setDraft(next);
-    const cursorMatch = next.match(/@([a-z0-9_]*)$/i);
+    const cursorMatch = next.match(/@([a-z0-9._]*)$/i);
     if (cursorMatch) {
       setMentionQuery(cursorMatch[1] ?? "");
       setMentionIndex(0);
@@ -433,7 +686,9 @@ export function ChatWorkspace({
   }
 
   function pickMention(user: Staff) {
-    setDraft((prev) => prev.replace(/@([a-z0-9_]*)$/i, `@${user.username} `));
+    setDraft((prev) =>
+      prev.replace(/@([a-z0-9._]*)$/i, `@${user.username} `),
+    );
     setMentionQuery(null);
   }
 
@@ -482,11 +737,35 @@ export function ChatWorkspace({
           fileName: file.name,
           mimeType: file.type || "application/octet-stream",
           sizeBytes: file.size,
+          previewUrl: isImageMime(file.type)
+            ? URL.createObjectURL(file)
+            : undefined,
         },
       ]);
     } finally {
       setIsUploading(false);
     }
+  }
+
+  function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const items = e.clipboardData?.items;
+    if (!items?.length) return;
+    const files: File[] = [];
+    for (const item of Array.from(items)) {
+      if (item.kind !== "file") continue;
+      const file = item.getAsFile();
+      if (file && file.size > 0) files.push(namedClipboardFile(file));
+    }
+    if (files.length === 0) return;
+    e.preventDefault();
+    files.forEach((f) => void uploadFile(f));
+  }
+
+  async function removePending(id: string) {
+    const target = pendingFiles.find((f) => f.id === id);
+    if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
+    setPendingFiles((prev) => prev.filter((f) => f.id !== id));
+    await fetch(`/api/attachments/${id}`, { method: "DELETE" });
   }
 
   function handleSend() {
@@ -501,7 +780,11 @@ export function ChatWorkspace({
         username: m.username,
         avatarKey: m.avatarKey,
       })) ?? staff;
-    const { body, mentionedUserIds } = encodeMentions(text, pool);
+    const allowAll =
+      active?.type === "GROUP" || active?.type === "ALL";
+    const { body, mentionedUserIds } = encodeMentions(text, pool, {
+      allowAll,
+    });
 
     const formData = new FormData();
     formData.set("body", body);
@@ -519,6 +802,9 @@ export function ChatWorkspace({
         return;
       }
       setDraft("");
+      for (const f of pendingFiles) {
+        if (f.previewUrl) URL.revokeObjectURL(f.previewUrl);
+      }
       setPendingFiles([]);
       setLocation(null);
       setShowLocation(false);
@@ -539,6 +825,29 @@ export function ChatWorkspace({
       setShowGroup(false);
       await refreshConversations();
       if (res.conversationId) setActiveId(res.conversationId);
+    });
+  }
+
+  function openChatAll() {
+    startTransition(async () => {
+      setSidebarQuery("");
+      setError(null);
+      const existing = conversations.find((c) => c.type === "ALL");
+      if (existing) {
+        setActiveId(existing.id);
+        return;
+      }
+      const res = await listConversationsAction();
+      if ("error" in res && res.error) {
+        setError(res.error);
+        return;
+      }
+      if ("conversations" in res && Array.isArray(res.conversations)) {
+        setConversations(res.conversations);
+        const all = res.conversations.find((c) => c.type === "ALL");
+        if (all) setActiveId(all.id);
+        else setError(t("chatAllHint"));
+      }
     });
   }
 
@@ -577,6 +886,18 @@ export function ChatWorkspace({
             <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
               {t("conversations")}
             </h2>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="interactive-press h-8 gap-1 px-2 text-primary"
+              onClick={openChatAll}
+              title={t("openChatAll")}
+              disabled={isPending}
+            >
+              <Megaphone className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">@all</span>
+            </Button>
             <Button
               type="button"
               size="sm"
@@ -665,6 +986,7 @@ export function ChatWorkspace({
               ) : null}
               {filteredConversations.map((c) => {
                 const peer = c.members.find((m) => m.id !== meId);
+                const isAll = c.type === "ALL";
                 return (
                   <button
                     key={c.id}
@@ -675,17 +997,28 @@ export function ChatWorkspace({
                       activeId === c.id && "bg-primary/10",
                     )}
                   >
-                    <UserAvatar
-                      userId={peer?.id ?? c.id}
-                      name={c.title}
-                      avatarKey={peer?.avatarKey ?? null}
-                      className="h-9 w-9 shrink-0"
-                    />
+                    {isAll ? (
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                        <Users className="h-4 w-4" />
+                      </span>
+                    ) : (
+                      <UserAvatar
+                        userId={peer?.id ?? c.id}
+                        name={c.title}
+                        avatarKey={peer?.avatarKey ?? null}
+                        className="h-9 w-9 shrink-0"
+                      />
+                    )}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
                         <p className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
-                          {c.title}
+                          {isAll ? t("chatAll") : c.title}
                         </p>
+                        {isAll ? (
+                          <span className="shrink-0 rounded-full bg-primary-muted px-1.5 py-0 text-[10px] font-semibold text-primary">
+                            {t("chatAllBadge")}
+                          </span>
+                        ) : null}
                         {c.lastMessage ? (
                           <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
                             {formatMessageTime(c.lastMessage.createdAt, locale)}
@@ -737,22 +1070,28 @@ export function ChatWorkspace({
               >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
-              <UserAvatar
-                userId={
-                  active.members.find((m) => m.id !== meId)?.id ?? active.id
-                }
-                name={active.title}
-                avatarKey={
-                  active.members.find((m) => m.id !== meId)?.avatarKey ?? null
-                }
-                className="h-8 w-8 shrink-0"
-              />
+              {active.type === "ALL" ? (
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                  <Users className="h-4 w-4" />
+                </span>
+              ) : (
+                <UserAvatar
+                  userId={
+                    active.members.find((m) => m.id !== meId)?.id ?? active.id
+                  }
+                  name={active.title}
+                  avatarKey={
+                    active.members.find((m) => m.id !== meId)?.avatarKey ?? null
+                  }
+                  className="h-8 w-8 shrink-0"
+                />
+              )}
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-foreground">
-                  {active.title}
+                  {active.type === "ALL" ? t("chatAll") : active.title}
                 </p>
                 <p className="truncate text-[11px] text-muted-foreground">
-                  {active.type === "GROUP"
+                  {active.type === "GROUP" || active.type === "ALL"
                     ? t("memberCount", { count: active.members.length })
                     : `@${active.members.find((m) => m.id !== meId)?.username ?? ""}`}
                 </p>
@@ -816,41 +1155,25 @@ export function ChatWorkspace({
                         ) : null}
                         {m.body ? (
                           <p className="whitespace-pre-wrap break-words leading-snug">
-                            {renderBody(m.body)}
+                            {renderBody(m.body, mentionNamePool)}
                           </p>
                         ) : null}
                         {m.location ? (
-                          <div
-                            className={cn(
-                              "mt-1.5",
-                              mine && "[&_*]:text-primary-foreground",
-                            )}
-                          >
-                            <LocationChip location={m.location} />
+                          <div className="mt-1.5">
+                            <LocationChip
+                              location={m.location}
+                              className="border-primary/25 bg-primary-muted text-primary"
+                            />
                           </div>
                         ) : null}
                         {m.attachments.length > 0 ? (
-                          <ul className="mt-1.5 space-y-0.5">
+                          <ul className="mt-1.5 space-y-1.5">
                             {m.attachments.map((f) => (
                               <li key={f.id}>
-                                <button
-                                  type="button"
-                                  className={cn(
-                                    "interactive-press text-left text-xs underline underline-offset-2",
-                                    mine
-                                      ? "text-primary-foreground"
-                                      : "text-primary",
-                                  )}
-                                  onClick={async () => {
-                                    const res = await fetch(
-                                      `/api/attachments/${f.id}?mode=download`,
-                                    );
-                                    const data = await res.json();
-                                    if (data.url) window.open(data.url, "_blank");
-                                  }}
-                                >
-                                  {f.fileName}
-                                </button>
+                                <ChatAttachmentPreview
+                                  attachment={f}
+                                  tone={mine ? "mine" : "theirs"}
+                                />
                               </li>
                             ))}
                           </ul>
@@ -879,17 +1202,24 @@ export function ChatWorkspace({
                   {pendingFiles.map((f) => (
                     <li
                       key={f.id}
-                      className="inline-flex max-w-full items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs"
+                      className="inline-flex max-w-full items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-xs"
                     >
+                      {f.previewUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={f.previewUrl}
+                          alt=""
+                          className="h-8 w-8 shrink-0 rounded object-cover"
+                        />
+                      ) : (
+                        <FileText className="h-3.5 w-3.5 shrink-0 text-primary" />
+                      )}
                       <span className="truncate">{f.fileName}</span>
                       <button
                         type="button"
                         className="interactive-press shrink-0"
-                        onClick={() =>
-                          setPendingFiles((prev) =>
-                            prev.filter((x) => x.id !== f.id),
-                          )
-                        }
+                        onClick={() => void removePending(f.id)}
+                        aria-label={t("cancel")}
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -933,6 +1263,7 @@ export function ChatWorkspace({
                 <textarea
                   value={draft}
                   onChange={(e) => updateDraft(e.target.value)}
+                  onPaste={handlePaste}
                   onKeyDown={(e) => {
                     if (mentionCandidates.length > 0) {
                       if (e.key === "ArrowDown") {

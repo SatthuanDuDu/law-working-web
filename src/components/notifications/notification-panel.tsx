@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Bell, Clock, X } from "lucide-react";
@@ -23,6 +23,38 @@ import { isUrgentReminderActive } from "@/lib/urgent-reminder-window";
 
 type TabKey = "unread" | "read";
 type FilterType = NotificationType | "URGENT_DUE" | "";
+
+/** Stable client clock for useSyncExternalStore (must not return a new value every read). */
+let clientNowCache = 0;
+let clientNowInterval: number | null = null;
+const clientNowListeners = new Set<() => void>();
+
+function subscribeClientNow(onStoreChange: () => void) {
+  clientNowListeners.add(onStoreChange);
+  if (clientNowCache === 0) clientNowCache = Date.now();
+  if (clientNowInterval == null) {
+    clientNowInterval = window.setInterval(() => {
+      clientNowCache = Date.now();
+      clientNowListeners.forEach((listener) => listener());
+    }, 10_000);
+  }
+  return () => {
+    clientNowListeners.delete(onStoreChange);
+    if (clientNowListeners.size === 0 && clientNowInterval != null) {
+      window.clearInterval(clientNowInterval);
+      clientNowInterval = null;
+    }
+  };
+}
+
+function getClientNow() {
+  if (clientNowCache === 0) clientNowCache = Date.now();
+  return clientNowCache;
+}
+
+function getServerNow() {
+  return 0;
+}
 
 function formatCountdown(
   msRemaining: number,
@@ -83,7 +115,12 @@ export function NotificationPanel({
   const [filterType, setFilterType] = useState<FilterType>("");
   const [readLocally, setReadLocally] = useState(0);
   const [isPending, startTransition] = useTransition();
-  const [now, setNow] = useState(() => Date.now());
+  // Server snapshot 0 — client uses cached clock (hydration-safe, stable getSnapshot).
+  const now = useSyncExternalStore(
+    subscribeClientNow,
+    getClientNow,
+    getServerNow,
+  );
   const rootRef = useRef<HTMLDivElement>(null);
   const [panelAnchor, setPanelAnchor] = useState<{
     top: number;
@@ -95,19 +132,15 @@ export function NotificationPanel({
 
   const activeUrgent = useMemo(
     () =>
-      urgentReminders.filter((item) =>
-        isUrgentReminderActive(now, item.startsAt, item.endsAt),
-      ),
+      now <= 0
+        ? []
+        : urgentReminders.filter((item) =>
+            isUrgentReminderActive(now, item.startsAt, item.endsAt),
+          ),
     [urgentReminders, now],
   );
 
   const displayedUnread = Math.max(0, unreadCount - readLocally) + activeUrgent.length;
-
-  useEffect(() => {
-    if (!open) return;
-    const id = window.setInterval(() => setNow(Date.now()), 10_000);
-    return () => window.clearInterval(id);
-  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -183,7 +216,6 @@ export function NotificationPanel({
 
   function openPanel() {
     setOpen(true);
-    setNow(Date.now());
     loadNotifications();
   }
 

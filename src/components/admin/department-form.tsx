@@ -48,8 +48,10 @@ export function DepartmentForm() {
     <>
       {dialog}
       <form id="department-form" onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="name">{t("nameLabel")}</Label>
+        <div className="mt-1 space-y-2">
+          <Label htmlFor="name" className="mb-1 block">
+            {t("nameLabel")}
+          </Label>
           <Input id="name" name="name" required placeholder={t("namePlaceholder")} />
         </div>
         {error && <p className="text-sm text-red-600">{error}</p>}

@@ -173,11 +173,26 @@ model Matter {
   planSteps    MatterPlanStep[]
   tasks        Task[]
   attachments  Attachment[]
+  folders      MatterFolder[]
   comments     Comment[]
   expenses     MatterExpense[]
   @@index([leadLawyerId])
   @@index([clientId])
   @@index([updatedAt])
+}
+
+model MatterFolder {
+  id          String       @id @default(cuid())
+  matterId    String
+  matter      Matter       @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  name        String
+  sortOrder   Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  attachments Attachment[]
+
+  @@unique([matterId, name])
+  @@index([matterId])
 }
 
 model MatterExpense {
@@ -298,6 +313,8 @@ model Attachment {
   labelId          String?
   label            AttachmentLabel? @relation(fields: [labelId], references: [id], onDelete: SetNull)
   customLabel      String?
+  folderId         String?
+  folder           MatterFolder?    @relation(fields: [folderId], references: [id], onDelete: SetNull)
   isImportant      Boolean          @default(false)
   uploadedById     String
   uploadedBy       User             @relation(fields: [uploadedById], references: [id])
@@ -308,6 +325,7 @@ model Attachment {
   @@index([conversationId])
   @@index([chatMessageId])
   @@index([labelId])
+  @@index([folderId])
   @@index([isImportant])
 }
 

@@ -49,20 +49,23 @@ export async function PATCH(
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  if (!isAdmin(user.role)) {
+  const { id } = await params;
+  const body = (await request.json().catch(() => ({}))) as {
+    isImportant?: boolean;
+    folderId?: string | null;
+  };
+
+  const hasImportant = typeof body.isImportant === "boolean";
+  const hasFolder = "folderId" in body;
+  if (!hasImportant && !hasFolder) {
+    return NextResponse.json({ error: "Thiếu dữ liệu cập nhật" }, { status: 400 });
+  }
+
+  if (hasImportant && !isAdmin(user.role)) {
     return NextResponse.json(
       { error: "Chỉ admin được đánh dấu Quan trọng" },
       { status: 403 },
     );
-  }
-
-  const { id } = await params;
-  const body = (await request.json().catch(() => ({}))) as {
-    isImportant?: boolean;
-  };
-
-  if (typeof body.isImportant !== "boolean") {
-    return NextResponse.json({ error: "Thiếu isImportant" }, { status: 400 });
   }
 
   const attachment = await prisma.attachment.findUnique({ where: { id } });
@@ -72,7 +75,7 @@ export async function PATCH(
 
   if (!attachment.matterId) {
     return NextResponse.json(
-      { error: "Chỉ đánh dấu Quan trọng cho tài liệu vụ việc" },
+      { error: "Chỉ áp dụng cho tài liệu vụ việc" },
       { status: 400 },
     );
   }
@@ -93,10 +96,34 @@ export async function PATCH(
     );
   }
 
+  let nextFolderId: string | null | undefined;
+  if (hasFolder) {
+    if (body.folderId === null || body.folderId === "") {
+      nextFolderId = null;
+    } else {
+      const folder = await prisma.matterFolder.findFirst({
+        where: { id: String(body.folderId), matterId: attachment.matterId },
+        select: { id: true },
+      });
+      if (!folder) {
+        return NextResponse.json({ error: "Thư mục không hợp lệ" }, { status: 400 });
+      }
+      nextFolderId = folder.id;
+    }
+  }
+
   const updated = await prisma.attachment.update({
     where: { id },
-    data: { isImportant: body.isImportant },
-    select: { id: true, isImportant: true },
+    data: {
+      ...(hasImportant ? { isImportant: body.isImportant } : {}),
+      ...(hasFolder ? { folderId: nextFolderId } : {}),
+    },
+    select: {
+      id: true,
+      isImportant: true,
+      folderId: true,
+      folder: { select: { id: true, name: true } },
+    },
   });
 
   await createAuditLog({
@@ -104,12 +131,26 @@ export async function PATCH(
     action: "UPDATE",
     entityType: "Attachment",
     entityId: id,
-    details: body.isImportant
-      ? `Đánh dấu Quan trọng: ${attachment.fileName}`
-      : `Bỏ Quan trọng: ${attachment.fileName}`,
+    details: [
+      hasImportant
+        ? body.isImportant
+          ? `Đánh dấu Quan trọng: ${attachment.fileName}`
+          : `Bỏ Quan trọng: ${attachment.fileName}`
+        : null,
+      hasFolder
+        ? `Chuyển thư mục: ${attachment.fileName} → ${updated.folder?.name ?? "Chưa xếp"}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join("; "),
   });
 
-  return NextResponse.json(updated);
+  return NextResponse.json({
+    id: updated.id,
+    isImportant: updated.isImportant,
+    folderId: updated.folderId,
+    folderName: updated.folder?.name ?? null,
+  });
 }
 
 export async function DELETE(

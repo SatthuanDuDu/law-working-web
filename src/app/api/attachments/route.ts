@@ -18,6 +18,14 @@ export async function GET(request: Request) {
   const clientId = searchParams.get("clientId") || undefined;
   const matterPlanStepId = searchParams.get("matterPlanStepId") || undefined;
   const stepOnly = searchParams.get("stepOnly") === "1";
+  const folderIdParam = searchParams.get("folderId");
+  // folderId=all (default) | unfiled | <id>
+  const folderFilter =
+    folderIdParam === "unfiled"
+      ? "unfiled"
+      : folderIdParam && folderIdParam !== "all"
+        ? folderIdParam
+        : "all";
 
   if (!matterId && !taskId && !clientId && !matterPlanStepId) {
     return NextResponse.json({ error: "Thiếu tham chiếu entity" }, { status: 400 });
@@ -49,17 +57,30 @@ export async function GET(request: Request) {
       ? {
           matterPlanStepId,
           ...(stepOnly ? { commentId: null } : {}),
+          ...(folderFilter === "unfiled"
+            ? { folderId: null }
+            : folderFilter !== "all"
+              ? { folderId: folderFilter }
+              : {}),
         }
       : {
           ...(matterId ? { matterId } : {}),
           ...(taskId ? { taskId } : {}),
           ...(clientId ? { clientId } : {}),
+          ...(matterId
+            ? folderFilter === "unfiled"
+              ? { folderId: null }
+              : folderFilter !== "all"
+                ? { folderId: folderFilter }
+                : {}
+            : {}),
         },
     include: {
       uploadedBy: { select: { id: true, name: true } },
       matter: { select: { code: true, title: true } },
       matterPlanStep: { select: { title: true } },
       label: { select: { id: true, name: true } },
+      folder: { select: { id: true, name: true } },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -77,6 +98,8 @@ export async function GET(request: Request) {
       commentId: file.commentId,
       taskId: file.taskId,
       clientId: file.clientId,
+      folderId: file.folderId,
+      folderName: file.folder?.name ?? null,
       labelId: file.labelId,
       customLabel: file.customLabel,
       labelName: file.customLabel || file.label?.name || null,
@@ -115,6 +138,7 @@ export async function POST(request: Request) {
     conversationId,
     labelId,
     customLabel,
+    folderId,
   } = body as {
     fileName?: string;
     mimeType?: string;
@@ -126,6 +150,7 @@ export async function POST(request: Request) {
     conversationId?: string | null;
     labelId?: string | null;
     customLabel?: string | null;
+    folderId?: string | null;
   };
 
   if (!fileName || !mimeType || typeof sizeBytes !== "number") {
@@ -161,6 +186,7 @@ export async function POST(request: Request) {
   }
 
   let resolvedMatterId = matterId || null;
+  let resolvedFolderId: string | null = null;
 
   if (matterPlanStepId) {
     const step = await prisma.matterPlanStep.findUnique({
@@ -174,6 +200,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Bước kế hoạch không thuộc vụ việc" }, { status: 400 });
     }
     resolvedMatterId = step.matterId;
+  }
+
+  if (folderId) {
+    if (!resolvedMatterId) {
+      return NextResponse.json(
+        { error: "Thư mục chỉ dùng cho tài liệu vụ việc" },
+        { status: 400 },
+      );
+    }
+    const folder = await prisma.matterFolder.findFirst({
+      where: { id: folderId, matterId: resolvedMatterId },
+      select: { id: true },
+    });
+    if (!folder) {
+      return NextResponse.json({ error: "Thư mục không hợp lệ" }, { status: 400 });
+    }
+    resolvedFolderId = folder.id;
   }
 
   if (!resolvedMatterId && !taskId && !clientId && !conversationId) {
@@ -219,6 +262,7 @@ export async function POST(request: Request) {
         clientId: clientId || null,
         matterPlanStepId: matterPlanStepId || null,
         conversationId: conversationId || null,
+        folderId: resolvedFolderId,
         labelId: hasLabelId ? labelId! : null,
         customLabel: hasLabelId
           ? null

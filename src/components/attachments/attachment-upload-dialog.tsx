@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { Label, Select } from "@/components/ui/card";
 import {
   AttachmentLabelFields,
   resolveLabelPayload,
@@ -11,26 +12,39 @@ import { useOverlayAnimation } from "@/hooks/use-overlay-animation";
 import { cn } from "@/lib/utils";
 
 type LabelOption = { id: string; name: string };
+export type FolderOption = { id: string; name: string };
 
 function UploadLabelForm({
-  file,
+  files,
   labels,
+  folders,
+  initialFolderId,
   onCancel,
   onConfirm,
 }: {
-  file: File;
+  files: File[];
   labels: LabelOption[];
+  folders?: FolderOption[];
+  initialFolderId?: string | null;
   onCancel: () => void;
   onConfirm: (payload: {
     labelId: string | null;
     customLabel: string | null;
+    folderId: string | null;
   }) => void;
 }) {
   const t = useTranslations("attachments");
   const tCommon = useTranslations("common");
   const [labelChoice, setLabelChoice] = useState("");
   const [customLabel, setCustomLabel] = useState("");
+  const [folderId, setFolderId] = useState(initialFolderId ?? "");
   const [error, setError] = useState("");
+
+  const showFolders = folders !== undefined;
+  const fileSummary =
+    files.length === 1
+      ? files[0]!.name
+      : t("uploadFileCount", { count: files.length });
 
   function handleConfirm() {
     const resolved = resolveLabelPayload(labelChoice, customLabel, {
@@ -44,6 +58,7 @@ function UploadLabelForm({
     onConfirm({
       labelId: resolved.labelId,
       customLabel: resolved.customLabel,
+      folderId: folderId || null,
     });
   }
 
@@ -51,8 +66,20 @@ function UploadLabelForm({
     <>
       <p className="mt-2 text-sm text-muted-foreground">
         {t("uploadDocument")}{" "}
-        <span className="font-medium text-foreground">{file.name}</span>
+        <span className="font-medium text-foreground">{fileSummary}</span>
       </p>
+      {files.length > 1 ? (
+        <ul className="mt-2 max-h-28 space-y-1 overflow-y-auto rounded-md border border-border/70 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          {files.slice(0, 20).map((file) => (
+            <li key={`${file.name}-${file.size}-${file.lastModified}`} className="truncate">
+              {file.name}
+            </li>
+          ))}
+          {files.length > 20 ? (
+            <li>{t("uploadMoreFiles", { count: files.length - 20 })}</li>
+          ) : null}
+        </ul>
+      ) : null}
       <div className="mt-4 space-y-2">
         <p className="text-sm font-medium text-foreground">{t("labelAria")}</p>
         <AttachmentLabelFields
@@ -68,8 +95,26 @@ function UploadLabelForm({
             setError("");
           }}
         />
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
       </div>
+      {showFolders ? (
+        <div className="mt-4 space-y-1.5">
+          <Label htmlFor="upload-folder">{t("folderLabel")}</Label>
+          <Select
+            id="upload-folder"
+            value={folderId}
+            onChange={(e) => setFolderId(e.target.value)}
+            className="h-10"
+          >
+            <option value="">{t("folderUnfiled")}</option>
+            {(folders ?? []).map((folder) => (
+              <option key={folder.id} value={folder.id}>
+                {folder.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+      ) : null}
+      {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
       <div className="mt-6 flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onCancel}>
           {tCommon("cancel")}
@@ -84,24 +129,39 @@ function UploadLabelForm({
 
 export function AttachmentUploadDialog({
   open,
-  file,
+  files,
+  file = null,
   labels,
+  folders,
+  initialFolderId,
   onCancel,
   onConfirm,
 }: {
   open: boolean;
-  file: File | null;
+  /** Prefer `files`; `file` kept for older call sites. */
+  files?: File[];
+  file?: File | null;
   labels: LabelOption[];
+  folders?: FolderOption[];
+  initialFolderId?: string | null;
   onCancel: () => void;
   onConfirm: (payload: {
     labelId: string | null;
     customLabel: string | null;
+    folderId: string | null;
   }) => void;
 }) {
   const t = useTranslations("attachments");
   const tCommon = useTranslations("common");
   const { mounted, active } = useOverlayAnimation(open);
-  const fileKey = file ? `${file.name}-${file.size}-${file.lastModified}` : "none";
+  const resolvedFiles = files?.length
+    ? files
+    : file
+      ? [file]
+      : [];
+  const fileKey = resolvedFiles
+    .map((f) => `${f.name}-${f.size}-${f.lastModified}`)
+    .join("|");
 
   useEffect(() => {
     if (!mounted) return;
@@ -112,7 +172,7 @@ export function AttachmentUploadDialog({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [mounted, onCancel]);
 
-  if (!mounted || !file) return null;
+  if (!mounted || resolvedFiles.length === 0) return null;
 
   return (
     <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
@@ -139,8 +199,10 @@ export function AttachmentUploadDialog({
         </h2>
         <UploadLabelForm
           key={fileKey}
-          file={file}
+          files={resolvedFiles}
           labels={labels}
+          folders={folders}
+          initialFolderId={initialFolderId}
           onCancel={onCancel}
           onConfirm={onConfirm}
         />

@@ -18,8 +18,8 @@ DOMAIN_VAL="${DOMAIN_VAL:-webme.io.vn}"
 
 cat > .env << EOF
 AUTH_SECRET=${AUTH_SECRET}
-AUTH_URL=http://103.82.193.136:3000
-NEXTAUTH_URL=http://103.82.193.136:3000
+AUTH_URL=https://${DOMAIN_VAL}
+NEXTAUTH_URL=https://${DOMAIN_VAL}
 DOMAIN=${DOMAIN_VAL}
 POSTGRES_USER=luat
 POSTGRES_PASSWORD=${DB_PASS}
@@ -55,7 +55,8 @@ docker compose run --rm --user root --entrypoint "" \
 mkdir -p /root/backups/luat /root/bin
 cat > /root/luat-credentials.txt << EOF
 Updated: $(date -u +%Y-%m-%dT%H:%MZ)
-Web: http://103.82.193.136:3000
+Web: https://${DOMAIN_VAL}
+Interim IP: http://103.82.193.136:3000
 User: admin
 Pass: ${ADMIN_PASS}
 DB user: luat

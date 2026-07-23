@@ -94,6 +94,7 @@ export type NavLabelKey =
   | "clients"
   | "calendar"
   | "workload"
+  | "expenses"
   | "users"
   | "workTypes"
   | "attachmentLabels"
@@ -110,6 +111,7 @@ export const NAV_ITEMS = [
 
 export const MANAGER_NAV_ITEMS = [
   { href: "/workload", labelKey: "workload" as const, icon: "Gauge" },
+  { href: "/expenses", labelKey: "expenses" as const, icon: "Wallet" },
 ] as const;
 
 export const ADMIN_NAV_ITEMS = [

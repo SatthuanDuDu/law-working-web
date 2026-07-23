@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
 import { canAccessAttachmentTarget } from "@/lib/access";
-import { createDownloadUrl, createPreviewUrl, deleteObject } from "@/lib/storage";
+import { deleteObject } from "@/lib/storage";
 import { createAuditLog } from "@/lib/audit";
 import { isAdmin } from "@/lib/permissions";
 
@@ -26,22 +26,12 @@ export async function GET(
 
   const mode = new URL(request.url).searchParams.get("mode") || "preview";
   const isDownload = mode === "download";
+  const contentPath = `/api/attachments/${attachment.id}/content?disposition=${
+    isDownload ? "attachment" : "inline"
+  }`;
 
-  const url = isDownload
-    ? await createDownloadUrl(attachment.storageKey, attachment.fileName)
-    : await createPreviewUrl(
-        attachment.storageKey,
-        attachment.fileName,
-        attachment.mimeType,
-      );
-
-  await createAuditLog({
-    userId: user.id,
-    action: "UPDATE",
-    entityType: "Attachment",
-    entityId: attachment.id,
-    details: `${isDownload ? "Tải xuống" : "Xem"}: ${attachment.fileName}`,
-  });
+  // Same-origin content proxy — browser never needs to reach MinIO/R2 directly.
+  const url = new URL(contentPath, request.url).toString();
 
   return NextResponse.json({
     url,

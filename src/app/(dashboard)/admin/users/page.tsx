@@ -1,14 +1,11 @@
 import { PageHeaderSlot } from "@/components/layout/page-header-slot";
-import { UserForm } from "@/components/admin/user-form";
 import { UsersList } from "@/components/admin/users-list";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { getTranslations } from "next-intl/server";
 
 export default async function AdminUsersPage() {
   const user = await requireRole(["ADMIN"]);
-  const t = await getTranslations("admin");
   const tPages = await getTranslations("pages.users");
 
   const [users, departments] = await Promise.all([
@@ -42,25 +39,14 @@ export default async function AdminUsersPage() {
         title={tPages("title")}
         description={tPages("description")}
       />
-      <div className="grid gap-8 xl:grid-cols-[360px_1fr]">
-        <Card className="rounded-[5px]">
-          <CardHeader>
-            <CardTitle>{t("createUser")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <UserForm departments={departments} />
-          </CardContent>
-        </Card>
-
-        <UsersList
-          users={listItems}
-          currentUserId={user.id}
-          departments={departments.map((department) => ({
-            id: department.id,
-            name: department.name,
-          }))}
-        />
-      </div>
+      <UsersList
+        users={listItems}
+        currentUserId={user.id}
+        departments={departments.map((department) => ({
+          id: department.id,
+          name: department.name,
+        }))}
+      />
     </>
   );
 }

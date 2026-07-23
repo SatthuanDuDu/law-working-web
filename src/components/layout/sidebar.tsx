@@ -19,6 +19,7 @@ import {
   LogOut,
   CalendarDays,
   Gauge,
+  Wallet,
   MessageCircle,
   ChevronLeft,
   ChevronRight,
@@ -59,6 +60,7 @@ const iconMap = {
   ScrollText,
   CalendarDays,
   Gauge,
+  Wallet,
   MessageCircle,
 };
 

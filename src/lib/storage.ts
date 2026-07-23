@@ -119,6 +119,31 @@ export async function createPreviewUrl(
   return getSignedUrl(client, command, { expiresIn: 60 * 5 });
 }
 
+/**
+ * Fetch object bytes from storage via the internal API endpoint.
+ * Used to proxy preview/download same-origin (browser never talks to MinIO/R2 directly).
+ */
+export async function getObjectStream(storageKey: string) {
+  const config = getS3Config();
+  const client = createClient(apiEndpoint());
+  const result = await client.send(
+    new GetObjectCommand({
+      Bucket: config.bucket,
+      Key: storageKey,
+    }),
+  );
+
+  if (!result.Body) {
+    throw new Error("Empty object body");
+  }
+
+  return {
+    body: result.Body.transformToWebStream(),
+    contentType: result.ContentType || "application/octet-stream",
+    contentLength: result.ContentLength,
+  };
+}
+
 /** Same-origin server upload — avoids browser→R2 CORS on Vercel. */
 export async function uploadObject(
   storageKey: string,

@@ -2,13 +2,15 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
 import { canAccessAttachmentTarget } from "@/lib/access";
-import { PROXY_UPLOAD_MAX_BYTES, uploadObject } from "@/lib/storage";
+import { getObjectStream } from "@/lib/storage";
+import { createAuditLog } from "@/lib/audit";
 
-/**
- * Same-origin body upload (browser → Vercel → R2).
- * Avoids Cloudflare R2 CORS issues for typical images/files under ~4MB.
- */
-export async function PUT(
+function contentDisposition(kind: "inline" | "attachment", fileName: string) {
+  const encoded = encodeURIComponent(fileName);
+  return `${kind}; filename="${encoded}"; filename*=UTF-8''${encoded}`;
+}
+
+export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -21,43 +23,41 @@ export async function PUT(
     return NextResponse.json({ error: "Không tìm thấy file" }, { status: 404 });
   }
 
-  if (attachment.uploadedById !== user.id && user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Không có quyền upload" }, { status: 403 });
-  }
-
   const allowed = await canAccessAttachmentTarget(user.id, user.role, attachment);
   if (!allowed) {
-    return NextResponse.json({ error: "Không có quyền upload" }, { status: 403 });
+    return NextResponse.json({ error: "Không có quyền tải file" }, { status: 403 });
   }
 
-  const contentType =
-    request.headers.get("content-type") ||
-    attachment.mimeType ||
-    "application/octet-stream";
-
-  const buffer = Buffer.from(await request.arrayBuffer());
-  if (buffer.byteLength <= 0) {
-    return NextResponse.json({ error: "File trống" }, { status: 400 });
-  }
-  if (buffer.byteLength > PROXY_UPLOAD_MAX_BYTES) {
-    return NextResponse.json(
-      {
-        error:
-          "File quá lớn để upload qua máy chủ. Dùng lại hoặc giảm kích thước ảnh (<4MB).",
-      },
-      { status: 413 },
-    );
-  }
+  const dispositionParam = new URL(request.url).searchParams.get("disposition");
+  const disposition =
+    dispositionParam === "attachment" ? "attachment" : "inline";
 
   try {
-    await uploadObject(attachment.storageKey, buffer, contentType);
-    return NextResponse.json({ success: true });
+    const object = await getObjectStream(attachment.storageKey);
+    const headers = new Headers({
+      "Content-Type": attachment.mimeType || object.contentType,
+      "Content-Disposition": contentDisposition(disposition, attachment.fileName),
+      "Cache-Control": "private, max-age=60",
+      "X-Content-Type-Options": "nosniff",
+    });
+    if (typeof object.contentLength === "number") {
+      headers.set("Content-Length", String(object.contentLength));
+    }
+
+    await createAuditLog({
+      userId: user.id,
+      action: "UPDATE",
+      entityType: "Attachment",
+      entityId: attachment.id,
+      details: `${disposition === "attachment" ? "Tải xuống" : "Xem"}: ${attachment.fileName}`,
+    });
+
+    return new NextResponse(object.body, { status: 200, headers });
   } catch (error) {
-    console.error("attachment content upload failed:", error);
-    const message =
-      error instanceof Error && /Missing environment variable|S3_/i.test(error.message)
-        ? "Kho lưu trữ chưa cấu hình (S3/R2). Liên hệ admin."
-        : "Upload lên kho lưu trữ thất bại";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("attachment content proxy failed:", error);
+    return NextResponse.json(
+      { error: "Không mở được file" },
+      { status: 502 },
+    );
   }
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
-import { createPreviewUrl } from "@/lib/storage";
+import { getObjectStream } from "@/lib/storage";
 
 export async function GET(
   _request: Request,
@@ -31,6 +31,20 @@ export async function GET(
         ? "image/gif"
         : "image/jpeg";
 
-  const url = await createPreviewUrl(target.avatarKey, fileName, mimeType);
-  return NextResponse.redirect(url);
+  try {
+    const object = await getObjectStream(target.avatarKey);
+    const headers = new Headers({
+      "Content-Type": mimeType || object.contentType,
+      "Content-Disposition": `inline; filename="${encodeURIComponent(fileName)}"`,
+      "Cache-Control": "private, max-age=300",
+      "X-Content-Type-Options": "nosniff",
+    });
+    if (typeof object.contentLength === "number") {
+      headers.set("Content-Length", String(object.contentLength));
+    }
+    return new NextResponse(object.body, { status: 200, headers });
+  } catch (error) {
+    console.error("avatar proxy failed:", error);
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 }

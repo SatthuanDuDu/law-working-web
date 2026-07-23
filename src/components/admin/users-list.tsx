@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Pencil, Search } from "lucide-react";
+import { Pencil, Plus, Search } from "lucide-react";
+import { CreateUserModal } from "@/components/admin/create-user-modal";
 import { DeleteUserButton } from "@/components/admin/delete-user-button";
 import { EditUserModal } from "@/components/admin/edit-user-modal";
 import { ToggleUserActiveButton } from "@/components/admin/toggle-user-active-button";
@@ -54,6 +55,7 @@ export function UsersList({
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
   const [editUser, setEditUser] = useState<AdminUserListItem | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const departmentOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -100,16 +102,27 @@ export function UsersList({
     <>
       <Card className="rounded-[5px]">
         <CardHeader className="gap-3 space-y-0 pb-3">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-            <CardTitle className="text-base sm:text-lg">{tNav("users")}</CardTitle>
-            <p className="text-xs text-muted-foreground sm:text-sm">
-              {visibleUsers.length === users.length
-                ? tUsers("staffCount", { count: users.length })
-                : tUsers("staffCountFiltered", {
-                    visible: visibleUsers.length,
-                    total: users.length,
-                  })}
-            </p>
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+            <div className="min-w-0">
+              <CardTitle className="text-base sm:text-lg">{tNav("users")}</CardTitle>
+              <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
+                {visibleUsers.length === users.length
+                  ? tUsers("staffCount", { count: users.length })
+                  : tUsers("staffCountFiltered", {
+                      visible: visibleUsers.length,
+                      total: users.length,
+                    })}
+              </p>
+            </div>
+            <Button
+              type="button"
+              className="shrink-0"
+              onClick={() => setCreateOpen(true)}
+              aria-label={t("createUser")}
+            >
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">{t("createUser")}</span>
+            </Button>
           </div>
 
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -286,6 +299,12 @@ export function UsersList({
           onClose={() => setEditUser(null)}
         />
       ) : null}
+
+      <CreateUserModal
+        open={createOpen}
+        departments={departments}
+        onClose={() => setCreateOpen(false)}
+      />
     </>
   );
 }

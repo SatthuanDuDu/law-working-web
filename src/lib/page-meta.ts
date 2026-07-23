@@ -13,6 +13,7 @@ const PAGE_KEYS: Record<string, string> = {
   "/calendar": "calendar",
   "/settings": "settings",
   "/workload": "workload",
+  "/expenses": "expenses",
   "/admin/users": "users",
   "/admin/work-types": "workTypes",
   "/admin/departments": "departments",

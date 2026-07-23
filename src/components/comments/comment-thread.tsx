@@ -93,8 +93,10 @@ type PendingAttachment = {
 
 const MENTION_TOKEN = /@\[([^\]]+)\]\(([^)]+)\)/g;
 
-function isImageMime(mimeType: string) {
-  return mimeType.startsWith("image/");
+function isImageMime(mimeType: string, fileName?: string) {
+  if (mimeType.startsWith("image/")) return true;
+  if (!fileName) return false;
+  return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(fileName);
 }
 
 function bodyToEditable(body: string) {
@@ -239,25 +241,9 @@ function CommentAttachmentPreview({
   attachment: CommentAttachmentItem;
   compact?: boolean;
 }) {
-  const [thumbUrl, setThumbUrl] = useState<string | null>(null);
+  const [thumbFailed, setThumbFailed] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
-  const isImage = isImageMime(attachment.mimeType);
-
-  useEffect(() => {
-    if (!isImage) return;
-    let cancelled = false;
-    async function load() {
-      const res = await fetch(`/api/attachments/${attachment.id}?mode=preview`);
-      const data = await res.json().catch(() => ({}));
-      if (cancelled) return;
-      if (!res.ok) return;
-      setThumbUrl(data.url || data.downloadUrl || null);
-    }
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [attachment.id, isImage]);
+  const isImage = isImageMime(attachment.mimeType, attachment.fileName);
 
   return (
     <>
@@ -266,7 +252,7 @@ function CommentAttachmentPreview({
         open={viewerOpen}
         onClose={() => setViewerOpen(false)}
       />
-      {isImage && thumbUrl ? (
+      {isImage && !thumbFailed ? (
         <button
           type="button"
           onClick={() => setViewerOpen(true)}
@@ -278,9 +264,10 @@ function CommentAttachmentPreview({
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={thumbUrl}
+            src={`/api/attachments/${attachment.id}/content`}
             alt={attachment.fileName}
             className="max-h-48 w-full object-contain"
+            onError={() => setThumbFailed(true)}
           />
         </button>
       ) : (
@@ -764,7 +751,7 @@ function CommentComposer({
         return;
       }
 
-      const previewUrl = isImageMime(file.type)
+      const previewUrl = isImageMime(file.type, file.name)
         ? URL.createObjectURL(file)
         : undefined;
 

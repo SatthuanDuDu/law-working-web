@@ -119,6 +119,56 @@ export async function createPreviewUrl(
   return getSignedUrl(client, command, { expiresIn: 60 * 5 });
 }
 
+/**
+ * True when signed URLs point at a host the user's browser can reach.
+ * Docker-internal hosts (`minio`), localhost, and single-label names are not
+ * reachable from end-user browsers — callers must use the same-origin content
+ * proxy instead. Public R2 / Caddy `s3.$DOMAIN` endpoints return true.
+ */
+export function canBrowserReachStoragePublicEndpoint(): boolean {
+  try {
+    const host = new URL(signingEndpoint()).hostname.toLowerCase();
+    if (
+      host === "localhost" ||
+      host === "127.0.0.1" ||
+      host === "::1" ||
+      host === "0.0.0.0"
+    ) {
+      return false;
+    }
+    // Single-label Docker DNS names (e.g. "minio") are not public.
+    if (!host.includes(".")) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Same-origin attachment content URLs (session cookie auth). */
+export function buildAttachmentContentPath(
+  attachmentId: string,
+  disposition: "inline" | "attachment" = "inline",
+) {
+  const q = disposition === "attachment" ? "?disposition=attachment" : "";
+  return `/api/attachments/${attachmentId}/content${q}`;
+}
+
+export async function getObject(storageKey: string) {
+  const config = getS3Config();
+  const client = createClient(apiEndpoint());
+  const result = await client.send(
+    new GetObjectCommand({
+      Bucket: config.bucket,
+      Key: storageKey,
+    }),
+  );
+  return {
+    body: result.Body,
+    contentType: result.ContentType ?? undefined,
+    contentLength: result.ContentLength,
+  };
+}
+
 /** Same-origin server upload — avoids browser→R2 CORS on Vercel. */
 export async function uploadObject(
   storageKey: string,

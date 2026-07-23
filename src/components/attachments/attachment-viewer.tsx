@@ -14,8 +14,10 @@ export type ViewerAttachment = {
   mimeType: string;
 };
 
-function isImageMime(mimeType: string) {
-  return mimeType.startsWith("image/");
+function isImageMime(mimeType: string, fileName?: string) {
+  if (mimeType.startsWith("image/")) return true;
+  if (!fileName) return false;
+  return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(fileName);
 }
 
 function isPdfMime(mimeType: string, fileName: string) {
@@ -23,6 +25,15 @@ function isPdfMime(mimeType: string, fileName: string) {
     mimeType === "application/pdf" ||
     fileName.toLowerCase().endsWith(".pdf")
   );
+}
+
+/** Same-origin proxy — works when MinIO public endpoint is Docker-internal. */
+function attachmentContentUrl(
+  id: string,
+  disposition: "inline" | "attachment" = "inline",
+) {
+  const q = disposition === "attachment" ? "?disposition=attachment" : "";
+  return `/api/attachments/${id}/content${q}`;
 }
 
 export function AttachmentViewer({
@@ -61,56 +72,16 @@ function AttachmentViewerPanel({
 }) {
   const t = useTranslations("attachments");
   const tCommon = useTranslations("common");
-  const openFileFailedMessage = t("openFileFailed");
   const previewImageFailedMessage = t("previewImageFailed");
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
-  const [fetching, setFetching] = useState(true);
   const [mediaReady, setMediaReady] = useState(false);
   const [error, setError] = useState("");
 
-  const canInline =
-    isImageMime(attachment.mimeType) ||
-    isPdfMime(attachment.mimeType, attachment.fileName);
-  const showLoader = fetching || (Boolean(previewUrl) && canInline && !mediaReady);
-
-  useEffect(() => {
-    let cancelled = false;
-    const attachmentId = attachment.id;
-
-    async function load() {
-      setFetching(true);
-      setMediaReady(false);
-      setError("");
-      setPreviewUrl(null);
-      setDownloadUrl(null);
-
-      try {
-        const [previewRes, downloadRes] = await Promise.all([
-          fetch(`/api/attachments/${attachmentId}?mode=preview`),
-          fetch(`/api/attachments/${attachmentId}?mode=download`),
-        ]);
-        const previewData = await previewRes.json().catch(() => ({}));
-        const downloadData = await downloadRes.json().catch(() => ({}));
-        if (cancelled) return;
-        if (!previewRes.ok) {
-          setError(previewData.error || openFileFailedMessage);
-          return;
-        }
-        setPreviewUrl(previewData.url || previewData.downloadUrl || null);
-        setDownloadUrl(downloadData.url || downloadData.downloadUrl || null);
-      } catch {
-        if (!cancelled) setError(openFileFailedMessage);
-      } finally {
-        if (!cancelled) setFetching(false);
-      }
-    }
-
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [attachment.id, openFileFailedMessage]);
+  const previewUrl = attachmentContentUrl(attachment.id, "inline");
+  const downloadUrl = attachmentContentUrl(attachment.id, "attachment");
+  const isImage = isImageMime(attachment.mimeType, attachment.fileName);
+  const isPdf = isPdfMime(attachment.mimeType, attachment.fileName);
+  const canInline = isImage || isPdf;
+  const showLoader = Boolean(previewUrl) && canInline && !mediaReady && !error;
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -121,17 +92,7 @@ function AttachmentViewerPanel({
   }, [onClose]);
 
   function handleDownload() {
-    if (downloadUrl) {
-      window.open(downloadUrl, "_blank", "noopener,noreferrer");
-      return;
-    }
-    void (async () => {
-      const res = await fetch(`/api/attachments/${attachment.id}?mode=download`);
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && (data.url || data.downloadUrl)) {
-        window.open(data.url || data.downloadUrl, "_blank", "noopener,noreferrer");
-      }
-    })();
+    window.open(downloadUrl, "_blank", "noopener,noreferrer");
   }
 
   return (
@@ -181,9 +142,7 @@ function AttachmentViewerPanel({
             </div>
           ) : null}
 
-          {!error &&
-          previewUrl &&
-          isImageMime(attachment.mimeType) ? (
+          {!error && isImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={previewUrl}
@@ -200,9 +159,7 @@ function AttachmentViewerPanel({
             />
           ) : null}
 
-          {!error &&
-          previewUrl &&
-          isPdfMime(attachment.mimeType, attachment.fileName) ? (
+          {!error && isPdf ? (
             <iframe
               title={attachment.fileName}
               src={previewUrl}
@@ -214,9 +171,7 @@ function AttachmentViewerPanel({
             />
           ) : null}
 
-          {!error &&
-          !fetching &&
-          !canInline ? (
+          {!error && !canInline ? (
             <div className="flex h-48 flex-col items-center justify-center gap-2 text-center">
               <p className="text-sm text-muted-foreground">
                 {t("unsupportedPreview")}

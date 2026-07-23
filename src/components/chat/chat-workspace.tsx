@@ -108,8 +108,10 @@ type PendingFile = {
   previewUrl?: string;
 };
 
-function isImageMime(mimeType: string) {
-  return mimeType.startsWith("image/");
+function isImageMime(mimeType: string, fileName?: string) {
+  if (mimeType.startsWith("image/")) return true;
+  if (!fileName) return false;
+  return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(fileName);
 }
 
 function namedClipboardFile(file: File) {
@@ -143,24 +145,9 @@ function ChatAttachmentPreview({
   tone: "mine" | "theirs";
 }) {
   const t = useTranslations("chat");
-  const [thumbUrl, setThumbUrl] = useState<string | null>(null);
+  const [thumbFailed, setThumbFailed] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
-  const isImage = isImageMime(attachment.mimeType);
-
-  useEffect(() => {
-    if (!isImage) return;
-    let cancelled = false;
-    async function load() {
-      const res = await fetch(`/api/attachments/${attachment.id}?mode=preview`);
-      const data = await res.json().catch(() => ({}));
-      if (cancelled || !res.ok) return;
-      setThumbUrl(data.url || data.downloadUrl || null);
-    }
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [attachment.id, isImage]);
+  const isImage = isImageMime(attachment.mimeType, attachment.fileName);
 
   return (
     <>
@@ -169,7 +156,7 @@ function ChatAttachmentPreview({
         open={viewerOpen}
         onClose={() => setViewerOpen(false)}
       />
-      {isImage && thumbUrl ? (
+      {isImage && !thumbFailed ? (
         <button
           type="button"
           onClick={() => setViewerOpen(true)}
@@ -178,9 +165,10 @@ function ChatAttachmentPreview({
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={thumbUrl}
+            src={`/api/attachments/${attachment.id}/content`}
             alt={attachment.fileName}
             className="max-h-48 max-w-full object-contain"
+            onError={() => setThumbFailed(true)}
           />
         </button>
       ) : (
@@ -737,7 +725,7 @@ export function ChatWorkspace({
           fileName: file.name,
           mimeType: file.type || "application/octet-stream",
           sizeBytes: file.size,
-          previewUrl: isImageMime(file.type)
+          previewUrl: isImageMime(file.type, file.name)
             ? URL.createObjectURL(file)
             : undefined,
         },

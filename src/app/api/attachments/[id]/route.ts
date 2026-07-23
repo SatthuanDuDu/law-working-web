@@ -2,7 +2,13 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
 import { canAccessAttachmentTarget } from "@/lib/access";
-import { createDownloadUrl, createPreviewUrl, deleteObject } from "@/lib/storage";
+import {
+  buildAttachmentContentPath,
+  canBrowserReachStoragePublicEndpoint,
+  createDownloadUrl,
+  createPreviewUrl,
+  deleteObject,
+} from "@/lib/storage";
 import { createAuditLog } from "@/lib/audit";
 import { isAdmin } from "@/lib/permissions";
 
@@ -27,12 +33,19 @@ export async function GET(
   const mode = new URL(request.url).searchParams.get("mode") || "preview";
   const isDownload = mode === "download";
 
-  const url = isDownload
-    ? await createDownloadUrl(attachment.storageKey, attachment.fileName)
-    : await createPreviewUrl(
-        attachment.storageKey,
-        attachment.fileName,
-        attachment.mimeType,
+  // Prefer same-origin proxy when MinIO/R2 public endpoint is not browser-reachable
+  // (e.g. VPS S3_PUBLIC_ENDPOINT=http://minio:9000).
+  const url = canBrowserReachStoragePublicEndpoint()
+    ? isDownload
+      ? await createDownloadUrl(attachment.storageKey, attachment.fileName)
+      : await createPreviewUrl(
+          attachment.storageKey,
+          attachment.fileName,
+          attachment.mimeType,
+        )
+    : buildAttachmentContentPath(
+        attachment.id,
+        isDownload ? "attachment" : "inline",
       );
 
   await createAuditLog({
@@ -49,6 +62,7 @@ export async function GET(
     fileName: attachment.fileName,
     mimeType: attachment.mimeType,
     mode: isDownload ? "download" : "preview",
+    via: canBrowserReachStoragePublicEndpoint() ? "signed" : "proxy",
   });
 }
 

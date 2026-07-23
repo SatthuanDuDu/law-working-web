@@ -25,6 +25,9 @@ POSTGRES_USER=luat
 POSTGRES_PASSWORD=${DB_PASS}
 POSTGRES_DB=luat_work
 S3_ENDPOINT=http://minio:9000
+# Browser-facing endpoint. Prefer https://s3.$DOMAIN via Caddy when DNS is ready.
+# If left as http://minio:9000 (Docker-internal), the app proxies preview/download
+# same-origin through /api/attachments/[id]/content so chat image thumbnails work.
 S3_PUBLIC_ENDPOINT=http://minio:9000
 S3_BUCKET=luat-attachments
 S3_ACCESS_KEY=${S3_USER}

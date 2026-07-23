@@ -1002,6 +1002,8 @@
     "fileTooLarge": "File phải nhỏ hơn 25MB",
     "uploadFailed": "Không tải được file",
     "pasteImageBlocked": "Không dán được ảnh từ thư mục/Finder. Hãy chụp màn hình rồi dán, hoặc dùng nút đính kèm.",
+    "pasteImage": "Dán ảnh từ clipboard",
+    "pasteImageEmpty": "Clipboard không có ảnh. Chụp màn hình hoặc copy ảnh rồi thử lại.",
     "sendFailed": "Không gửi được tin nhắn",
     "openFile": "Mở file",
     "unread": "Chưa đọc",

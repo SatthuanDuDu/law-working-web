@@ -1002,6 +1002,8 @@
     "fileTooLarge": "File must be smaller than 25MB",
     "uploadFailed": "Could not upload file",
     "pasteImageBlocked": "Can't paste image files from Finder/Explorer. Paste a screenshot, or use the attach button.",
+    "pasteImage": "Paste image from clipboard",
+    "pasteImageEmpty": "No image in clipboard. Take a screenshot or copy an image, then try again.",
     "sendFailed": "Could not send message",
     "openFile": "Open file",
     "unread": "Unread",

@@ -12,6 +12,7 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
+  ClipboardPaste,
   FileText,
   MapPin,
   Megaphone,
@@ -46,8 +47,10 @@ import {
 } from "@/lib/location";
 import { removeVietnameseDiacritics } from "@/lib/username";
 import {
+  clipboardHasImageType,
   clipboardLooksLikeBlockedImagePaste,
   extractClipboardFiles,
+  readImagesFromClipboardApi,
 } from "@/lib/clipboard-files";
 
 const MAX_SIZE_BYTES = 25 * 1024 * 1024;
@@ -371,8 +374,10 @@ export function ChatWorkspace({
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionIndex, setMentionIndex] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const lastIdRef = useRef<string | null>(null);
+  const uploadFileRef = useRef<(file: File) => Promise<void>>(async () => {});
 
   const active = conversations.find((c) => c.id === activeId) ?? null;
 
@@ -732,23 +737,83 @@ export function ChatWorkspace({
     }
   }
 
-  function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
-    const data = e.clipboardData;
-    const files = extractClipboardFiles(data);
+  useEffect(() => {
+    uploadFileRef.current = uploadFile;
+  });
+
+  async function ingestClipboardFiles(files: File[]) {
+    for (const file of files) {
+      await uploadFileRef.current(file);
+    }
+  }
+
+  async function handlePasteImageButton() {
+    setError(null);
+    const files = await readImagesFromClipboardApi();
     if (files.length === 0) {
-      if (clipboardLooksLikeBlockedImagePaste(data)) {
-        e.preventDefault();
-        setError(t("pasteImageBlocked"));
-      }
+      setError(t("pasteImageEmpty"));
       return;
     }
-    e.preventDefault();
-    void (async () => {
-      for (const file of files) {
-        await uploadFile(file);
-      }
-    })();
+    await ingestClipboardFiles(files);
   }
+
+  function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    // Prefer native clipboardData — React synthetic event can be thinner on some browsers.
+    const data =
+      e.clipboardData ??
+      (e.nativeEvent as ClipboardEvent).clipboardData ??
+      null;
+    const files = extractClipboardFiles(data);
+    if (files.length > 0) {
+      e.preventDefault();
+      void ingestClipboardFiles(files);
+      return;
+    }
+
+    if (clipboardHasImageType(data) || clipboardLooksLikeBlockedImagePaste(data)) {
+      e.preventDefault();
+      void (async () => {
+        const asyncFiles = await readImagesFromClipboardApi();
+        if (asyncFiles.length > 0) {
+          await ingestClipboardFiles(asyncFiles);
+          return;
+        }
+        setError(t("pasteImageBlocked"));
+      })();
+    }
+  }
+
+  // Native paste listener as backup (capture) — some mobile/WebKit builds skip React onPaste.
+  useEffect(() => {
+    const el = composerRef.current;
+    if (!el) return;
+
+    const onNativePaste = (ev: ClipboardEvent) => {
+      const data = ev.clipboardData;
+      const files = extractClipboardFiles(data);
+      if (files.length > 0) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        void ingestClipboardFiles(files);
+        return;
+      }
+      if (clipboardHasImageType(data)) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        void (async () => {
+          const asyncFiles = await readImagesFromClipboardApi();
+          if (asyncFiles.length > 0) {
+            await ingestClipboardFiles(asyncFiles);
+            return;
+          }
+          setError(t("pasteImageBlocked"));
+        })();
+      }
+    };
+
+    el.addEventListener("paste", onNativePaste, true);
+    return () => el.removeEventListener("paste", onNativePaste, true);
+  }, [activeId, t]);
 
   async function removePending(id: string) {
     const target = pendingFiles.find((f) => f.id === id);
@@ -1250,6 +1315,7 @@ export function ChatWorkspace({
                   </ul>
                 ) : null}
                 <textarea
+                  ref={composerRef}
                   value={draft}
                   onChange={(e) => updateDraft(e.target.value)}
                   onPaste={handlePaste}
@@ -1315,6 +1381,18 @@ export function ChatWorkspace({
                   aria-label={t("attach")}
                 >
                   <Paperclip className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="interactive-press h-9 w-9"
+                  disabled={isUploading || isPending}
+                  onClick={() => void handlePasteImageButton()}
+                  title={t("pasteImage")}
+                  aria-label={t("pasteImage")}
+                >
+                  <ClipboardPaste className="h-4 w-4" />
                 </Button>
                 <Button
                   type="button"

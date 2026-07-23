@@ -36,9 +36,24 @@ function isLikelyClipboardImage(file: File) {
   return false;
 }
 
+/** Prefer PNG (then JPEG/WebP) when the OS exposes multiple formats for one paste. */
+function preferSingleClipboardImage(files: File[]): File[] {
+  const images = files.filter(isLikelyClipboardImage);
+  if (images.length <= 1) return files;
+
+  const preferred =
+    images.find((f) => f.type === "image/png") ??
+    images.find((f) => f.type === "image/jpeg") ??
+    images.find((f) => f.type === "image/webp") ??
+    images[0];
+
+  return files.filter((f) => !isLikelyClipboardImage(f) || f === preferred);
+}
+
 /**
  * Collect pasteable files from a clipboard DataTransfer.
  * Checks both `files` and `items` — browsers differ (esp. Safari / screenshot paste).
+ * macOS often exposes the same screenshot as image/png + image/tiff; keep one image.
  */
 export function extractClipboardFiles(
   clipboardData: DataTransfer | null | undefined,
@@ -73,10 +88,12 @@ export function extractClipboardFiles(
     }
   }
 
+  const collapsed = preferSingleClipboardImage(out);
+
   if (imagesOnly) {
-    return out.filter(isLikelyClipboardImage);
+    return collapsed.filter(isLikelyClipboardImage);
   }
-  return out;
+  return collapsed;
 }
 
 export function clipboardHasImageType(
@@ -101,18 +118,22 @@ export async function readImagesFromClipboardApi(): Promise<File[]> {
     const items = await navigator.clipboard.read();
     const files: File[] = [];
     for (const item of items) {
-      for (const type of item.types) {
-        if (!type.startsWith("image/")) continue;
-        const blob = await item.getType(type);
-        const ext = type.split("/")[1] || "png";
-        files.push(
-          namedClipboardFile(
-            new File([blob], `paste-${Date.now()}.${ext}`, { type }),
-          ),
-        );
-      }
+      const imageTypes = item.types.filter((type) => type.startsWith("image/"));
+      const preferred =
+        imageTypes.find((type) => type === "image/png") ??
+        imageTypes.find((type) => type === "image/jpeg") ??
+        imageTypes.find((type) => type === "image/webp") ??
+        imageTypes[0];
+      if (!preferred) continue;
+      const blob = await item.getType(preferred);
+      const ext = preferred.split("/")[1] || "png";
+      files.push(
+        namedClipboardFile(
+          new File([blob], `paste-${Date.now()}.${ext}`, { type: preferred }),
+        ),
+      );
     }
-    return files;
+    return preferSingleClipboardImage(files);
   } catch {
     return [];
   }

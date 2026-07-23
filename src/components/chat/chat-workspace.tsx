@@ -378,6 +378,12 @@ export function ChatWorkspace({
   const bottomRef = useRef<HTMLDivElement>(null);
   const lastIdRef = useRef<string | null>(null);
   const uploadFileRef = useRef<(file: File) => Promise<void>>(async () => {});
+  /** Deduplicate Cmd+V hitting native + React (timeStamps often differ). */
+  const pasteGateUntilRef = useRef(0);
+  const pasteErrorRef = useRef(t);
+  const ingestPasteRef = useRef<(data: DataTransfer | null) => Promise<void>>(
+    async () => {},
+  );
 
   const active = conversations.find((c) => c.id === activeId) ?? null;
 
@@ -741,11 +747,46 @@ export function ChatWorkspace({
     uploadFileRef.current = uploadFile;
   });
 
+  useEffect(() => {
+    pasteErrorRef.current = t;
+  });
+
   async function ingestClipboardFiles(files: File[]) {
     for (const file of files) {
       await uploadFileRef.current(file);
     }
   }
+
+  /** Gate overlapping paste handlers within a short window (Cmd+V dual-path). */
+  function claimPasteSlot(): boolean {
+    const now = Date.now();
+    if (now < pasteGateUntilRef.current) return false;
+    pasteGateUntilRef.current = now + 400;
+    return true;
+  }
+
+  async function ingestClipboardFilesFromPaste(data: DataTransfer | null) {
+    if (!claimPasteSlot()) return;
+
+    const files = extractClipboardFiles(data);
+    if (files.length > 0) {
+      await ingestClipboardFiles(files);
+      return;
+    }
+
+    if (clipboardHasImageType(data) || clipboardLooksLikeBlockedImagePaste(data)) {
+      const asyncFiles = await readImagesFromClipboardApi();
+      if (asyncFiles.length > 0) {
+        await ingestClipboardFiles(asyncFiles);
+        return;
+      }
+      setError(pasteErrorRef.current("pasteImageBlocked"));
+    }
+  }
+
+  useEffect(() => {
+    ingestPasteRef.current = ingestClipboardFilesFromPaste;
+  });
 
   async function handlePasteImageButton() {
     setError(null);
@@ -757,63 +798,40 @@ export function ChatWorkspace({
     await ingestClipboardFiles(files);
   }
 
-  function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
-    // Prefer native clipboardData — React synthetic event can be thinner on some browsers.
-    const data =
-      e.clipboardData ??
-      (e.nativeEvent as ClipboardEvent).clipboardData ??
-      null;
-    const files = extractClipboardFiles(data);
-    if (files.length > 0) {
-      e.preventDefault();
-      void ingestClipboardFiles(files);
-      return;
-    }
-
-    if (clipboardHasImageType(data) || clipboardLooksLikeBlockedImagePaste(data)) {
-      e.preventDefault();
-      void (async () => {
-        const asyncFiles = await readImagesFromClipboardApi();
-        if (asyncFiles.length > 0) {
-          await ingestClipboardFiles(asyncFiles);
-          return;
-        }
-        setError(t("pasteImageBlocked"));
-      })();
-    }
-  }
-
-  // Native paste listener as backup (capture) — some mobile/WebKit builds skip React onPaste.
+  // Single Cmd+V path (capture). React onPaste removed — it duplicated native on real Cmd+V.
   useEffect(() => {
-    const el = composerRef.current;
+    const el = composerRef.current as
+      | (HTMLTextAreaElement & { __nslawPasteAc?: AbortController })
+      | null;
     if (!el) return;
+
+    // Drop any stale HMR / Strict Mode listener bound to this DOM node.
+    el.__nslawPasteAc?.abort();
+    const ac = new AbortController();
+    el.__nslawPasteAc = ac;
 
     const onNativePaste = (ev: ClipboardEvent) => {
       const data = ev.clipboardData;
-      const files = extractClipboardFiles(data);
-      if (files.length > 0) {
-        ev.preventDefault();
-        ev.stopPropagation();
-        void ingestClipboardFiles(files);
-        return;
-      }
-      if (clipboardHasImageType(data)) {
-        ev.preventDefault();
-        ev.stopPropagation();
-        void (async () => {
-          const asyncFiles = await readImagesFromClipboardApi();
-          if (asyncFiles.length > 0) {
-            await ingestClipboardFiles(asyncFiles);
-            return;
-          }
-          setError(t("pasteImageBlocked"));
-        })();
-      }
+      const looksLikeImagePaste =
+        extractClipboardFiles(data).length > 0 ||
+        clipboardHasImageType(data) ||
+        clipboardLooksLikeBlockedImagePaste(data);
+      if (!looksLikeImagePaste) return;
+
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      void ingestPasteRef.current(data);
     };
 
-    el.addEventListener("paste", onNativePaste, true);
-    return () => el.removeEventListener("paste", onNativePaste, true);
-  }, [activeId, t]);
+    el.addEventListener("paste", onNativePaste, {
+      capture: true,
+      signal: ac.signal,
+    });
+    return () => {
+      ac.abort();
+      if (el.__nslawPasteAc === ac) delete el.__nslawPasteAc;
+    };
+  }, [activeId]);
 
   async function removePending(id: string) {
     const target = pendingFiles.find((f) => f.id === id);
@@ -1318,7 +1336,6 @@ export function ChatWorkspace({
                   ref={composerRef}
                   value={draft}
                   onChange={(e) => updateDraft(e.target.value)}
-                  onPaste={handlePaste}
                   onKeyDown={(e) => {
                     if (mentionCandidates.length > 0) {
                       if (e.key === "ArrowDown") {

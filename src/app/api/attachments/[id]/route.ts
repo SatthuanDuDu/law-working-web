@@ -26,12 +26,10 @@ export async function GET(
 
   const mode = new URL(request.url).searchParams.get("mode") || "preview";
   const isDownload = mode === "download";
-  const contentPath = `/api/attachments/${attachment.id}/content?disposition=${
+  // Relative same-origin path — avoid broken absolute URLs behind Caddy/proxy hosts.
+  const url = `/api/attachments/${attachment.id}/content?disposition=${
     isDownload ? "attachment" : "inline"
   }`;
-
-  // Same-origin content proxy — browser never needs to reach MinIO/R2 directly.
-  const url = new URL(contentPath, request.url).toString();
 
   return NextResponse.json({
     url,

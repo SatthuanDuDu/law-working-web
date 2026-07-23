@@ -384,6 +384,7 @@ export function ChatWorkspace({
   const ingestPasteRef = useRef<(data: DataTransfer | null) => Promise<void>>(
     async () => {},
   );
+  const pasteCleanupRef = useRef<(() => void) | null>(null);
 
   const active = conversations.find((c) => c.id === activeId) ?? null;
 
@@ -798,17 +799,26 @@ export function ChatWorkspace({
     await ingestClipboardFiles(files);
   }
 
-  // Single Cmd+V path (capture). React onPaste removed — it duplicated native on real Cmd+V.
-  useEffect(() => {
-    const el = composerRef.current as
-      | (HTMLTextAreaElement & { __nslawPasteAc?: AbortController })
-      | null;
-    if (!el) return;
+  function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const data =
+      e.clipboardData ??
+      (e.nativeEvent as ClipboardEvent).clipboardData ??
+      null;
+    const looksLikeImagePaste =
+      extractClipboardFiles(data).length > 0 ||
+      clipboardHasImageType(data) ||
+      clipboardLooksLikeBlockedImagePaste(data);
+    if (!looksLikeImagePaste) return;
+    e.preventDefault();
+    void ingestPasteRef.current(data);
+  }
 
-    // Drop any stale HMR / Strict Mode listener bound to this DOM node.
-    el.__nslawPasteAc?.abort();
-    const ac = new AbortController();
-    el.__nslawPasteAc = ac;
+  // Bind paste whenever the composer mounts (activeId-only effect missed late-mounted textarea).
+  const setComposerNode = (el: HTMLTextAreaElement | null) => {
+    composerRef.current = el;
+    pasteCleanupRef.current?.();
+    pasteCleanupRef.current = null;
+    if (!el) return;
 
     const onNativePaste = (ev: ClipboardEvent) => {
       const data = ev.clipboardData;
@@ -817,21 +827,23 @@ export function ChatWorkspace({
         clipboardHasImageType(data) ||
         clipboardLooksLikeBlockedImagePaste(data);
       if (!looksLikeImagePaste) return;
-
       ev.preventDefault();
       ev.stopImmediatePropagation();
       void ingestPasteRef.current(data);
     };
 
-    el.addEventListener("paste", onNativePaste, {
-      capture: true,
-      signal: ac.signal,
-    });
-    return () => {
-      ac.abort();
-      if (el.__nslawPasteAc === ac) delete el.__nslawPasteAc;
+    el.addEventListener("paste", onNativePaste, { capture: true });
+    pasteCleanupRef.current = () => {
+      el.removeEventListener("paste", onNativePaste, { capture: true });
     };
-  }, [activeId]);
+  };
+
+  useEffect(() => {
+    return () => {
+      pasteCleanupRef.current?.();
+      pasteCleanupRef.current = null;
+    };
+  }, []);
 
   async function removePending(id: string) {
     const target = pendingFiles.find((f) => f.id === id);
@@ -1333,9 +1345,10 @@ export function ChatWorkspace({
                   </ul>
                 ) : null}
                 <textarea
-                  ref={composerRef}
+                  ref={setComposerNode}
                   value={draft}
                   onChange={(e) => updateDraft(e.target.value)}
+                  onPaste={handlePaste}
                   onKeyDown={(e) => {
                     if (mentionCandidates.length > 0) {
                       if (e.key === "ArrowDown") {

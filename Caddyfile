@@ -1,13 +1,23 @@
 {$DOMAIN} {
 	encode gzip
 
-	header {
+	# Page security headers (not on attachment bytes — PDF iframe preview needs to embed content)
+	@pages {
+		not path /api/attachments/*/content*
+	}
+	header @pages {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
 		X-Content-Type-Options nosniff
 		X-Frame-Options DENY
 		Referrer-Policy strict-origin-when-cross-origin
 		Permissions-Policy "camera=(), microphone=(), geolocation=(self)"
 		Content-Security-Policy "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-src 'self' https://www.openstreetmap.org; object-src 'none'"
+		-Server
+	}
+
+	header /api/attachments/*/content* {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
 		-Server
 	}
 

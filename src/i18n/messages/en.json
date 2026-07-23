@@ -229,6 +229,7 @@
     "signIn": "Sign in",
     "signingIn": "Signing in...",
     "invalidCredentials": "Invalid username or password",
+    "rateLimited": "Too many login attempts. Please try again in a few minutes.",
     "siteDescription": "Internal work management system for law firms"
   },
   "settings": {

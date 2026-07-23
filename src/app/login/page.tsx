@@ -32,7 +32,12 @@ export default function LoginPage() {
     setLoading(false);
 
     if (result?.error) {
-      setError(t("invalidCredentials"));
+      const code = (result as { code?: string }).code ?? result.error;
+      setError(
+        code === "rate_limited" || result.status === 429
+          ? t("rateLimited")
+          : t("invalidCredentials"),
+      );
       return;
     }
 

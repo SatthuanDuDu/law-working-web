@@ -104,7 +104,9 @@ export async function PUT(
   }
   if (buffer.byteLength > PROXY_UPLOAD_MAX_BYTES) {
     return NextResponse.json(
-      { error: "File quá lớn cho upload proxy (tối đa 4MB)" },
+      {
+        error: `File quá lớn cho upload proxy (tối đa ${Math.floor(PROXY_UPLOAD_MAX_BYTES / (1024 * 1024))}MB)`,
+      },
       { status: 413 },
     );
   }

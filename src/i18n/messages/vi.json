@@ -229,6 +229,7 @@
     "signIn": "Đăng nhập",
     "signingIn": "Đang đăng nhập...",
     "invalidCredentials": "Tên người dùng hoặc mật khẩu không đúng",
+    "rateLimited": "Quá nhiều lần thử đăng nhập. Vui lòng thử lại sau vài phút.",
     "siteDescription": "Hệ thống quản lý công việc nội bộ cho công ty luật"
   },
   "settings": {

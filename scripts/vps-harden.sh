@@ -100,18 +100,32 @@ if [[ -f /etc/ssh/sshd_config ]]; then
   systemctl reload sshd || systemctl reload ssh || true
 fi
 
-# UFW: 22, 80, 443, and 3000 interim (remove 3000 after DNS)
-apt-get install -y ufw >/dev/null
+# UFW: SSH + HTTPS only (app reaches users via Caddy :443)
+apt-get install -y ufw fail2ban >/dev/null
 ufw --force reset
 ufw default deny incoming
 ufw default allow outgoing
 ufw allow OpenSSH
 ufw allow 80/tcp
 ufw allow 443/tcp
-ufw allow 3000/tcp comment 'interim until domain DNS'
 ufw --force enable
 ufw status verbose
 
-curl -s -o /dev/null -w "login:%{http_code}\n" http://127.0.0.1:3000/login
+# fail2ban — SSH brute-force
+systemctl enable --now fail2ban >/dev/null 2>&1 || true
+cat > /etc/fail2ban/jail.d/sshd.local << 'EOF'
+[sshd]
+enabled = true
+port = ssh
+filter = sshd
+logpath = /var/log/auth.log
+maxretry = 5
+bantime = 1h
+findtime = 15m
+EOF
+systemctl restart fail2ban >/dev/null 2>&1 || true
+fail2ban-client status sshd 2>/dev/null || true
+
+curl -s -o /dev/null -w "login:%{http_code}\n" http://127.0.0.1:3000/login || true
 docker compose ps
 echo HARDEN_DONE

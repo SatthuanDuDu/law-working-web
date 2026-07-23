@@ -1,11 +1,20 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import { CredentialsSignin } from "next-auth";
 import bcrypt from "bcryptjs";
 import type { Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit";
 import { authConfig } from "@/lib/auth.config";
 import { normalizeUsername } from "@/lib/username";
+import {
+  LOGIN_USER_LIMIT,
+  consumeRateLimit,
+} from "@/lib/rate-limit";
+
+class RateLimitedError extends CredentialsSignin {
+  code = "rate_limited";
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -22,6 +31,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!login || !password) return null;
 
         const username = normalizeUsername(login);
+
+        const userLimited = consumeRateLimit(
+          `login:user:${username}`,
+          LOGIN_USER_LIMIT,
+        );
+        if (!userLimited.ok) {
+          throw new RateLimitedError();
+        }
 
         const user = await prisma.user.findUnique({
           where: { username },

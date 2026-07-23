@@ -11,10 +11,13 @@ export const config = {
     "/tasks/:path*",
     "/calendar/:path*",
     "/workload/:path*",
+    "/expenses/:path*",
     "/notifications/:path*",
     "/settings/:path*",
     "/admin/:path*",
     "/chat",
     "/chat/:path*",
+    "/login",
+    "/api/:path*",
   ],
 };

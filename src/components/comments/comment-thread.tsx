@@ -38,6 +38,10 @@ import {
 } from "@/lib/location";
 import { Textarea } from "@/components/ui/textarea";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
+import {
+  clipboardLooksLikeBlockedImagePaste,
+  extractClipboardFiles,
+} from "@/lib/clipboard-files";
 import { AttachmentViewer } from "@/components/attachments/attachment-viewer";
 import { AttachmentUploadDialog } from "@/components/attachments/attachment-upload-dialog";
 import { formatDateTime, cn } from "@/lib/utils";
@@ -793,16 +797,15 @@ function CommentComposer({
   }
 
   function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-    const files: File[] = [];
-    for (const item of items) {
-      if (item.kind === "file") {
-        const file = item.getAsFile();
-        if (file) files.push(file);
+    const data = e.clipboardData;
+    const files = extractClipboardFiles(data);
+    if (files.length === 0) {
+      if (clipboardLooksLikeBlockedImagePaste(data)) {
+        e.preventDefault();
+        setError(t("pasteImageBlocked"));
       }
+      return;
     }
-    if (files.length === 0) return;
     e.preventDefault();
     enqueueFiles(files);
   }

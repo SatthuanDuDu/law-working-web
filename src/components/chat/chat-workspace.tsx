@@ -45,6 +45,10 @@ import {
   type LocationValue,
 } from "@/lib/location";
 import { removeVietnameseDiacritics } from "@/lib/username";
+import {
+  clipboardLooksLikeBlockedImagePaste,
+  extractClipboardFiles,
+} from "@/lib/clipboard-files";
 
 const MAX_SIZE_BYTES = 25 * 1024 * 1024;
 
@@ -110,25 +114,6 @@ type PendingFile = {
 
 function isImageMime(mimeType: string) {
   return mimeType.startsWith("image/");
-}
-
-function namedClipboardFile(file: File) {
-  if (file.name && file.name.trim() && file.name !== "image.png") {
-    return file;
-  }
-  const ext =
-    file.type === "image/png"
-      ? "png"
-      : file.type === "image/jpeg"
-        ? "jpg"
-        : file.type === "image/webp"
-          ? "webp"
-          : file.type === "image/gif"
-            ? "gif"
-            : "bin";
-  return new File([file], `paste-${Date.now()}.${ext}`, {
-    type: file.type || "application/octet-stream",
-  });
 }
 
 function ChatAttachmentPreview({
@@ -748,17 +733,21 @@ export function ChatWorkspace({
   }
 
   function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
-    const items = e.clipboardData?.items;
-    if (!items?.length) return;
-    const files: File[] = [];
-    for (const item of Array.from(items)) {
-      if (item.kind !== "file") continue;
-      const file = item.getAsFile();
-      if (file && file.size > 0) files.push(namedClipboardFile(file));
+    const data = e.clipboardData;
+    const files = extractClipboardFiles(data);
+    if (files.length === 0) {
+      if (clipboardLooksLikeBlockedImagePaste(data)) {
+        e.preventDefault();
+        setError(t("pasteImageBlocked"));
+      }
+      return;
     }
-    if (files.length === 0) return;
     e.preventDefault();
-    files.forEach((f) => void uploadFile(f));
+    void (async () => {
+      for (const file of files) {
+        await uploadFile(file);
+      }
+    })();
   }
 
   async function removePending(id: string) {

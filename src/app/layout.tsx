@@ -15,6 +15,20 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: "NSLAW Work Manager",
     description: t("siteDescription"),
+    manifest: "/manifest.webmanifest",
+    appleWebApp: {
+      capable: true,
+      title: "NSLAW",
+      statusBarStyle: "default",
+    },
+    icons: {
+      icon: [
+        { url: "/favicon.png", type: "image/png", sizes: "32x32" },
+        { url: "/icon-192.png", type: "image/png", sizes: "192x192" },
+      ],
+      apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+      shortcut: "/favicon.png",
+    },
   };
 }
 
@@ -23,6 +37,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  themeColor: "#14532d",
 };
 
 export default async function RootLayout({

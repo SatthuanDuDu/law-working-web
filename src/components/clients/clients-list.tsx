@@ -2,11 +2,13 @@
 
 import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { ArrowDown, ArrowUp, Check, ChevronDown, Pencil, Trash2, X } from "lucide-react";
 import { deleteClientAction } from "@/lib/actions";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
+import { useListViewMode } from "@/hooks/use-list-view-mode";
 import { CreateClientButton } from "@/components/clients/create-client-button";
 import {
   ClientFormModal,
@@ -14,6 +16,7 @@ import {
 } from "@/components/clients/client-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ListViewToggle } from "@/components/ui/list-view-toggle";
 import { useLabelMaps } from "@/i18n/use-label-maps";
 import { cn } from "@/lib/utils";
 import type { ClientBusinessType } from "@prisma/client";
@@ -382,6 +385,7 @@ export function ClientsList({
   const [filters, setFilters] = useState<ClientsFilterState>(DEFAULT_FILTERS);
   const [editOpen, setEditOpen] = useState(false);
   const [editClient, setEditClient] = useState<ClientFormInitial | null>(null);
+  const { mode, setMode } = useListViewMode("clients");
 
   function openEdit(client: ClientListItem) {
     setEditClient({
@@ -460,6 +464,63 @@ export function ClientsList({
     filters.cities.length > 0 ||
     filters.businessTypes.length > 0;
 
+  function MatterCountChip({ client }: { client: ClientListItem }) {
+    const count = client._count.matters;
+    const label = t("fieldMatters", { count });
+    if (count <= 0) {
+      return (
+        <span
+          className="rounded-full bg-muted px-2 py-0 text-[10px] font-medium tabular-nums text-muted-foreground"
+          title={t("noRelatedMatters")}
+          aria-disabled
+        >
+          {label}
+        </span>
+      );
+    }
+    return (
+      <Link
+        href={`/matters?clientId=${encodeURIComponent(client.id)}`}
+        className="interactive-press rounded-full bg-primary/10 px-2 py-0 text-[10px] font-semibold tabular-nums text-primary hover:bg-primary/15"
+        title={t("viewRelatedMatters", { count })}
+        aria-label={t("viewRelatedMatters", { count })}
+      >
+        {label}
+      </Link>
+    );
+  }
+
+  function ClientActions({ client }: { client: ClientListItem }) {
+    if (!canManage) return null;
+    return (
+      <div className="flex flex-wrap items-center gap-1.5 sm:shrink-0 sm:justify-end">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={isPending}
+          onClick={() => openEdit(client)}
+          className="h-8 px-2.5"
+          aria-label={t("editClient")}
+        >
+          <Pencil className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">{tCommon("edit")}</span>
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={isPending}
+          onClick={() => handleDelete(client)}
+          className="h-8 px-2 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40"
+          aria-label={`${tCommon("delete")} ${client.name}`}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <>
       {dialog}
@@ -473,7 +534,10 @@ export function ClientsList({
                   total: clients.length,
                 })}
           </p>
-          <CreateClientButton />
+          <div className="flex flex-wrap items-center gap-2">
+            <ListViewToggle mode={mode} onChange={setMode} />
+            <CreateClientButton />
+          </div>
         </div>
 
         <div className="shrink-0 rounded-md border border-border bg-surface px-3 py-3">
@@ -588,6 +652,53 @@ export function ClientsList({
                 {t("noFilterMatch")}
               </CardContent>
             </Card>
+          ) : mode === "grid" ? (
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {visibleClients.map((client) => {
+                const meta = [
+                  client.phone,
+                  client.email,
+                  client.city,
+                  client.address,
+                ]
+                  .filter(Boolean)
+                  .join(" · ");
+
+                return (
+                  <Card key={client.id} className="rounded-[5px]">
+                    <CardContent className="flex h-full flex-col gap-3 p-4">
+                      <div className="min-w-0 space-y-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="rounded-md bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-primary">
+                            {client.code}
+                          </span>
+                          {client.businessType ? (
+                            <span className="rounded-full bg-primary-muted px-2 py-0 text-[10px] font-semibold text-primary">
+                              {labels.clientBusinessType[client.businessType]}
+                            </span>
+                          ) : null}
+                          <MatterCountChip client={client} />
+                        </div>
+                        <h3 className="truncate text-sm font-semibold text-foreground">
+                          {client.name}
+                        </h3>
+                        <p className="line-clamp-2 text-xs text-muted-foreground">
+                          {meta || "—"}
+                        </p>
+                        {client.notes ? (
+                          <p className="line-clamp-2 text-xs text-foreground/80">
+                            {client.notes}
+                          </p>
+                        ) : null}
+                      </div>
+                      <div className="mt-auto">
+                        <ClientActions client={client} />
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           ) : (
             <Card className="rounded-[5px]">
               <CardContent className="divide-y divide-border/70 p-0">
@@ -617,9 +728,7 @@ export function ClientsList({
                                 {labels.clientBusinessType[client.businessType]}
                               </span>
                             ) : null}
-                            <span className="rounded-full bg-muted px-2 py-0 text-[10px] font-medium tabular-nums text-muted-foreground">
-                              {t("fieldMatters", { count: client._count.matters })}
-                            </span>
+                            <MatterCountChip client={client} />
                           </div>
                           <p className="mt-0.5 truncate text-xs text-muted-foreground">
                             {meta || "—"}
@@ -630,34 +739,7 @@ export function ClientsList({
                             </p>
                           ) : null}
                         </div>
-
-                        {canManage ? (
-                          <div className="flex flex-wrap items-center gap-1.5 sm:shrink-0 sm:justify-end">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              disabled={isPending}
-                              onClick={() => openEdit(client)}
-                              className="h-8 px-2.5"
-                              aria-label={t("editClient")}
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                              <span className="hidden sm:inline">{tCommon("edit")}</span>
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              disabled={isPending}
-                              onClick={() => handleDelete(client)}
-                              className="h-8 px-2 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40"
-                              aria-label={`${tCommon("delete")} ${client.name}`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ) : null}
+                        <ClientActions client={client} />
                       </div>
                     </div>
                   );
@@ -681,3 +763,4 @@ export function ClientsList({
     </>
   );
 }
+

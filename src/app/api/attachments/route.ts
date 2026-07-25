@@ -5,6 +5,11 @@ import { canAccessAttachmentTarget } from "@/lib/access";
 import { buildStorageKey, createUploadUrl } from "@/lib/storage";
 import { createAuditLog } from "@/lib/audit";
 import { buildAttachmentOrigin } from "@/lib/attachment-origin";
+import { canManageMatterDocuments } from "@/lib/permissions";
+import {
+  filterVisibleAttachments,
+  getAccessSummaries,
+} from "@/lib/attachment-access";
 
 const MAX_SIZE_BYTES = 25 * 1024 * 1024;
 
@@ -52,28 +57,27 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 403 });
   }
 
+  const folderWhere =
+    folderFilter === "unfiled"
+      ? { folderId: null as string | null }
+      : folderFilter !== "all"
+        ? { folderId: folderFilter }
+        : {};
+
   const attachments = await prisma.attachment.findMany({
     where: matterPlanStepId
       ? {
           matterPlanStepId,
+          isLatest: true,
           ...(stepOnly ? { commentId: null } : {}),
-          ...(folderFilter === "unfiled"
-            ? { folderId: null }
-            : folderFilter !== "all"
-              ? { folderId: folderFilter }
-              : {}),
+          ...folderWhere,
         }
       : {
+          isLatest: true,
           ...(matterId ? { matterId } : {}),
           ...(taskId ? { taskId } : {}),
           ...(clientId ? { clientId } : {}),
-          ...(matterId
-            ? folderFilter === "unfiled"
-              ? { folderId: null }
-              : folderFilter !== "all"
-                ? { folderId: folderFilter }
-                : {}
-            : {}),
+          ...(matterId ? folderWhere : {}),
         },
     include: {
       uploadedBy: { select: { id: true, name: true } },
@@ -85,8 +89,33 @@ export async function GET(request: Request) {
     orderBy: { createdAt: "desc" },
   });
 
+  const groupIds = [...new Set(attachments.map((a) => a.versionGroupId))];
+  const versionCounts =
+    groupIds.length > 0
+      ? await prisma.attachment.groupBy({
+          by: ["versionGroupId"],
+          where: { versionGroupId: { in: groupIds } },
+          _count: { _all: true },
+        })
+      : [];
+  const countByGroup = new Map(
+    versionCounts.map((row) => [row.versionGroupId, row._count._all]),
+  );
+
+  const visible = await filterVisibleAttachments(
+    user.id,
+    user.role,
+    attachments.map((file) => ({
+      ...file,
+      uploadedById: file.uploadedBy.id,
+    })),
+  );
+  const accessByGroup = await getAccessSummaries(
+    visible.map((a) => a.versionGroupId),
+  );
+
   return NextResponse.json({
-    attachments: attachments.map((file) => ({
+    attachments: visible.map((file) => ({
       id: file.id,
       fileName: file.fileName,
       mimeType: file.mimeType,
@@ -104,6 +133,10 @@ export async function GET(request: Request) {
       customLabel: file.customLabel,
       labelName: file.customLabel || file.label?.name || null,
       isImportant: file.isImportant,
+      version: file.version,
+      versionGroupId: file.versionGroupId,
+      versionCount: countByGroup.get(file.versionGroupId) ?? 1,
+      accessMode: accessByGroup.get(file.versionGroupId)?.mode ?? "ALL_MEMBERS",
       origin: buildAttachmentOrigin({
         commentId: file.commentId,
         matterPlanStepId: file.matterPlanStepId,
@@ -139,6 +172,7 @@ export async function POST(request: Request) {
     labelId,
     customLabel,
     folderId,
+    purpose,
   } = body as {
     fileName?: string;
     mimeType?: string;
@@ -151,6 +185,7 @@ export async function POST(request: Request) {
     labelId?: string | null;
     customLabel?: string | null;
     folderId?: string | null;
+    purpose?: "comment" | "document";
   };
 
   if (!fileName || !mimeType || typeof sizeBytes !== "number") {
@@ -248,29 +283,53 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Không có quyền upload" }, { status: 403 });
     }
 
+    // Matter document uploads (hub / plan) — lawyers+ only.
+    // Comment drafts and chat stay open to anyone with access.
+    const isCommentDraft = purpose === "comment";
+    const isMatterDocument =
+      Boolean(resolvedMatterId) &&
+      !conversationId &&
+      !isCommentDraft;
+    if (isMatterDocument && !canManageMatterDocuments(user.role)) {
+      return NextResponse.json(
+        { error: "Chỉ luật sư/admin được tải tài liệu vụ việc" },
+        { status: 403 },
+      );
+    }
+
     const storageKey = buildStorageKey(fileName);
     uploadUrl = await createUploadUrl(storageKey, mimeType);
 
-    const attachment = await prisma.attachment.create({
-      data: {
-        fileName,
-        mimeType,
-        sizeBytes,
-        storageKey,
-        matterId: resolvedMatterId,
-        taskId: taskId || null,
-        clientId: clientId || null,
-        matterPlanStepId: matterPlanStepId || null,
-        conversationId: conversationId || null,
-        folderId: resolvedFolderId,
-        labelId: hasLabelId ? labelId! : null,
-        customLabel: hasLabelId
-          ? null
-          : isChatUpload
-            ? trimmedCustom || "Chat"
-            : trimmedCustom,
-        uploadedById: user.id,
-      },
+    const attachment = await prisma.$transaction(async (tx) => {
+      const created = await tx.attachment.create({
+        data: {
+          fileName,
+          mimeType,
+          sizeBytes,
+          storageKey,
+          matterId: resolvedMatterId,
+          taskId: taskId || null,
+          clientId: clientId || null,
+          matterPlanStepId: matterPlanStepId || null,
+          conversationId: conversationId || null,
+          folderId: resolvedFolderId,
+          labelId: hasLabelId ? labelId! : null,
+          customLabel: hasLabelId
+            ? null
+            : isChatUpload
+              ? trimmedCustom || "Chat"
+              : trimmedCustom,
+          uploadedById: user.id,
+          // Temporary; immediately rewritten to id below.
+          versionGroupId: "pending",
+          version: 1,
+          isLatest: true,
+        },
+      });
+      return tx.attachment.update({
+        where: { id: created.id },
+        data: { versionGroupId: created.id },
+      });
     });
 
     await createAuditLog({

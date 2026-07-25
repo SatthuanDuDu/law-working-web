@@ -3,22 +3,48 @@
 import { Sidebar } from "@/components/layout/sidebar";
 import { PageHeader } from "@/components/layout/page-header";
 import { AddExpenseFab } from "@/components/expenses/add-expense-fab";
-import { PageMetaProvider, usePageMeta } from "@/contexts/page-meta-context";
+import { HelpFab } from "@/components/help/help-fab";
+import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
+import { NotificationToastHost } from "@/components/notifications/notification-toast-host";
+import {
+  PageMetaProvider,
+  usePageMeta,
+  type PageMeta,
+} from "@/contexts/page-meta-context";
 import { SidebarProvider } from "@/contexts/sidebar-context";
 import { getPageMeta } from "@/lib/page-meta";
 import type { SessionUser } from "@/lib/permissions";
 import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
-import { useLayoutEffect, useMemo } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 
 function PathnameMetaSync() {
   const pathname = usePathname();
   const { setMeta } = usePageMeta();
   const tPages = useTranslations("pages");
 
+  // Static routes only. Dynamic /matters/[id]… titles come from serverMeta + PageHeaderSlot.
   useLayoutEffect(() => {
+    const isDynamicMatter =
+      pathname.startsWith("/matters/") && pathname !== "/matters";
+    if (isDynamicMatter) return;
     setMeta(getPageMeta(pathname, tPages));
-  }, [pathname, setMeta, tPages]);
+  }, [pathname, setMeta]); // eslint-disable-line react-hooks/exhaustive-deps -- tPages intentionally omitted
+
+  return null;
+}
+
+function ServerMetaSync({ meta }: { meta: PageMeta }) {
+  const { setMeta } = usePageMeta();
+  const lastKey = useRef("");
+
+  useLayoutEffect(() => {
+    const key = `${meta.title}\0${meta.description ?? ""}`;
+    if (lastKey.current === key) return;
+    lastKey.current = key;
+    setMeta(meta);
+    // Intentionally depend on title/description strings, not meta object identity.
+  }, [meta, meta.title, meta.description, setMeta]);
 
   return null;
 }
@@ -26,18 +52,23 @@ function PathnameMetaSync() {
 export function DashboardShell({
   user,
   children,
+  serverMeta,
 }: {
   user: SessionUser;
   children: React.ReactNode;
+  serverMeta: PageMeta;
 }) {
   const pathname = usePathname();
   const tPages = useTranslations("pages");
-  const initialMeta = useMemo(() => getPageMeta(pathname, tPages), [pathname, tPages]);
+  const clientMeta = useMemo(() => getPageMeta(pathname, tPages), [pathname, tPages]);
+  const initialMeta = serverMeta ?? clientMeta;
 
   return (
     <SidebarProvider>
       <PageMetaProvider initialMeta={initialMeta}>
+        <ServerMetaSync meta={serverMeta} />
         <PathnameMetaSync />
+        <ServiceWorkerRegister />
         <div className="flex min-h-screen bg-transparent">
           <div className="sticky top-0 z-30 hidden h-screen shrink-0 transition-[width] duration-300 ease-in-out lg:block">
             <Sidebar user={user} variant="desktop" />
@@ -47,7 +78,9 @@ export function DashboardShell({
             <PageHeader />
             <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
           </div>
+          <HelpFab />
           <AddExpenseFab />
+          <NotificationToastHost />
         </div>
       </PageMetaProvider>
     </SidebarProvider>

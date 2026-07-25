@@ -7,9 +7,15 @@ import { Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
 import { getAccessibleMatterIds } from "@/lib/access";
-import { isAdmin, isManagerOrAbove } from "@/lib/permissions";
+import { isAdmin, isManagerOrAbove, canManageMatterDocuments } from "@/lib/permissions";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { buildAttachmentOrigin } from "@/lib/attachment-origin";
+import { attachVersionCounts } from "@/lib/attachment-versions";
+import { getMatterFormData } from "@/lib/matter-form-data";
+import {
+  filterVisibleAttachments,
+  getAccessSummaries,
+} from "@/lib/attachment-access";
 import { getLabelMaps } from "@/i18n/server-labels";
 import { getTranslations } from "next-intl/server";
 
@@ -48,10 +54,12 @@ export default async function MatterReportPage({
           orderBy: { createdAt: "desc" },
         },
         attachments: {
+          where: { isLatest: true },
           include: {
             uploadedBy: { select: { id: true, name: true } },
             matterPlanStep: { select: { title: true } },
             label: { select: { name: true } },
+            folder: { select: { id: true, name: true } },
           },
           orderBy: { createdAt: "desc" },
         },
@@ -89,6 +97,12 @@ export default async function MatterReportPage({
       matter.members.some((member) => member.userId === user.id));
   const canEditStatus =
     (!isArchived && canEditContent) || (isArchived && isAdmin(user.role));
+  const canManageDocs =
+    canEditContent && canManageMatterDocuments(user.role);
+  const canEditMembers =
+    !isArchived &&
+    (isManagerOrAbove(user.role) || matter.leadLawyerId === user.id);
+  const formData = canEditMembers ? await getMatterFormData(user) : null;
 
   const mentionUsers = Array.from(
     new Map(
@@ -116,7 +130,17 @@ export default async function MatterReportPage({
     locationLng: comment.locationLng,
   }));
 
-  const initialAttachments = matter.attachments.map((file) => ({
+  const attachmentsWithCounts = await attachVersionCounts(matter.attachments);
+  const visibleAttachments = await filterVisibleAttachments(
+    user.id,
+    user.role,
+    attachmentsWithCounts,
+    new Map([[matter.id, matter.leadLawyerId]]),
+  );
+  const accessByGroup = await getAccessSummaries(
+    visibleAttachments.map((f) => f.versionGroupId),
+  );
+  const initialAttachments = visibleAttachments.map((file) => ({
     id: file.id,
     fileName: file.fileName,
     mimeType: file.mimeType,
@@ -134,6 +158,13 @@ export default async function MatterReportPage({
       planStepTitle: file.matterPlanStep?.title,
     }),
     labelName: file.customLabel || file.label?.name || null,
+    folderId: file.folderId,
+    folderName: file.folder?.name ?? null,
+    isImportant: file.isImportant,
+    version: file.version,
+    versionGroupId: file.versionGroupId,
+    versionCount: file.versionCount,
+    accessMode: accessByGroup.get(file.versionGroupId)?.mode ?? "ALL_MEMBERS",
   }));
 
   const timeline = [
@@ -172,6 +203,8 @@ export default async function MatterReportPage({
             matter={matter}
             canEditStatus={canEditStatus}
             isAdmin={isAdmin(user.role)}
+            canEditMembers={canEditMembers}
+            staffOptions={formData?.members ?? []}
           />
         </div>
 
@@ -206,8 +239,9 @@ export default async function MatterReportPage({
         <AttachmentPanel
           matterId={matter.id}
           currentUserId={user.id}
-          canDeleteAll={isManagerOrAbove(user.role)}
-          canUpload={canEditContent}
+          canDeleteAll={canManageDocs}
+          canUpload={canManageDocs}
+          canManageAccess={canEditMembers}
           initialAttachments={initialAttachments}
         />
       </div>

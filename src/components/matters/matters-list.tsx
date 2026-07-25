@@ -1,19 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { ClipboardList, Pencil, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { deleteMatterAction } from "@/lib/actions";
 import { useMatterFormData } from "@/hooks/use-matter-form-data";
+import { useListViewMode } from "@/hooks/use-list-view-mode";
 import type { MatterFilterOptions } from "@/lib/matter-form-data";
 import { getMatterTypeDisplay } from "@/lib/matter-code";
-import { formatDateTime } from "@/lib/utils";
+import { cn, formatDateTime } from "@/lib/utils";
 import { useLabelMaps } from "@/i18n/use-label-maps";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ListViewToggle } from "@/components/ui/list-view-toggle";
 import { MatterStatusBadge } from "@/components/matters/matter-status-control";
 import {
   DEFAULT_MATTERS_FILTERS,
@@ -142,6 +144,8 @@ export function MattersList({
   canManage: boolean;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const locale = useLocale();
   const t = useTranslations("matters");
   const tCommon = useTranslations("common");
@@ -151,11 +155,46 @@ export function MattersList({
   const { formData, loading: formDataLoading, ensureLoaded } = useMatterFormData();
   const [editMatter, setEditMatter] = useState<MatterEditInitial | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const { mode, setMode } = useListViewMode("matters");
+
+  const clientIdFromUrl = searchParams.get("clientId");
   const [filters, setFilters] = useState<MattersFilterState>(DEFAULT_MATTERS_FILTERS);
 
+  /** Deep-link `?clientId=` seeds the client filter without a syncing effect. */
+  const effectiveFilters = useMemo((): MattersFilterState => {
+    if (!clientIdFromUrl) return filters;
+    return { ...filters, clientIds: [clientIdFromUrl] };
+  }, [filters, clientIdFromUrl]);
+
+  function syncClientIdToUrl(nextClientIds: string[]) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (nextClientIds.length === 1) {
+      params.set("clientId", nextClientIds[0]);
+    } else {
+      params.delete("clientId");
+    }
+    const qs = params.toString();
+    const href = qs ? `${pathname}?${qs}` : pathname;
+    router.replace(href, { scroll: false });
+  }
+
+  function handleFiltersChange(next: MattersFilterState) {
+    setFilters(next);
+    const prevIds = effectiveFilters.clientIds;
+    const prevSingle = prevIds.length === 1 ? prevIds[0] : null;
+    const nextSingle = next.clientIds.length === 1 ? next.clientIds[0] : null;
+    const clearedOrChanged =
+      prevSingle !== nextSingle ||
+      (prevIds.length > 0 && next.clientIds.length === 0) ||
+      (prevIds.length === 1 && next.clientIds.length !== 1);
+    if (clearedOrChanged) {
+      syncClientIdToUrl(next.clientIds);
+    }
+  }
+
   const visibleMatters = useMemo(
-    () => applyMattersFilters(matters, filters, labels.matterType, locale),
-    [matters, filters, labels.matterType, locale],
+    () => applyMattersFilters(matters, effectiveFilters, labels.matterType, locale),
+    [matters, effectiveFilters, labels.matterType, locale],
   );
 
   async function openEdit(matter: MatterListItem) {
@@ -203,18 +242,196 @@ export function MattersList({
     });
   }
 
+  function renderMatterActions(matter: MatterListItem, compact = false) {
+    return (
+      <div
+        className={cn(
+          "flex w-full flex-col gap-2",
+          compact ? "sm:w-full" : "sm:w-auto sm:shrink-0 sm:items-stretch",
+        )}
+      >
+        {canManage ? (
+          <div className={cn("flex items-center gap-2", !compact && "sm:justify-end")}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isPending || formDataLoading}
+              onClick={() => void openEdit(matter)}
+              aria-label={t("editMatter")}
+              className="flex-1 sm:flex-none"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              <span className="sm:inline">{tCommon("edit")}</span>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isPending}
+              onClick={() => handleDelete(matter)}
+              className="flex-1 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40 sm:flex-none"
+              aria-label={t("deleteMatter")}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span className="sm:inline">{tCommon("delete")}</span>
+            </Button>
+          </div>
+        ) : null}
+        <Button asChild size="sm" className="w-full">
+          <Link href={`/matters/${matter.id}/plan`}>
+            <ClipboardList className="h-3.5 w-3.5" />
+            <span className="sm:hidden">{t("setupPlan")}</span>
+            <span className="hidden sm:inline">{t("setupPlanLong")}</span>
+          </Link>
+        </Button>
+      </div>
+    );
+  }
+
+  function renderListCard(matter: MatterListItem) {
+    return (
+      <Card key={matter.id} className="rounded-[5px]">
+        <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle className="min-w-0 text-lg leading-snug">
+                <Link
+                  href={`/matters/${matter.id}`}
+                  className="interactive-link hover:text-primary"
+                >
+                  {matter.title}
+                </Link>
+              </CardTitle>
+              <MatterStatusBadge status={matter.status} />
+            </div>
+            <p className="break-all font-mono text-xs font-medium tabular-nums tracking-tight text-primary sm:break-normal">
+              {matter.code}
+            </p>
+            <p className="text-sm font-semibold text-foreground">
+              {matter.client.name}
+            </p>
+          </div>
+          {renderMatterActions(matter)}
+        </CardHeader>
+
+        <CardContent className="space-y-4 pt-3">
+          <dl className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="min-w-0">
+              <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                {t("fieldType")}
+              </dt>
+              <dd className="mt-1 break-words text-sm font-medium text-foreground">
+                {getMatterTypeDisplay(matter.type, matter.customTypeLabel)}
+              </dd>
+            </div>
+            <div className="min-w-0">
+              <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                {t("leadLawyer")}
+              </dt>
+              <dd className="mt-1 break-words text-sm font-semibold text-foreground">
+                {matter.leadLawyer.name}
+              </dd>
+            </div>
+            <div className="min-w-0">
+              <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                {t("members")}
+              </dt>
+              <dd className="mt-1 break-words text-sm font-medium text-foreground">
+                {matter.members.map((member) => member.user.name).join(", ") || "—"}
+              </dd>
+            </div>
+            <div className="min-w-0">
+              <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                {t("fieldCreatedAt")}
+              </dt>
+              <dd className="mt-1 text-sm font-medium tabular-nums text-foreground">
+                {formatDateTime(matter.createdAt)}
+              </dd>
+            </div>
+          </dl>
+          <p className="border-t border-border/70 pt-3 text-sm font-medium text-primary">
+            {t("taskCount", { count: matter._count.tasks })}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  function renderGridCard(matter: MatterListItem) {
+    return (
+      <Card key={matter.id} className="flex h-full flex-col rounded-[5px]">
+        <CardHeader className="space-y-2 pb-2">
+          <div className="flex flex-wrap items-start gap-2">
+            <CardTitle className="min-w-0 flex-1 text-base leading-snug">
+              <Link
+                href={`/matters/${matter.id}`}
+                className="interactive-link hover:text-primary"
+              >
+                {matter.title}
+              </Link>
+            </CardTitle>
+            <MatterStatusBadge status={matter.status} />
+          </div>
+          <p className="break-all font-mono text-[11px] font-medium tabular-nums tracking-tight text-primary">
+            {matter.code}
+          </p>
+          <p className="truncate text-sm font-semibold text-foreground">
+            {matter.client.name}
+          </p>
+        </CardHeader>
+        <CardContent className="mt-auto flex flex-1 flex-col gap-3 pt-0">
+          <dl className="grid gap-2 text-sm">
+            <div className="min-w-0">
+              <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                {t("leadLawyer")}
+              </dt>
+              <dd className="mt-0.5 truncate font-medium text-foreground">
+                {matter.leadLawyer.name}
+              </dd>
+            </div>
+            <div className="min-w-0">
+              <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                {t("fieldType")}
+              </dt>
+              <dd className="mt-0.5 truncate font-medium text-foreground">
+                {getMatterTypeDisplay(matter.type, matter.customTypeLabel)}
+              </dd>
+            </div>
+          </dl>
+          <p className="text-sm font-medium text-primary">
+            {t("taskCount", { count: matter._count.tasks })}
+          </p>
+          {renderMatterActions(matter, true)}
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <>
       {dialog}
       <div className="space-y-4">
         <MattersFiltersBar
-          filters={filters}
-          onChange={setFilters}
+          filters={effectiveFilters}
+          onChange={handleFiltersChange}
           typeOptions={Object.keys(labels.matterType) as MatterType[]}
           lawyers={filterOptions.lawyers}
           members={filterOptions.members}
           clients={filterOptions.clients}
         />
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">
+            {visibleMatters.length === matters.length
+              ? t("matterCount", { count: matters.length })
+              : t("matterCountFiltered", {
+                  visible: visibleMatters.length,
+                  total: matters.length,
+                })}
+          </p>
+          <ListViewToggle mode={mode} onChange={setMode} />
+        </div>
 
         {matters.length === 0 ? (
           <Card>
@@ -228,111 +445,14 @@ export function MattersList({
               {t("noFilterMatch")}
             </CardContent>
           </Card>
+        ) : mode === "grid" ? (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {visibleMatters.map((matter) => renderGridCard(matter))}
+          </div>
         ) : (
-          visibleMatters.map((matter) => (
-            <Card key={matter.id} className="rounded-[5px]">
-              <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0 flex-1 space-y-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <CardTitle className="min-w-0 text-lg leading-snug">
-                      <Link
-                        href={`/matters/${matter.id}`}
-                        className="interactive-link hover:text-primary"
-                      >
-                        {matter.title}
-                      </Link>
-                    </CardTitle>
-                    <MatterStatusBadge status={matter.status} />
-                  </div>
-                  <p className="break-all font-mono text-xs font-medium tabular-nums tracking-tight text-primary sm:break-normal">
-                    {matter.code}
-                  </p>
-                  <p className="text-sm font-semibold text-foreground">
-                    {matter.client.name}
-                  </p>
-                </div>
-
-                <div className="flex w-full flex-col gap-2 sm:w-auto sm:shrink-0 sm:items-stretch">
-                  {canManage ? (
-                    <div className="flex items-center gap-2 sm:justify-end">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={isPending || formDataLoading}
-                        onClick={() => void openEdit(matter)}
-                        aria-label={t("editMatter")}
-                        className="flex-1 sm:flex-none"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                        <span className="sm:inline">{tCommon("edit")}</span>
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={isPending}
-                        onClick={() => handleDelete(matter)}
-                        className="flex-1 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40 sm:flex-none"
-                        aria-label={t("deleteMatter")}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        <span className="sm:inline">{tCommon("delete")}</span>
-                      </Button>
-                    </div>
-                  ) : null}
-                  <Button asChild size="sm" className="w-full">
-                    <Link href={`/matters/${matter.id}/plan`}>
-                      <ClipboardList className="h-3.5 w-3.5" />
-                      <span className="sm:hidden">{t("setupPlan")}</span>
-                      <span className="hidden sm:inline">{t("setupPlanLong")}</span>
-                    </Link>
-                  </Button>
-                </div>
-              </CardHeader>
-
-              <CardContent className="space-y-4 pt-3">
-                <dl className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <div className="min-w-0">
-                    <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                      {t("fieldType")}
-                    </dt>
-                    <dd className="mt-1 break-words text-sm font-medium text-foreground">
-                      {getMatterTypeDisplay(matter.type, matter.customTypeLabel)}
-                    </dd>
-                  </div>
-                  <div className="min-w-0">
-                    <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                      {t("leadLawyer")}
-                    </dt>
-                    <dd className="mt-1 break-words text-sm font-semibold text-foreground">
-                      {matter.leadLawyer.name}
-                    </dd>
-                  </div>
-                  <div className="min-w-0">
-                    <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                      {t("members")}
-                    </dt>
-                    <dd className="mt-1 break-words text-sm font-medium text-foreground">
-                      {matter.members.map((member) => member.user.name).join(", ") ||
-                        "—"}
-                    </dd>
-                  </div>
-                  <div className="min-w-0">
-                    <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                      {t("fieldCreatedAt")}
-                    </dt>
-                    <dd className="mt-1 text-sm font-medium tabular-nums text-foreground">
-                      {formatDateTime(matter.createdAt)}
-                    </dd>
-                  </div>
-                </dl>
-                <p className="border-t border-border/70 pt-3 text-sm font-medium text-primary">
-                  {t("taskCount", { count: matter._count.tasks })}
-                </p>
-              </CardContent>
-            </Card>
-          ))
+          <div className="space-y-4">
+            {visibleMatters.map((matter) => renderListCard(matter))}
+          </div>
         )}
       </div>
 

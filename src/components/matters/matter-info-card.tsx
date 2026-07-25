@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
 import { MatterStatusControl } from "@/components/matters/matter-status-control";
+import { MatterMembersEditor } from "@/components/matters/matter-members-editor";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getMatterTypeDisplay } from "@/lib/matter-code";
 import { cn, formatDateTime } from "@/lib/utils";
 import { getTranslations } from "next-intl/server";
-import type { MatterStatus, MatterType } from "@prisma/client";
+import type { MatterStatus, MatterType, Role } from "@prisma/client";
 
 function MetaItem({
   label,
@@ -46,6 +47,8 @@ export async function MatterInfoCard({
   isAdmin = false,
   stickyHeader = false,
   className,
+  canEditMembers = false,
+  staffOptions = [],
 }: {
   matter: {
     id: string;
@@ -56,27 +59,34 @@ export async function MatterInfoCard({
     customTypeLabel: string | null;
     status: MatterStatus;
     createdAt: Date;
+    leadLawyerId: string;
     client: {
       name: string;
       phone: string | null;
       address: string | null;
       city: string | null;
     };
-    leadLawyer: { name: string };
-    members: { user: { name: string } }[];
+    leadLawyer: { id: string; name: string };
+    members: { userId: string; user: { id: string; name: string } }[];
   };
   canEditStatus: boolean;
   isAdmin?: boolean;
   stickyHeader?: boolean;
   className?: string;
+  canEditMembers?: boolean;
+  staffOptions?: { id: string; name: string; role: Role }[];
 }) {
   const t = await getTranslations("matters");
   const tClients = await getTranslations("clients");
   const address = [matter.client.address, matter.client.city]
     .filter(Boolean)
     .join(", ");
+  const memberIds = matter.members.map((m) => m.userId);
   const memberNames =
-    matter.members.map((member) => member.user.name).join(", ") || "—";
+    matter.members
+      .filter((m) => m.userId !== matter.leadLawyerId)
+      .map((m) => m.user.name)
+      .join(", ") || "—";
 
   return (
     <Card className={cn("rounded-[5px]", className)}>
@@ -139,7 +149,21 @@ export async function MatterInfoCard({
             <dd className="break-words text-sm font-semibold text-foreground">
               {matter.leadLawyer.name}
             </dd>
-            <MetaItem label={t("members")}>{memberNames}</MetaItem>
+            {canEditMembers ? (
+              <MatterMembersEditor
+                matterId={matter.id}
+                leadLawyerId={matter.leadLawyerId}
+                initialMemberIds={memberIds}
+                knownMembers={matter.members.map((m) => ({
+                  id: m.userId,
+                  name: m.user.name,
+                }))}
+                staffOptions={staffOptions}
+                canEdit
+              />
+            ) : (
+              <MetaItem label={t("members")}>{memberNames}</MetaItem>
+            )}
           </dl>
         </div>
 

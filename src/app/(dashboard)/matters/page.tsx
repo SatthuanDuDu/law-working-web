@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { PageHeaderSlot } from "@/components/layout/page-header-slot";
 import { MattersList } from "@/components/matters/matters-list";
 import { prisma } from "@/lib/prisma";
@@ -72,11 +73,13 @@ export default async function MattersPage() {
         title={tPages("title")}
         description={tPages("description")}
       />
-      <MattersList
-        matters={listItems}
-        filterOptions={filterOptions}
-        canManage={isManagerOrAbove(user.role)}
-      />
+      <Suspense fallback={null}>
+        <MattersList
+          matters={listItems}
+          filterOptions={filterOptions}
+          canManage={isManagerOrAbove(user.role)}
+        />
+      </Suspense>
     </>
   );
 }

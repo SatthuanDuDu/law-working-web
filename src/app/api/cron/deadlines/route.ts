@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { addDays, endOfDay, startOfDay } from "date-fns";
 import { prisma } from "@/lib/prisma";
+import { notifyUsersPush } from "@/lib/web-push";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,20 +38,28 @@ export async function GET(request: Request) {
   for (const task of dueTasks) {
     const due = task.dueDate!;
     const overdue = due < startOfDay(now);
+    const title = overdue ? "Task đã quá hạn" : "Task sắp đến hạn";
+    const message = overdue
+      ? `"${task.title}" đã quá hạn.`
+      : `"${task.title}" sẽ đến hạn trong vài ngày tới.`;
     await prisma.notification.create({
       data: {
         userId: task.assigneeId,
         type: "TASK_DUE",
-        title: overdue ? "Task đã quá hạn" : "Task sắp đến hạn",
-        message: overdue
-          ? `"${task.title}" đã quá hạn.`
-          : `"${task.title}" sẽ đến hạn trong vài ngày tới.`,
+        title,
+        message,
         link: "/tasks",
       },
     });
     await prisma.task.update({
       where: { id: task.id },
       data: { reminderSentAt: now },
+    });
+    void notifyUsersPush(task.assigneeId, {
+      title,
+      body: message,
+      url: "/tasks",
+      tag: `task-due-${task.id}`,
     });
     created += 1;
   }

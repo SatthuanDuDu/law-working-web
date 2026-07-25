@@ -1,4 +1,5 @@
 import type { PageMeta } from "@/contexts/page-meta-context";
+import { prisma } from "@/lib/prisma";
 
 type PagesT = {
   (key: `${string}.title`): string;
@@ -35,6 +36,30 @@ export function getPageMeta(pathname: string, tPages?: PagesT): PageMeta {
   }
 
   if (pathname.startsWith("/matters/")) {
+    if (/\/plan\/?$/.test(pathname)) {
+      if (tPages) {
+        return {
+          title: tPages("plan.title"),
+          description: tPages("plan.description"),
+        };
+      }
+      return {
+        title: "Lên kế hoạch vụ việc",
+        description: "Dựng và theo dõi lộ trình thực hiện vụ việc",
+      };
+    }
+    if (/\/report\/?$/.test(pathname)) {
+      if (tPages) {
+        return {
+          title: tPages("report.title"),
+          description: tPages("report.description"),
+        };
+      }
+      return {
+        title: "Báo cáo vụ việc",
+        description: "Tổng hợp hoạt động và tiến độ vụ việc",
+      };
+    }
     if (tPages) {
       return {
         title: tPages("matterDetail.title"),
@@ -50,4 +75,47 @@ export function getPageMeta(pathname: string, tPages?: PagesT): PageMeta {
   return {
     title: tPages ? tPages("fallback.title") : "NSLAW Work Manager",
   };
+}
+
+/**
+ * Server-side meta for dashboard shell (correct on first paint / SSR).
+ * Loads matter title for /matters/[id] hub so header is not stuck on the
+ * generic "Chi tiết vụ việc" placeholder while the page segment streams.
+ */
+export async function resolveServerPageMeta(
+  pathname: string,
+  tPages?: PagesT,
+): Promise<PageMeta> {
+  const match = pathname.match(/^\/matters\/([^/]+)(?:\/(plan|report))?\/?$/);
+  if (match) {
+    const [, id, section] = match;
+    const matter = await prisma.matter.findUnique({
+      where: { id },
+      select: {
+        title: true,
+        code: true,
+        client: { select: { name: true } },
+      },
+    });
+    if (matter) {
+      if (section === "plan") {
+        return {
+          title: tPages ? tPages("plan.title") : "Lên kế hoạch vụ việc",
+          description: `${matter.code} • ${matter.title}`,
+        };
+      }
+      if (section === "report") {
+        return {
+          title: tPages ? tPages("report.title") : "Báo cáo vụ việc",
+          description: `${matter.code} • ${matter.title}`,
+        };
+      }
+      return {
+        title: matter.title,
+        description: `${matter.code} • ${matter.client.name}`,
+      };
+    }
+  }
+
+  return getPageMeta(pathname, tPages);
 }

@@ -11,7 +11,9 @@ import { ResetPasswordButton } from "@/components/admin/reset-password-button";
 import { Badge, Card, CardContent, CardHeader, CardTitle, Select } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ListViewToggle } from "@/components/ui/list-view-toggle";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { useListViewMode } from "@/hooks/use-list-view-mode";
 import { useLabelMaps } from "@/i18n/use-label-maps";
 import { cn, formatDate } from "@/lib/utils";
 import type { Gender, Role } from "@prisma/client";
@@ -49,6 +51,7 @@ export function UsersList({
   const tNav = useTranslations("nav");
   const locale = useLocale();
   const { roles, gender: genders } = useLabelMaps();
+  const { mode, setMode } = useListViewMode("users");
 
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<Role | "all">("all");
@@ -98,6 +101,75 @@ export function UsersList({
     });
   }, [users, query, roleFilter, statusFilter, departmentFilter, roles, genders]);
 
+  function UserActions({
+    item,
+    layout = "list",
+  }: {
+    item: AdminUserListItem;
+    layout?: "list" | "grid";
+  }) {
+    const isGrid = layout === "grid";
+
+    return (
+      <div
+        className={cn(
+          "relative grid w-full shrink-0 justify-end gap-1.5 self-start",
+          isGrid
+            ? "grid-cols-3"
+            : "grid-cols-[2rem_2rem_2rem_2rem] sm:w-[22rem] sm:grid-cols-[4.75rem_7.5rem_4.75rem_2rem]",
+        )}
+        role="group"
+        aria-label={tUsers("editUser")}
+      >
+        <div className="min-w-0">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setEditUser(item)}
+            className="h-8 w-full gap-1.5 px-0 sm:px-2"
+            aria-label={tUsers("editUser")}
+          >
+            <Pencil className="h-3.5 w-3.5 shrink-0" />
+            <span className="hidden truncate sm:inline">{tCommon("edit")}</span>
+          </Button>
+        </div>
+        <div className="relative min-w-0">
+          <ResetPasswordButton userId={item.id} userName={item.name} compact />
+        </div>
+        <div className="min-w-0">
+          <ToggleUserActiveButton
+            userId={item.id}
+            userName={item.name}
+            isActive={item.isActive}
+            disabled={item.id === currentUserId}
+            compact
+          />
+        </div>
+        {isGrid ? null : (
+          <div className="flex min-w-0 justify-center">
+            <DeleteUserButton
+              userId={item.id}
+              userName={item.name}
+              canDelete={item.id !== currentUserId}
+            />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function userMeta(item: AdminUserListItem) {
+    return [
+      item.phone,
+      item.gender ? genders[item.gender] : null,
+      item.dateOfBirth ? formatDate(item.dateOfBirth, locale) : null,
+      item.department?.name,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  }
+
   return (
     <>
       <Card className="rounded-[5px]">
@@ -114,15 +186,18 @@ export function UsersList({
                     })}
               </p>
             </div>
-            <Button
-              type="button"
-              className="shrink-0"
-              onClick={() => setCreateOpen(true)}
-              aria-label={t("createUser")}
-            >
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">{t("createUser")}</span>
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <ListViewToggle mode={mode} onChange={setMode} />
+              <Button
+                type="button"
+                className="shrink-0"
+                onClick={() => setCreateOpen(true)}
+                aria-label={t("createUser")}
+              >
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">{t("createUser")}</span>
+              </Button>
+            </div>
           </div>
 
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -180,26 +255,81 @@ export function UsersList({
           </div>
         </CardHeader>
 
-        <CardContent className="divide-y divide-border/70 p-0">
-          {users.length === 0 ? (
+        {users.length === 0 ? (
+          <CardContent className="p-0">
             <p className="px-4 py-8 text-center text-sm text-muted-foreground sm:px-6">
               {tUsers("emptyHint")}
             </p>
-          ) : visibleUsers.length === 0 ? (
+          </CardContent>
+        ) : visibleUsers.length === 0 ? (
+          <CardContent className="p-0">
             <p className="px-4 py-8 text-center text-sm text-muted-foreground sm:px-6">
               {tUsers("noFilterMatch")}
             </p>
-          ) : (
-            visibleUsers.map((item) => {
-              const meta = [
-                item.phone,
-                item.gender ? genders[item.gender] : null,
-                item.dateOfBirth ? formatDate(item.dateOfBirth, locale) : null,
-                item.department?.name,
-              ]
-                .filter(Boolean)
-                .join(" · ");
-
+          </CardContent>
+        ) : mode === "grid" ? (
+          <CardContent className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3 sm:p-6">
+            {visibleUsers.map((item) => {
+              const meta = userMeta(item);
+              return (
+                <div
+                  key={item.id}
+                  className={cn(
+                    "relative flex h-full flex-col gap-3 rounded-md border border-border/80 p-3 pt-3.5",
+                    !item.isActive && "bg-muted/30",
+                  )}
+                >
+                  <div className="absolute top-1.5 right-1.5 z-10">
+                    <DeleteUserButton
+                      userId={item.id}
+                      userName={item.name}
+                      canDelete={item.id !== currentUserId}
+                    />
+                  </div>
+                  <div className="flex min-w-0 items-start gap-2.5 pr-8">
+                    <UserAvatar
+                      userId={item.id}
+                      name={item.name}
+                      avatarKey={item.avatarKey}
+                      size="sm"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <h3 className="truncate text-sm font-semibold text-foreground">
+                          {item.name}
+                        </h3>
+                        <Badge
+                          variant={item.isActive ? "success" : "danger"}
+                          className="px-2 py-0 text-[10px]"
+                        >
+                          {item.isActive ? t("active") : t("inactive")}
+                        </Badge>
+                        <span className="rounded-full bg-primary-muted px-2 py-0 text-[10px] font-semibold text-primary">
+                          {roles[item.role]}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                        @{item.username}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">{item.email}</p>
+                      {meta ? (
+                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                          {meta}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="mt-auto">
+                    <UserActions item={item} layout="grid" />
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        ) : (
+          <CardContent className="divide-y divide-border/70 p-0">
+            {visibleUsers.map((item) => {
+              const meta = userMeta(item);
               return (
                 <div
                   key={item.id}
@@ -238,57 +368,13 @@ export function UsersList({
                         </p>
                       </div>
                     </div>
-
-                    <div
-                      className="relative grid w-full shrink-0 grid-cols-[2rem_2rem_2rem_2rem] justify-end gap-1.5 self-start sm:w-[22rem] sm:grid-cols-[4.75rem_7.5rem_4.75rem_2rem]"
-                      role="group"
-                      aria-label={tUsers("editUser")}
-                    >
-                      <div className="min-w-0">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setEditUser(item)}
-                          className="h-8 w-full gap-1.5 px-0 sm:px-2"
-                          aria-label={tUsers("editUser")}
-                        >
-                          <Pencil className="h-3.5 w-3.5 shrink-0" />
-                          <span className="hidden truncate sm:inline">
-                            {tCommon("edit")}
-                          </span>
-                        </Button>
-                      </div>
-                      <div className="relative min-w-0">
-                        <ResetPasswordButton
-                          userId={item.id}
-                          userName={item.name}
-                          compact
-                        />
-                      </div>
-                      <div className="min-w-0">
-                        <ToggleUserActiveButton
-                          userId={item.id}
-                          userName={item.name}
-                          isActive={item.isActive}
-                          disabled={item.id === currentUserId}
-                          compact
-                        />
-                      </div>
-                      <div className="flex min-w-0 justify-center">
-                        <DeleteUserButton
-                          userId={item.id}
-                          userName={item.name}
-                          canDelete={item.id !== currentUserId}
-                        />
-                      </div>
-                    </div>
+                    <UserActions item={item} />
                   </div>
                 </div>
               );
-            })
-          )}
-        </CardContent>
+            })}
+          </CardContent>
+        )}
       </Card>
 
       {editUser ? (

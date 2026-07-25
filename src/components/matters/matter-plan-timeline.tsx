@@ -181,6 +181,9 @@ export function MatterPlanTimeline({
   steps,
   workTypes,
   canEdit,
+  canUploadDocuments = false,
+  canComment = false,
+  canManageAccess = false,
   currentUserId,
   canModerate,
   canDeleteAsAdmin,
@@ -190,6 +193,9 @@ export function MatterPlanTimeline({
   steps: MatterPlanStepItem[];
   workTypes: { id: string; name: string }[];
   canEdit: boolean;
+  canUploadDocuments?: boolean;
+  canComment?: boolean;
+  canManageAccess?: boolean;
   currentUserId: string;
   canModerate: boolean;
   canDeleteAsAdmin: boolean;
@@ -882,7 +888,8 @@ export function MatterPlanTimeline({
                               matterPlanStepId={step.id}
                               currentUserId={currentUserId}
                               canDeleteAll={canModerate}
-                              canUpload={canEdit}
+                              canUpload={canUploadDocuments}
+                              canManageAccess={canManageAccess}
                               initialAttachments={step.attachments}
                               compact
                             />
@@ -891,7 +898,7 @@ export function MatterPlanTimeline({
                               matterPlanStepId={step.id}
                               currentUserId={currentUserId}
                               canDeleteAsAdmin={canDeleteAsAdmin}
-                              canPost={canEdit}
+                              canPost={canComment}
                               mentionUsers={mentionUsers}
                               comments={step.comments}
                               compact

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
 import { canAccessAttachmentTarget } from "@/lib/access";
 import { createAuditLog } from "@/lib/audit";
+import { canManageMatterDocuments } from "@/lib/permissions";
 
 export async function PATCH(
   request: Request,
@@ -29,7 +30,7 @@ export async function PATCH(
   const allowed = await canAccessAttachmentTarget(user.id, user.role, {
     matterId: folder.matterId,
   });
-  if (!allowed) {
+  if (!allowed || !canManageMatterDocuments(user.role)) {
     return NextResponse.json({ error: "Không có quyền sửa thư mục" }, { status: 403 });
   }
 
@@ -37,7 +38,7 @@ export async function PATCH(
     const updated = await prisma.matterFolder.update({
       where: { id },
       data: { name },
-      include: { _count: { select: { attachments: true } } },
+      include: { _count: { select: { attachments: { where: { isLatest: true } } } } },
     });
 
     await createAuditLog({
@@ -86,7 +87,7 @@ export async function DELETE(
   const allowed = await canAccessAttachmentTarget(user.id, user.role, {
     matterId: folder.matterId,
   });
-  if (!allowed) {
+  if (!allowed || !canManageMatterDocuments(user.role)) {
     return NextResponse.json({ error: "Không có quyền xóa thư mục" }, { status: 403 });
   }
 

@@ -3,11 +3,21 @@
 import { useCallback, useEffect, useState, startTransition } from "react";
 import type { UrgentReminderItem } from "@/components/layout/urgent-reminder-stack";
 
+export type ShellNotificationPreview = {
+  id: string;
+  title: string;
+  message: string;
+  link: string | null;
+  type: string;
+  createdAt: string;
+};
+
 type ShellAlerts = {
   unreadCount: number;
   urgentReminders: UrgentReminderItem[];
   unreadChatCount: number;
   upcomingDueCount: number;
+  latestUnread: ShellNotificationPreview[];
 };
 
 const EMPTY: ShellAlerts = {
@@ -15,8 +25,10 @@ const EMPTY: ShellAlerts = {
   urgentReminders: [],
   unreadChatCount: 0,
   upcomingDueCount: 0,
+  latestUnread: [],
 };
-const REFRESH_MS = 60_000;
+/** Faster when tab visible so in-app toasts appear sooner. */
+const REFRESH_MS = 20_000;
 
 async function fetchShellAlerts(): Promise<ShellAlerts | null> {
   try {
@@ -32,6 +44,7 @@ async function fetchShellAlerts(): Promise<ShellAlerts | null> {
         typeof data.unreadChatCount === "number" ? data.unreadChatCount : 0,
       upcomingDueCount:
         typeof data.upcomingDueCount === "number" ? data.upcomingDueCount : 0,
+      latestUnread: Array.isArray(data.latestUnread) ? data.latestUnread : [],
     };
   } catch {
     return null;
@@ -40,9 +53,13 @@ async function fetchShellAlerts(): Promise<ShellAlerts | null> {
 
 export function useShellAlerts() {
   const [alerts, setAlerts] = useState<ShellAlerts>(EMPTY);
+  const [hydrated, setHydrated] = useState(false);
 
   const apply = useCallback((next: ShellAlerts) => {
-    startTransition(() => setAlerts(next));
+    startTransition(() => {
+      setAlerts(next);
+      setHydrated(true);
+    });
   }, []);
 
   const refresh = useCallback(async () => {
@@ -81,5 +98,5 @@ export function useShellAlerts() {
     };
   }, [apply]);
 
-  return { ...alerts, refresh };
+  return { ...alerts, hydrated, refresh };
 }

@@ -21,7 +21,9 @@
 		-Server
 	}
 
-	reverse_proxy app:3000
+	# Prefer unique alias — other Compose stacks also use service name "app"
+	# and can steal DNS on a shared Docker network.
+	reverse_proxy nslaw-app:3000
 }
 
 www.{$DOMAIN} {

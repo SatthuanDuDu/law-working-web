@@ -8,6 +8,7 @@ import {
   locationToPrismaFields,
   parseLocationFromFormData,
 } from "@/lib/location";
+import { notifyUsersPush } from "@/lib/web-push";
 
 function parseIds(raw: FormDataEntryValue | null): string[] {
   if (!raw || typeof raw !== "string") return [];
@@ -509,6 +510,12 @@ export async function sendChatMessageAction(
           link,
         })),
       });
+      void notifyUsersPush(validMentions, {
+        title: mentionTitle,
+        body: preview,
+        url: link,
+        tag: `chat-mention-${conversationId}`,
+      });
     }
 
     const chatRecipients = recipients.filter((id) => !mentionSet.has(id));
@@ -549,6 +556,12 @@ export async function sendChatMessageAction(
           },
         });
       }
+      void notifyUsersPush(recipientId, {
+        title: chatTitle,
+        body: preview,
+        url: link,
+        tag: `chat-${conversationId}`,
+      });
     }
   } catch (error) {
     console.error("chat notification failed:", error);

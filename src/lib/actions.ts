@@ -26,6 +26,7 @@ import { generateClientCode } from "@/lib/client-code";
 import { getAccessibleClientIds, getAccessibleMatterIds, assertMatterNotArchived } from "@/lib/access";
 import { deleteObject } from "@/lib/storage";
 import { actionError } from "@/i18n/server-labels";
+import { notifyUsersPush } from "@/lib/web-push";
 import type { MatterPlanStepStatus } from "@prisma/client";
 import {
   locationToPrismaFields,
@@ -536,6 +537,76 @@ export async function updateMatterAction(matterId: string, formData: FormData) {
   }
 }
 
+/** Lead lawyer (or manager/admin) adjusts associates only — not lead / core matter fields. */
+export async function updateMatterMembersAction(
+  matterId: string,
+  memberIds: string[],
+) {
+  const user = await requireAuth();
+
+  const matter = await prisma.matter.findUnique({
+    where: { id: matterId },
+    select: {
+      id: true,
+      code: true,
+      status: true,
+      leadLawyerId: true,
+    },
+  });
+  if (!matter) return { error: await actionError("matterNotFound") };
+  if (matter.status === "ARCHIVED") {
+    return { error: await actionError("noPermission") };
+  }
+
+  const isLead = matter.leadLawyerId === user.id;
+  if (!isManagerOrAbove(user.role) && !isLead) {
+    return { error: await actionError("onlyLeadOrManagerEditMembers") };
+  }
+
+  const uniqueIds = Array.from(
+    new Set(
+      (Array.isArray(memberIds) ? memberIds : []).filter(
+        (id): id is string => typeof id === "string" && id.length > 0,
+      ),
+    ),
+  ).filter((id) => id !== matter.leadLawyerId);
+
+  const validMembers = await prisma.user.findMany({
+    where: { id: { in: uniqueIds }, isActive: true },
+    select: { id: true },
+  });
+  const validMemberIds = validMembers.map((m) => m.id);
+  const allMemberIds = Array.from(
+    new Set([matter.leadLawyerId, ...validMemberIds]),
+  );
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.matterMember.deleteMany({ where: { matterId } });
+      await tx.matterMember.createMany({
+        data: allMemberIds.map((userId) => ({ matterId, userId })),
+      });
+    });
+
+    await createAuditLog({
+      userId: user.id,
+      action: "UPDATE",
+      entityType: "Matter",
+      entityId: matterId,
+      details: `${matter.code}: cập nhật cộng sự (${validMemberIds.length})`,
+    });
+
+    revalidateMatters();
+    revalidatePath(`/matters/${matterId}`);
+    revalidatePath(`/matters/${matterId}/plan`);
+    revalidatePath(`/matters/${matterId}/report`);
+    return { success: true };
+  } catch (error) {
+    console.error("updateMatterMembersAction failed:", error);
+    return { error: await actionError("cannotUpdateMatter") };
+  }
+}
+
 export async function deleteMatterAction(matterId: string) {
   const user = await requireAuth();
   if (!isManagerOrAbove(user.role)) {
@@ -776,6 +847,18 @@ export async function createCommentAction(formData: FormData) {
 
       return created;
     });
+
+    if (mentionedUserIds.length > 0) {
+      const link = matterPlanStepId
+        ? `/matters/${matterId}/plan`
+        : `/matters/${matterId}/report`;
+      void notifyUsersPush(mentionedUserIds, {
+        title: "Bạn được nhắc đến",
+        body: `${user.name} đã nhắc bạn trong ${matter.code}`,
+        url: link,
+        tag: `mention-${matterId}`,
+      });
+    }
 
     await createAuditLog({
       userId: user.id,
@@ -1221,15 +1304,22 @@ export async function updateMatterStatusAction(matterId: string, status: string)
     });
 
     if (admins.length > 0) {
+      const title = "Vụ việc bắt đầu xử lý";
+      const message = `${user.name} đã bắt đầu xử lý vụ việc ${matter.code} - ${matter.title}`;
+      const link = `/matters/${matter.id}`;
       await prisma.notification.createMany({
         data: admins.map((admin) => ({
           userId: admin.id,
           type: "GENERAL",
-          title: "Vụ việc bắt đầu xử lý",
-          message: `${user.name} đã bắt đầu xử lý vụ việc ${matter.code} - ${matter.title}`,
-          link: `/matters/${matter.id}`,
+          title,
+          message,
+          link,
         })),
       });
+      void notifyUsersPush(
+        admins.map((admin) => admin.id),
+        { title, body: message, url: link, tag: `matter-start-${matter.id}` },
+      );
     }
   }
 
@@ -1286,6 +1376,12 @@ export async function createTaskAction(formData: FormData) {
       message: `Bạn được giao: ${parsed.data.title}`,
       link: "/tasks",
     },
+  });
+  void notifyUsersPush(parsed.data.assigneeId, {
+    title: "Được giao việc mới",
+    body: `Bạn được giao: ${parsed.data.title}`,
+    url: "/tasks",
+    tag: `task-assigned-${task.id}`,
   });
 
   await createAuditLog({

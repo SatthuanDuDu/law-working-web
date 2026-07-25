@@ -742,6 +742,7 @@ function CommentComposer({
           matterId,
           labelId,
           customLabel,
+          purpose: "comment",
         }),
       });
       const prepared = await prepare.json();

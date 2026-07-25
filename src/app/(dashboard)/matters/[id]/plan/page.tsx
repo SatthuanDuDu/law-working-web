@@ -6,8 +6,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
 import { getAccessibleMatterIds } from "@/lib/access";
-import { isAdmin, isManagerOrAbove } from "@/lib/permissions";
+import { isAdmin, isManagerOrAbove, canManageMatterDocuments } from "@/lib/permissions";
 import { buildAttachmentOrigin } from "@/lib/attachment-origin";
+import { attachVersionCounts } from "@/lib/attachment-versions";
+import { getMatterFormData } from "@/lib/matter-form-data";
+import {
+  filterVisibleAttachments,
+  getAccessSummaries,
+} from "@/lib/attachment-access";
 import { getTranslations } from "next-intl/server";
 
 export default async function MatterPlanPage({
@@ -32,10 +38,11 @@ export default async function MatterPlanPage({
           include: {
             workType: { select: { id: true, name: true } },
             attachments: {
-              where: { commentId: null },
+              where: { commentId: null, isLatest: true },
               include: {
                 uploadedBy: { select: { id: true, name: true } },
                 label: { select: { name: true } },
+                folder: { select: { id: true, name: true } },
               },
               orderBy: { createdAt: "desc" },
             },
@@ -76,6 +83,28 @@ export default async function MatterPlanPage({
       matter.members.some((member) => member.userId === user.id));
   const canEditStatus =
     (!isArchived && canEditContent) || (isArchived && isAdmin(user.role));
+  const canManageDocs =
+    canEditContent && canManageMatterDocuments(user.role);
+  const canEditMembers =
+    !isArchived &&
+    (isManagerOrAbove(user.role) || matter.leadLawyerId === user.id);
+  const formData = canEditMembers ? await getMatterFormData(user) : null;
+
+  const allStepAttachments = matter.planSteps.flatMap((step) => step.attachments);
+  const attachmentsWithCounts = await attachVersionCounts(allStepAttachments);
+  const visibleStepAttachments = await filterVisibleAttachments(
+    user.id,
+    user.role,
+    attachmentsWithCounts,
+    new Map([[matter.id, matter.leadLawyerId]]),
+  );
+  const visibleIds = new Set(visibleStepAttachments.map((f) => f.id));
+  const accessByGroup = await getAccessSummaries(
+    visibleStepAttachments.map((f) => f.versionGroupId),
+  );
+  const countById = new Map(
+    attachmentsWithCounts.map((f) => [f.id, f.versionCount] as const),
+  );
 
   const planSteps = matter.planSteps.map((step) => ({
     id: step.id,
@@ -92,7 +121,9 @@ export default async function MatterPlanPage({
     locationPlaceId: step.locationPlaceId,
     locationLat: step.locationLat,
     locationLng: step.locationLng,
-    attachments: step.attachments.map((file) => ({
+    attachments: step.attachments
+      .filter((file) => visibleIds.has(file.id))
+      .map((file) => ({
       id: file.id,
       fileName: file.fileName,
       mimeType: file.mimeType,
@@ -100,6 +131,13 @@ export default async function MatterPlanPage({
       createdAt: file.createdAt.toISOString(),
       uploadedBy: file.uploadedBy,
       labelName: file.customLabel || file.label?.name || null,
+      folderId: file.folderId,
+      folderName: file.folder?.name ?? null,
+      isImportant: file.isImportant,
+      version: file.version,
+      versionGroupId: file.versionGroupId,
+      versionCount: countById.get(file.id) ?? 1,
+      accessMode: accessByGroup.get(file.versionGroupId)?.mode ?? "ALL_MEMBERS",
       origin: buildAttachmentOrigin({
         commentId: null,
         matterPlanStepId: step.id,
@@ -150,6 +188,8 @@ export default async function MatterPlanPage({
             canEditStatus={canEditStatus}
             isAdmin={isAdmin(user.role)}
             stickyHeader
+            canEditMembers={canEditMembers}
+            staffOptions={formData?.members ?? []}
           />
         </aside>
 
@@ -160,8 +200,11 @@ export default async function MatterPlanPage({
               steps={planSteps}
               workTypes={workTypes}
               canEdit={canEditContent}
+              canUploadDocuments={canManageDocs}
+              canComment={canEditContent}
+              canManageAccess={canEditMembers}
               currentUserId={user.id}
-              canModerate={isManagerOrAbove(user.role)}
+              canModerate={canManageDocs}
               canDeleteAsAdmin={isAdmin(user.role)}
               mentionUsers={mentionUsers}
             />

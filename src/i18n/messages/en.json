@@ -35,7 +35,10 @@
     "minutes": "{count} min",
     "hours": "{count} h",
     "hoursMinutes": "{hours} h {mins} min",
-    "now": "Now"
+    "now": "Now",
+    "viewMode": "View mode",
+    "listView": "List",
+    "gridView": "Grid"
   },
   "account": {
     "menuLabel": "Account menu",
@@ -263,7 +266,26 @@
     "avatarZoom": "Zoom",
     "avatarSave": "Save photo",
     "avatarSaving": "Saving...",
-    "avatarCropFailed": "Could not crop the image. Please try again."
+    "avatarCropFailed": "Could not crop the image. Please try again.",
+    "pushTitle": "Mobile push notifications",
+    "pushHint": "Get system alerts for new assignments, deadlines, mentions, and chat — even when the app is closed.",
+    "pushIosHint": "On iPhone: first use Safari → Share → Add to Home Screen, open the app from the icon, then enable notifications here.",
+    "pushEnable": "Enable push notifications",
+    "pushDisable": "Disable push notifications",
+    "pushEnabled": "Push notifications enabled on this device.",
+    "pushDisabled": "Push notifications disabled on this device.",
+    "pushStatusOn": "Enabled on this device",
+    "pushStatusOff": "Not enabled on this device",
+    "pushUnsupported": "This browser does not support push notifications. Use Chrome/Edge on Android, or Safari (installed PWA) on iPhone.",
+    "pushNotConfigured": "Web Push is not configured on the server (missing VAPID keys).",
+    "pushEnableFailed": "Could not enable push notifications. Please try again.",
+    "pushDisableFailed": "Could not disable push notifications. Please try again.",
+    "pushBellVsOs": "Note: the in-app bell is internal only. System popups (screen corner / Notification Center) need Chrome notification permission in System Settings.",
+    "pushTest": "Send test system popup",
+    "pushTestLocalTitle": "NSLAW — local popup test",
+    "pushTestLocalBody": "If you see this popup, OS permission is working.",
+    "pushTestSent": "Test sent: 1 local popup + 1 server push. Check the screen corner / Notification Center.",
+    "pushTestFailed": "Could not send the popup test. Check notification permission and try again."
   },
   "matters": {
     "create": "Create matter",
@@ -273,6 +295,9 @@
     "type": "Matter type",
     "status": "Status",
     "members": "Members",
+    "editMembers": "Edit team",
+    "confirmMembersTitle": "Update associates?",
+    "confirmMembersMessage": "Changes to this matter’s associates will be saved immediately.",
     "code": "Matter code",
     "openedAt": "Opened",
     "closedAt": "Closed",
@@ -292,6 +317,8 @@
     "setupPlanLong": "Set up plan",
     "emptyHint": "No matters yet. Click \"Create matter\" in the top-right corner to get started.",
     "noFilterMatch": "No matters match the current filters.",
+    "matterCount": "{count, plural, one {# matter} other {# matters}}",
+    "matterCountFiltered": "{visible}/{total} matters",
     "fieldType": "Type",
     "fieldLeadLawyer": "Lead lawyer",
     "fieldMembers": "Members",
@@ -468,7 +495,9 @@
     "unread": "Unread",
     "urgentSection": "Due soon",
     "urgentType": "Due reminder",
-    "urgentMessage": "{time} · {countdown}"
+    "urgentMessage": "{time} · {countdown}",
+    "toastOpen": "View details",
+    "toastDismiss": "Dismiss notification"
   },
   "clients": {
     "create": "Add client",
@@ -509,6 +538,8 @@
     "emptyHint": "No clients yet. Click \"+ New client\" above to add one.",
     "noFilterMatch": "No clients match the current filters.",
     "fieldMatters": "{count, plural, one {# matter} other {# matters}}",
+    "viewRelatedMatters": "View {count, plural, one {# related matter} other {# related matters}}",
+    "noRelatedMatters": "No related matters",
     "mattersMetricLabel": "Matters",
     "closeFormAria": "Close new client form"
   },
@@ -883,7 +914,36 @@
     "folderDeleteFailed": "Could not delete folder",
     "openFileFailed": "Could not open file",
     "previewImageFailed": "Could not load preview image",
-    "unsupportedPreview": "This file type is not supported for in-browser preview."
+    "unsupportedPreview": "This file type is not supported for in-browser preview.",
+    "replace": "Replace file",
+    "replaceFailed": "Could not replace file",
+    "versionsCount": "{count} versions",
+    "versionLabel": "v{version}",
+    "versionLatest": "Latest",
+    "versionsTitle": "Version history",
+    "deleteVersionConfirmTitle": "Delete version",
+    "deleteVersionConfirmMessage": "Delete version v{version} (\"{name}\")?",
+    "deleteAllVersionsConfirmTitle": "Delete file and all versions",
+    "deleteAllVersionsConfirmMessage": "Delete \"{name}\" and all {count} versions? This cannot be undone.",
+    "loadVersionsFailed": "Could not load version history",
+    "accessTitle": "File access",
+    "accessLoading": "Loading access…",
+    "accessLoadFailed": "Could not load file access",
+    "accessSaveFailed": "Could not save file access",
+    "accessMode": "Mode",
+    "accessModeAll": "All matter members",
+    "accessModeAllHint": "Anyone with matter access can view this file.",
+    "accessModeAllow": "Allow selected only",
+    "accessModeAllowHint": "Only checked members (and the lead lawyer) can view.",
+    "accessModeDeny": "Deny selected",
+    "accessModeDenyHint": "All members can view except those who are denied.",
+    "accessAllowList": "Members allowed to view",
+    "accessDenyList": "Members denied view",
+    "accessLeadAlways": "The lead lawyer can always view and cannot be denied.",
+    "accessLeadBadge": "Lead lawyer",
+    "accessNoMembers": "No associates to choose from.",
+    "accessBadgeAllow": "Restricted",
+    "accessBadgeDeny": "Some denied"
   },
   "actions": {
     "invalidData": "Invalid data",
@@ -918,6 +978,7 @@
     "invalidLeadLawyer": "Invalid lead lawyer",
     "clientGoneShort": "The selected client no longer exists",
     "cannotUpdateMatter": "Unable to update matter",
+    "onlyLeadOrManagerEditMembers": "Only the lead lawyer or Admin/Manager can edit matter associates",
     "onlyManagerDeleteMatter": "Only Admin/Manager can delete matters",
     "cannotDeleteMatter": "Unable to delete matter",
     "noMatterAccess": "You do not have access to this matter",
@@ -1012,5 +1073,116 @@
     "chatAllBadge": "Everyone",
     "chatAllHint": "Company-wide channel for all staff",
     "openChatAll": "Open @all"
+  },
+  "help": {
+    "fabLabel": "Help & how to use",
+    "title": "Help",
+    "contextHeading": "Tips for this page",
+    "faqHeading": "Frequently asked",
+    "askHint": "Pick a question below",
+    "allAnswered": "You’ve seen all questions. Tap Clear chat to start over.",
+    "reset": "Clear chat",
+    "you": "You",
+    "guide": "Guide",
+    "tips": {
+      "default": [
+        "Use the left menu to move between matters, chat, calendar, and expenses.",
+        "The $ button at the bottom-right adds an expense quickly.",
+        "If something is missing, it may be limited by your role."
+      ],
+      "dashboard": [
+        "The dashboard summarizes today’s work and upcoming deadlines.",
+        "Open Matters for case files; Calendar for plan/task due dates.",
+        "Use the $ button to log an expense on an open matter."
+      ],
+      "mattersList": [
+        "Create a matter from the top-right button (if you have permission).",
+        "Use filters / search to narrow the list.",
+        "Click a matter to open its hub overview."
+      ],
+      "matterHub": [
+        "Matter info card: status, client, lead lawyer, and associates.",
+        "The lead lawyer can edit associates and per-file view access.",
+        "Upload matter documents in the Documents block (lawyer/admin)."
+      ],
+      "matterPlan": [
+        "Drag steps to reorder the plan.",
+        "Each step has its own documents and team comments.",
+        "SUPPORT can still comment; only lawyer+ can upload step documents."
+      ],
+      "matterReport": [
+        "The report summarizes plan progress, activity, and documents.",
+        "You can comment and (with permission) manage matter documents.",
+        "Restricted files stay hidden from members who cannot view them."
+      ],
+      "chat": [
+        "Pick a conversation on the left or open the @all channel.",
+        "You can @mention colleagues and attach files in messages.",
+        "Unread badges on Chat in the nav help you catch new messages."
+      ],
+      "tasks": [
+        "Assign tasks with an owner and due date; link a matter when needed.",
+        "Track TODO / in progress / done on the list.",
+        "Task due dates also appear on the Calendar page."
+      ],
+      "calendar": [
+        "See plan and task deadlines by month.",
+        "Click a day/deadline to open related details.",
+        "Use it to prioritize what is due soon."
+      ],
+      "expenses": [
+        "This page shows expense stats by period.",
+        "Add a cost quickly with the $ button at the bottom-right.",
+        "Expenses only attach to open (not closed/archived) matters."
+      ],
+      "clients": [
+        "Client profiles are used when creating matters.",
+        "Only Admin/Manager can edit or delete clients.",
+        "One client can have many matters."
+      ],
+      "admin": [
+        "Admin area: staff, departments, work types, document labels…",
+        "Only Admin (and some Manager items) see the full menu.",
+        "Be careful changing roles — it affects upload/view permissions."
+      ]
+    },
+    "faq": {
+      "createMatter": {
+        "q": "How do I create a matter?",
+        "a": "Go to Matters → Create matter. Fill title, client, lead lawyer, and associates. Admin/Manager usually can create. Then open the matter hub to set the plan and upload documents."
+      },
+      "matterMembers": {
+        "q": "Who can edit matter associates?",
+        "a": "The matter’s lead lawyer (or Admin/Manager) opens Matter info → Edit team. Add/remove associates; the lead always keeps access."
+      },
+      "planSteps": {
+        "q": "How does the matter plan work?",
+        "a": "Open Plan from the matter hub. Add steps, work type, dates, and status. Drag to reorder. Each step has its own documents and comments."
+      },
+      "uploadDocs": {
+        "q": "Who can upload / edit documents?",
+        "a": "Matter and plan documents: Admin, Manager, and Lawyer (with matter access). SUPPORT and others can still view (unless denied) and can comment, including comment attachments."
+      },
+      "fileAccess": {
+        "q": "How do I restrict who can view a file?",
+        "a": "Lead lawyer (or Admin/Manager) taps the lock icon on a file → All members / Allow selected / Deny selected. The lead always can view. Comment attachments do not use this ACL."
+      },
+      "comments": {
+        "q": "Who can comment?",
+        "a": "Anyone with matter access can comment (hub, report, plan steps), including SUPPORT. Mentions and comment file attachments are supported."
+      },
+      "chatUse": {
+        "q": "How do I use internal chat?",
+        "a": "Open Chat, pick a thread or @all. Send messages, attachments, and mentions. This is company chat — separate from matter comments."
+      },
+      "expenses": {
+        "q": "How do I log an expense?",
+        "a": "Tap the $ button at the bottom-right, choose an open matter, type, and amount. See stats on Expenses. Closed/archived matters cannot take new expenses."
+      },
+      "roles": {
+        "q": "What do the roles mean?",
+        "a": "ADMIN: full admin. MANAGER: broad view and matter/client management. LAWYER: matter work and document upload. SUPPORT: assigned matters and comments; no matter/plan document upload."
+      }
+    }
   }
 }

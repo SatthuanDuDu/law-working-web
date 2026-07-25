@@ -10,7 +10,13 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
 import { getAccessibleMatterIds } from "@/lib/access";
 import { buildAttachmentOrigin } from "@/lib/attachment-origin";
-import { isAdmin, isManagerOrAbove } from "@/lib/permissions";
+import { attachVersionCounts } from "@/lib/attachment-versions";
+import { isAdmin, isManagerOrAbove, canManageMatterDocuments } from "@/lib/permissions";
+import { getMatterFormData } from "@/lib/matter-form-data";
+import {
+  filterVisibleAttachments,
+  getAccessSummaries,
+} from "@/lib/attachment-access";
 
 export default async function MatterHubPage({
   params,
@@ -29,10 +35,12 @@ export default async function MatterHubPage({
       leadLawyer: true,
       members: { include: { user: true } },
       attachments: {
+        where: { isLatest: true },
         include: {
           uploadedBy: { select: { id: true, name: true } },
           matterPlanStep: { select: { title: true } },
           label: { select: { name: true } },
+          folder: { select: { id: true, name: true } },
         },
         orderBy: { createdAt: "desc" },
       },
@@ -48,8 +56,25 @@ export default async function MatterHubPage({
       matter.members.some((member) => member.userId === user.id));
   const canEditStatus =
     (!isArchived && canEditContent) || (isArchived && isAdmin(user.role));
+  const canManageDocs =
+    canEditContent && canManageMatterDocuments(user.role);
+  const canEditMembers =
+    !isArchived &&
+    (isManagerOrAbove(user.role) || matter.leadLawyerId === user.id);
 
-  const initialAttachments = matter.attachments.map((file) => ({
+  const formData = canEditMembers ? await getMatterFormData(user) : null;
+
+  const attachmentsWithCounts = await attachVersionCounts(matter.attachments);
+  const visibleAttachments = await filterVisibleAttachments(
+    user.id,
+    user.role,
+    attachmentsWithCounts,
+    new Map([[matter.id, matter.leadLawyerId]]),
+  );
+  const accessByGroup = await getAccessSummaries(
+    visibleAttachments.map((f) => f.versionGroupId),
+  );
+  const initialAttachments = visibleAttachments.map((file) => ({
     id: file.id,
     fileName: file.fileName,
     mimeType: file.mimeType,
@@ -67,7 +92,13 @@ export default async function MatterHubPage({
       planStepTitle: file.matterPlanStep?.title,
     }),
     labelName: file.customLabel || file.label?.name || null,
+    folderId: file.folderId,
+    folderName: file.folder?.name ?? null,
     isImportant: file.isImportant,
+    version: file.version,
+    versionGroupId: file.versionGroupId,
+    versionCount: file.versionCount,
+    accessMode: accessByGroup.get(file.versionGroupId)?.mode ?? "ALL_MEMBERS",
   }));
 
   return (
@@ -83,6 +114,8 @@ export default async function MatterHubPage({
             matter={matter}
             canEditStatus={canEditStatus}
             isAdmin={isAdmin(user.role)}
+            canEditMembers={canEditMembers}
+            staffOptions={formData?.members ?? []}
           />
         </div>
 
@@ -133,9 +166,10 @@ export default async function MatterHubPage({
         <AttachmentPanel
           matterId={matter.id}
           currentUserId={user.id}
-          canDeleteAll={isManagerOrAbove(user.role)}
-          canUpload={canEditContent}
+          canDeleteAll={canManageDocs}
+          canUpload={canManageDocs}
           canMarkImportant={isAdmin(user.role) && !isArchived}
+          canManageAccess={canEditMembers}
           initialAttachments={initialAttachments}
         />
       </div>

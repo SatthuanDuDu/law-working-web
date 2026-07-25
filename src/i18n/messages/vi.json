@@ -35,7 +35,10 @@
     "minutes": "{count} phút",
     "hours": "{count} giờ",
     "hoursMinutes": "{hours} giờ {mins} phút",
-    "now": "Now"
+    "now": "Now",
+    "viewMode": "Chế độ hiển thị",
+    "listView": "Danh sách",
+    "gridView": "Khối vuông"
   },
   "account": {
     "menuLabel": "Quản lý tài khoản",
@@ -263,7 +266,26 @@
     "avatarZoom": "Phóng to",
     "avatarSave": "Lưu ảnh",
     "avatarSaving": "Đang lưu...",
-    "avatarCropFailed": "Không thể cắt ảnh. Vui lòng thử lại."
+    "avatarCropFailed": "Không thể cắt ảnh. Vui lòng thử lại.",
+    "pushTitle": "Thông báo đẩy trên điện thoại",
+    "pushHint": "Bật để nhận popup khi có giao việc mới, tới hạn, được nhắc tên hoặc tin nhắn — kể cả khi không mở app.",
+    "pushIosHint": "Trên iPhone: trước tiên hãy dùng Safari → Chia sẻ → Thêm vào Màn hình chính, rồi mở app từ icon và bật thông báo tại đây.",
+    "pushEnable": "Bật thông báo đẩy",
+    "pushDisable": "Tắt thông báo đẩy",
+    "pushEnabled": "Đã bật thông báo đẩy trên thiết bị này.",
+    "pushDisabled": "Đã tắt thông báo đẩy trên thiết bị này.",
+    "pushStatusOn": "Đang bật trên thiết bị này",
+    "pushStatusOff": "Chưa bật trên thiết bị này",
+    "pushUnsupported": "Trình duyệt này không hỗ trợ thông báo đẩy. Hãy dùng Chrome/Edge trên Android, hoặc Safari (đã cài PWA) trên iPhone.",
+    "pushNotConfigured": "Máy chủ chưa cấu hình Web Push (thiếu khóa VAPID).",
+    "pushEnableFailed": "Không thể bật thông báo đẩy. Vui lòng thử lại.",
+    "pushDisableFailed": "Không thể tắt thông báo đẩy. Vui lòng thử lại.",
+    "pushBellVsOs": "Lưu ý: chuông trong web chỉ là thông báo nội bộ. Popup bên ngoài app (góc màn hình / Trung tâm thông báo macOS) cần quyền thông báo của Chrome ở System Settings.",
+    "pushTest": "Gửi thử popup hệ thống",
+    "pushTestLocalTitle": "NSLAW — thử popup (local)",
+    "pushTestLocalBody": "Nếu thấy popup này thì quyền hệ điều hành đã OK.",
+    "pushTestSent": "Đã gửi thử: 1 popup local + 1 push qua server. Kiểm tra góc màn hình / Trung tâm thông báo.",
+    "pushTestFailed": "Không gửi được thử nghiệm popup. Kiểm tra quyền thông báo rồi thử lại."
   },
   "matters": {
     "create": "Tạo vụ việc",
@@ -273,6 +295,9 @@
     "type": "Loại vụ việc",
     "status": "Trạng thái",
     "members": "Thành viên",
+    "editMembers": "Chỉnh nhân sự",
+    "confirmMembersTitle": "Cập nhật cộng sự?",
+    "confirmMembersMessage": "Thay đổi danh sách cộng sự của vụ việc này sẽ được lưu ngay.",
     "code": "Mã vụ việc",
     "openedAt": "Ngày mở",
     "closedAt": "Ngày đóng",
@@ -292,6 +317,8 @@
     "setupPlanLong": "Thiết lập kế hoạch",
     "emptyHint": "Chưa có vụ việc nào. Bấm \"Tạo vụ việc\" ở góc trên bên phải để bắt đầu.",
     "noFilterMatch": "Không có vụ việc khớp bộ lọc hiện tại.",
+    "matterCount": "{count} vụ việc",
+    "matterCountFiltered": "{visible}/{total} vụ việc",
     "fieldType": "Loại",
     "fieldLeadLawyer": "Luật sư phụ trách",
     "fieldMembers": "Thành viên",
@@ -468,7 +495,9 @@
     "unread": "Chưa đọc",
     "urgentSection": "Tới hạn",
     "urgentType": "Nhắc tới hạn",
-    "urgentMessage": "{time} · {countdown}"
+    "urgentMessage": "{time} · {countdown}",
+    "toastOpen": "Xem chi tiết",
+    "toastDismiss": "Đóng thông báo"
   },
   "clients": {
     "create": "Thêm khách hàng",
@@ -509,6 +538,8 @@
     "emptyHint": "Chưa có khách hàng nào. Bấm \"+ Khách hàng mới\" phía trên để thêm.",
     "noFilterMatch": "Không có khách hàng khớp bộ lọc hiện tại.",
     "fieldMatters": "{count} vụ việc",
+    "viewRelatedMatters": "Xem {count} vụ việc liên quan",
+    "noRelatedMatters": "Chưa có vụ việc liên quan",
     "mattersMetricLabel": "Vụ việc",
     "closeFormAria": "Đóng form khách hàng mới"
   },
@@ -883,7 +914,36 @@
     "folderDeleteFailed": "Không xóa được thư mục",
     "openFileFailed": "Không mở được file",
     "previewImageFailed": "Không tải được ảnh xem trước",
-    "unsupportedPreview": "Loại file này chưa hỗ trợ xem trực tiếp trong trình duyệt."
+    "unsupportedPreview": "Loại file này chưa hỗ trợ xem trực tiếp trong trình duyệt.",
+    "replace": "Thay thế file",
+    "replaceFailed": "Không thay thế được file",
+    "versionsCount": "{count} phiên bản",
+    "versionLabel": "v{version}",
+    "versionLatest": "Mới nhất",
+    "versionsTitle": "Lịch sử phiên bản",
+    "deleteVersionConfirmTitle": "Xóa phiên bản",
+    "deleteVersionConfirmMessage": "Xóa phiên bản v{version} (\"{name}\")?",
+    "deleteAllVersionsConfirmTitle": "Xóa tài liệu và mọi phiên bản",
+    "deleteAllVersionsConfirmMessage": "Xóa \"{name}\" cùng toàn bộ {count} phiên bản? Không thể hoàn tác.",
+    "loadVersionsFailed": "Không tải được lịch sử phiên bản",
+    "accessTitle": "Quyền xem file",
+    "accessLoading": "Đang tải quyền xem…",
+    "accessLoadFailed": "Không tải được quyền xem file",
+    "accessSaveFailed": "Không lưu được quyền xem file",
+    "accessMode": "Chế độ",
+    "accessModeAll": "Tất cả thành viên vụ việc",
+    "accessModeAllHint": "Ai có quyền vào vụ việc đều xem được file này.",
+    "accessModeAllow": "Chỉ người được chọn",
+    "accessModeAllowHint": "Chỉ các thành viên được đánh dấu (và luật sư chính) được xem.",
+    "accessModeDeny": "Cấm người được chọn",
+    "accessModeDenyHint": "Mọi thành viên được xem trừ những người bị cấm.",
+    "accessAllowList": "Thành viên được xem",
+    "accessDenyList": "Thành viên bị cấm xem",
+    "accessLeadAlways": "Luật sư chính luôn được xem và không thể bị cấm.",
+    "accessLeadBadge": "Luật sư chính",
+    "accessNoMembers": "Chưa có cộng sự để chọn.",
+    "accessBadgeAllow": "Giới hạn xem",
+    "accessBadgeDeny": "Có người bị cấm"
   },
   "actions": {
     "invalidData": "Dữ liệu không hợp lệ",
@@ -918,6 +978,7 @@
     "invalidLeadLawyer": "Luật sư phụ trách không hợp lệ",
     "clientGoneShort": "Khách hàng đã chọn không còn tồn tại",
     "cannotUpdateMatter": "Không thể cập nhật vụ việc",
+    "onlyLeadOrManagerEditMembers": "Chỉ luật sư chính hoặc Admin/Quản lý mới được chỉnh nhân sự vụ việc",
     "onlyManagerDeleteMatter": "Chỉ Admin/Quản lý mới được xóa vụ việc",
     "cannotDeleteMatter": "Không thể xóa vụ việc",
     "noMatterAccess": "Không có quyền truy cập vụ việc này",
@@ -1012,5 +1073,116 @@
     "chatAllBadge": "Tất cả",
     "chatAllHint": "Kênh chung — nhắn cho toàn bộ nhân viên",
     "openChatAll": "Mở @all"
+  },
+  "help": {
+    "fabLabel": "Hướng dẫn sử dụng",
+    "title": "Hướng dẫn",
+    "contextHeading": "Gợi ý cho trang này",
+    "faqHeading": "Câu hỏi thường gặp",
+    "askHint": "Chọn một câu hỏi bên dưới",
+    "allAnswered": "Bạn đã xem hết câu hỏi. Bấm Xóa hội thoại để bắt đầu lại.",
+    "reset": "Xóa hội thoại",
+    "you": "Bạn",
+    "guide": "Hướng dẫn",
+    "tips": {
+      "default": [
+        "Dùng menu bên trái để chuyển giữa vụ việc, chat, lịch và chi phí.",
+        "Nút $ góc dưới phải dùng để đăng ký chi phí nhanh.",
+        "Nếu không thấy một chức năng, có thể do quyền vai trò của bạn."
+      ],
+      "dashboard": [
+        "Dashboard tóm tắt việc cần làm hôm nay và hạn sắp tới.",
+        "Vào Vụ việc để mở hồ sơ; vào Lịch để xem hạn kế hoạch/công việc.",
+        "Nút $ góc phải để ghi nhận chi phí cho vụ đang mở."
+      ],
+      "mattersList": [
+        "Tạo vụ việc mới từ nút góc trên (nếu bạn có quyền).",
+        "Dùng bộ lọc / ô tìm để thu hẹp danh sách.",
+        "Bấm một vụ để vào trang tổng quan (hub)."
+      ],
+      "matterHub": [
+        "Thẻ Thông tin vụ việc: trạng thái, khách hàng, luật sư chính và cộng sự.",
+        "Luật sư chính có thể chỉnh cộng sự và quyền xem từng file.",
+        "Tải tài liệu vụ việc ở khối Tài liệu bên dưới (luật sư/admin)."
+      ],
+      "matterPlan": [
+        "Kéo thả các bước để sắp thứ tự thực hiện.",
+        "Mỗi bước có tài liệu riêng và bình luận cho nhóm.",
+        "SUPPORT vẫn comment được; chỉ luật sư+ mới upload tài liệu bước."
+      ],
+      "matterReport": [
+        "Báo cáo tổng hợp tiến độ kế hoạch, hoạt động và tài liệu.",
+        "Có thể xem/comment và (nếu đủ quyền) quản lý tài liệu vụ việc.",
+        "File bị giới hạn quyền xem sẽ không hiện với thành viên bị chặn."
+      ],
+      "chat": [
+        "Chọn cuộc trò chuyện bên trái hoặc mở kênh @all.",
+        "Có thể @mention đồng nghiệp và đính kèm file trong tin nhắn.",
+        "Badge chưa đọc trên menu Chat giúp theo dõi tin mới."
+      ],
+      "tasks": [
+        "Giao việc gán người nhận và hạn; gắn với vụ việc khi cần.",
+        "Theo dõi trạng thái TODO / đang làm / xong trên danh sách.",
+        "Hạn công việc cũng hiện trên trang Lịch."
+      ],
+      "calendar": [
+        "Xem hạn kế hoạch và công việc theo tháng.",
+        "Bấm ngày/hạn để mở chi tiết liên quan.",
+        "Dùng để ưu tiên việc sắp đến hạn."
+      ],
+      "expenses": [
+        "Trang này thống kê chi phí theo kỳ.",
+        "Thêm khoản chi nhanh bằng nút $ góc phải.",
+        "Chỉ gắn chi phí cho vụ việc đang mở (chưa đóng/lưu trữ)."
+      ],
+      "clients": [
+        "Hồ sơ khách hàng dùng khi tạo vụ việc.",
+        "Admin/Quản lý mới được sửa/xóa khách hàng.",
+        "Mỗi khách có thể có nhiều vụ việc."
+      ],
+      "admin": [
+        "Khu vực quản trị: nhân viên, phòng ban, loại công việc, nhãn tài liệu…",
+        "Chỉ Admin (và một số mục Quản lý) mới thấy đủ menu này.",
+        "Cẩn thận khi đổi vai trò — ảnh hưởng quyền upload/xem dữ liệu."
+      ]
+    },
+    "faq": {
+      "createMatter": {
+        "q": "Cách tạo vụ việc?",
+        "a": "Vào menu Vụ việc → Tạo vụ việc. Điền tiêu đề, khách hàng, luật sư phụ trách và cộng sự. Admin/Quản lý thường có quyền tạo; sau khi tạo, mở hub vụ việc để lên kế hoạch và tải tài liệu."
+      },
+      "matterMembers": {
+        "q": "Ai chỉnh được cộng sự vụ việc?",
+        "a": "Luật sư chính của vụ (hoặc Admin/Quản lý) mở thẻ Thông tin vụ việc → Chỉnh nhân sự. Có thể thêm/xóa cộng sự; luật sư chính luôn giữ quyền truy cập vụ."
+      },
+      "planSteps": {
+        "q": "Cách dùng kế hoạch vụ việc?",
+        "a": "Vào Kế hoạch trên hub vụ việc. Thêm bước, chọn loại công việc, thời hạn và trạng thái. Kéo thả để đổi thứ tự. Mỗi bước có tài liệu và bình luận riêng."
+      },
+      "uploadDocs": {
+        "q": "Ai được tải / sửa tài liệu?",
+        "a": "Tài liệu vụ việc và kế hoạch: Admin, Quản lý và Luật sư (có quyền vào vụ). SUPPORT và vai trò khác vẫn xem (nếu không bị cấm) và vẫn comment được, kèm file trong bình luận."
+      },
+      "fileAccess": {
+        "q": "Giới hạn ai được xem một file?",
+        "a": "Luật sư chính (hoặc Admin/Quản lý) bấm biểu tượng khóa trên file → chọn Tất cả thành viên / Chỉ người được chọn / Cấm người được chọn. Luật sư chính luôn xem được. File comment không dùng ACL này."
+      },
+      "comments": {
+        "q": "Ai được bình luận?",
+        "a": "Mọi thành viên có quyền vào vụ việc đều comment được (hub, báo cáo, từng bước kế hoạch), kể cả SUPPORT. Có thể @mention và đính kèm file trong bình luận."
+      },
+      "chatUse": {
+        "q": "Chat nội bộ dùng thế nào?",
+        "a": "Vào Chat, chọn hội thoại hoặc kênh @all. Gửi tin, đính kèm, @mention. Đây là chat công ty, khác với bình luận gắn trên từng vụ việc."
+      },
+      "expenses": {
+        "q": "Cách ghi nhận chi phí?",
+        "a": "Bấm nút $ góc dưới phải, chọn vụ đang mở, loại chi phí và số tiền. Xem thống kê tại trang Chi phí. Không thêm được chi phí cho vụ đã đóng hoặc lưu trữ."
+      },
+      "roles": {
+        "q": "Các vai trò khác nhau thế nào?",
+        "a": "ADMIN: toàn quyền quản trị. MANAGER: xem rộng, quản lý vụ/khách. LAWYER: làm việc vụ việc, upload tài liệu. SUPPORT: tham gia vụ được gán, comment; không upload tài liệu vụ/kế hoạch."
+      }
+    }
   }
 }

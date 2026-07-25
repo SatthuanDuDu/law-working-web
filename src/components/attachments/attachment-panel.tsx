@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import {
   Eye,
@@ -11,15 +11,21 @@ import {
   Star,
   FolderPlus,
   Folder,
+  Replace,
+  ChevronDown,
+  ChevronUp,
+  Lock,
 } from "lucide-react";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { AttachmentViewer } from "@/components/attachments/attachment-viewer";
 import { AttachmentUploadDialog } from "@/components/attachments/attachment-upload-dialog";
+import { AttachmentAccessDialog } from "@/components/attachments/attachment-access-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDateTime, cn } from "@/lib/utils";
 import type { AttachmentOrigin } from "@/lib/attachment-origin";
+import type { AttachmentAccessMode } from "@prisma/client";
 
 export type { AttachmentLabelOption } from "@/components/attachments/attachment-label-fields";
 export {
@@ -39,6 +45,21 @@ export type AttachmentItem = {
   folderId?: string | null;
   folderName?: string | null;
   isImportant?: boolean;
+  version?: number;
+  versionGroupId?: string;
+  versionCount?: number;
+  accessMode?: AttachmentAccessMode;
+};
+
+type AttachmentVersionItem = {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  version: number;
+  isLatest: boolean;
+  createdAt: string;
+  uploadedBy: { id: string; name: string };
 };
 
 type LabelOption = { id: string; name: string };
@@ -61,6 +82,7 @@ export function AttachmentPanel({
   canDeleteAll = false,
   canUpload = true,
   canMarkImportant = false,
+  canManageAccess = false,
   initialAttachments = [],
   compact = false,
 }: {
@@ -72,6 +94,8 @@ export function AttachmentPanel({
   canDeleteAll?: boolean;
   canUpload?: boolean;
   canMarkImportant?: boolean;
+  /** Lead lawyer / manager: set per-file viewer allow/deny lists. */
+  canManageAccess?: boolean;
   initialAttachments?: AttachmentItem[];
   compact?: boolean;
 }) {
@@ -86,10 +110,23 @@ export function AttachmentPanel({
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [error, setError] = useState("");
   const [viewerItem, setViewerItem] = useState<AttachmentItem | null>(null);
+  const [accessItem, setAccessItem] = useState<AttachmentItem | null>(null);
+  const [expandedVersionsId, setExpandedVersionsId] = useState<string | null>(null);
+  const [versionsByAttachment, setVersionsByAttachment] = useState<
+    Record<string, AttachmentVersionItem[]>
+  >({});
+  const replaceInputRef = useRef<HTMLInputElement>(null);
+  const [replaceTargetId, setReplaceTargetId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const { confirm, dialog } = useConfirmDialog();
 
-  const foldersEnabled = Boolean(matterId) && !compact;
+  // Folders apply to any matter attachment (hub, report, plan step). Compact
+  // only hides the folder filter bar — upload dialog still offers folder pick.
+  const foldersEnabled = Boolean(matterId);
+  const showFolderBar = foldersEnabled && !compact;
+  // Version replace/history for matter docs (including plan-step main files).
+  const canVersion = Boolean(matterId);
+  const accessEnabled = Boolean(matterId) && canManageAccess;
 
   useEffect(() => {
     let cancelled = false;
@@ -243,15 +280,53 @@ export function AttachmentPanel({
     });
   }
 
-  function handleDelete(id: string, fileName: string) {
+  function handleDelete(item: AttachmentItem) {
+    const count = item.versionCount ?? 1;
     confirm({
-      title: t("deleteConfirmTitle"),
-      message: t("deleteConfirmMessage", { name: fileName }),
+      title:
+        count > 1 ? t("deleteAllVersionsConfirmTitle") : t("deleteConfirmTitle"),
+      message:
+        count > 1
+          ? t("deleteAllVersionsConfirmMessage", {
+              name: item.fileName,
+              count,
+            })
+          : t("deleteConfirmMessage", { name: item.fileName }),
       confirmLabel: tCommon("delete"),
       variant: "destructive",
       onConfirm: () => {
         startTransition(async () => {
-          const res = await fetch(`/api/attachments/${id}`, { method: "DELETE" });
+          const url = canVersion
+            ? `/api/attachments/${item.id}?scope=group`
+            : `/api/attachments/${item.id}`;
+          const res = await fetch(url, { method: "DELETE" });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            setError(data.error || t("deleteFailed"));
+            return;
+          }
+          if (expandedVersionsId === item.id) setExpandedVersionsId(null);
+          await refreshAttachments();
+          await refreshFolders();
+        });
+      },
+    });
+  }
+
+  function handleDeleteVersion(parent: AttachmentItem, version: AttachmentVersionItem) {
+    confirm({
+      title: t("deleteVersionConfirmTitle"),
+      message: t("deleteVersionConfirmMessage", {
+        version: version.version,
+        name: version.fileName,
+      }),
+      confirmLabel: tCommon("delete"),
+      variant: "destructive",
+      onConfirm: () => {
+        startTransition(async () => {
+          const res = await fetch(`/api/attachments/${version.id}`, {
+            method: "DELETE",
+          });
           const data = await res.json().catch(() => ({}));
           if (!res.ok) {
             setError(data.error || t("deleteFailed"));
@@ -259,8 +334,135 @@ export function AttachmentPanel({
           }
           await refreshAttachments();
           await refreshFolders();
+          if (expandedVersionsId === parent.id) {
+            // Parent id may be gone if we deleted the latest row — resolve via group.
+            const listRes = await fetch(
+              `/api/attachments?${new URLSearchParams({
+                ...(matterId ? { matterId } : {}),
+                ...(matterPlanStepId ? { matterPlanStepId, stepOnly: "1" } : {}),
+              }).toString()}`,
+            );
+            const listData = await listRes.json().catch(() => ({}));
+            const head = (listData.attachments ?? []).find(
+              (row: AttachmentItem) =>
+                row.versionGroupId === parent.versionGroupId ||
+                row.id === parent.id,
+            ) as AttachmentItem | undefined;
+
+            if (!head || (head.versionCount ?? 1) <= 1) {
+              setExpandedVersionsId(null);
+              setVersionsByAttachment((prev) => {
+                const next = { ...prev };
+                delete next[parent.id];
+                return next;
+              });
+              return;
+            }
+
+            const refreshed = await fetch(`/api/attachments/${head.id}/versions`);
+            const payload = await refreshed.json().catch(() => ({}));
+            if (refreshed.ok && Array.isArray(payload.versions)) {
+              setVersionsByAttachment((prev) => {
+                const next = { ...prev };
+                delete next[parent.id];
+                next[head.id] = payload.versions;
+                return next;
+              });
+              setExpandedVersionsId(head.id);
+            } else {
+              setExpandedVersionsId(null);
+            }
+          }
         });
       },
+    });
+  }
+
+  function openReplacePicker(itemId: string) {
+    setReplaceTargetId(itemId);
+    replaceInputRef.current?.click();
+  }
+
+  function handleReplaceFileSelected(fileList: FileList | null) {
+    const file = fileList?.[0];
+    const targetId = replaceTargetId;
+    setReplaceTargetId(null);
+    if (replaceInputRef.current) replaceInputRef.current.value = "";
+    if (!file || !targetId) return;
+
+    startTransition(async () => {
+      setError("");
+      const prepare = await fetch(`/api/attachments/${targetId}/replace`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileName: file.name,
+          mimeType: file.type || "application/octet-stream",
+          sizeBytes: file.size,
+        }),
+      });
+      const prepared = await prepare.json().catch(() => ({}));
+      if (!prepare.ok) {
+        setError(prepared.error || t("replaceFailed"));
+        return;
+      }
+
+      const { putAttachmentBytes } = await import("@/lib/browser-upload");
+      const uploaded = await putAttachmentBytes({
+        attachmentId: prepared.attachment.id,
+        uploadUrl: prepared.uploadUrl,
+        file,
+        mimeType: file.type || "application/octet-stream",
+      });
+
+      if (!uploaded.ok) {
+        await fetch(`/api/attachments/${prepared.attachment.id}`, {
+          method: "DELETE",
+        });
+        setError(
+          uploaded.corsLikely ? t("uploadCorsFailed") : t("replaceFailed"),
+        );
+        return;
+      }
+
+      const committed = await fetch(
+        `/api/attachments/${prepared.attachment.id}/commit-version`,
+        { method: "POST" },
+      );
+      if (!committed.ok) {
+        await fetch(`/api/attachments/${prepared.attachment.id}`, {
+          method: "DELETE",
+        });
+        const data = await committed.json().catch(() => ({}));
+        setError(data.error || t("replaceFailed"));
+        return;
+      }
+
+      setExpandedVersionsId(null);
+      await refreshAttachments();
+      await refreshFolders();
+    });
+  }
+
+  async function toggleVersions(item: AttachmentItem) {
+    if (expandedVersionsId === item.id) {
+      setExpandedVersionsId(null);
+      return;
+    }
+    setExpandedVersionsId(item.id);
+    if (versionsByAttachment[item.id]?.length) return;
+    startTransition(async () => {
+      const res = await fetch(`/api/attachments/${item.id}/versions`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || t("loadVersionsFailed"));
+        setExpandedVersionsId(null);
+        return;
+      }
+      setVersionsByAttachment((prev) => ({
+        ...prev,
+        [item.id]: data.versions ?? [],
+      }));
     });
   }
 
@@ -363,7 +565,7 @@ export function AttachmentPanel({
     </label>
   ) : null;
 
-  const folderBar = foldersEnabled ? (
+  const folderBar = showFolderBar ? (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-2">
         <button
@@ -476,6 +678,17 @@ export function AttachmentPanel({
 
   const list = (
     <div className={cn("space-y-2", compact ? "space-y-2" : "space-y-3")}>
+      {canVersion ? (
+        <input
+          ref={replaceInputRef}
+          type="file"
+          className="hidden"
+          disabled={isPending}
+          onChange={(e) => {
+            handleReplaceFileSelected(e.target.files);
+          }}
+        />
+      ) : null}
       {error && (
         <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
       )}
@@ -485,12 +698,17 @@ export function AttachmentPanel({
         </p>
       ) : (
         attachments.map((item) => {
-          const canDelete = canDeleteAll || item.uploadedBy.id === currentUserId;
+          const canDelete = canDeleteAll || (canUpload && item.uploadedBy.id === currentUserId);
+          const canReplace = canVersion && canDelete;
+          const versionCount = item.versionCount ?? 1;
+          const versionsExpanded = expandedVersionsId === item.id;
+          const versions = versionsByAttachment[item.id] ?? [];
+
           return (
             <div
               key={item.id}
               className={cn(
-                "flex items-start justify-between gap-3",
+                "min-w-0",
                 compact
                   ? cn(
                       "border-b border-border/60 py-2.5 last:border-b-0",
@@ -504,99 +722,178 @@ export function AttachmentPanel({
                     ),
               )}
             >
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.currentTarget.blur();
-                  setViewerItem(item);
-                }}
-                className="interactive-press min-w-0 flex-1 rounded-md text-left hover:[filter:none] active:[filter:none]"
-              >
-                <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  {item.isImportant ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[11px] font-medium text-white">
-                      <Star className="h-3 w-3 fill-current" />
-                      {t("important")}
-                    </span>
-                  ) : null}
-                  <p
-                    className={cn(
-                      "truncate font-medium text-primary hover:underline",
-                      compact ? "text-xs" : "text-sm",
-                    )}
-                  >
-                    {item.fileName}
-                  </p>
-                  {item.labelName ? (
-                    <span className="rounded-full bg-primary-muted px-2 py-0.5 text-[11px] font-medium text-primary">
-                      {item.labelName}
-                    </span>
-                  ) : null}
-                  {item.folderName ? (
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                      {item.folderName}
-                    </span>
-                  ) : null}
-                </div>
-                {compact ? (
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    {item.uploadedBy.name}
-                    {item.origin?.kind === "comment" ? ` · ${t("commentOrigin")}` : ""}
-                    {" · "}
-                    {formatBytes(item.sizeBytes)}
-                  </p>
-                ) : (
-                  <div className="mt-2 space-y-1 border-t border-border/80 pt-2 text-xs text-muted-foreground">
-                    <p>
-                      <span className="font-medium text-muted-foreground">{t("uploadedBy")}:</span>{" "}
-                      {item.uploadedBy.name}
-                    </p>
-                    <p>
-                      <span className="font-medium text-muted-foreground">{t("source")}:</span>{" "}
-                      {item.origin?.label ?? t("defaultSource")}
-                      {item.origin?.matterCode ? ` (${item.origin.matterCode})` : ""}
-                    </p>
-                    <p>
-                      <span className="font-medium text-muted-foreground">{t("date")}:</span>{" "}
-                      {formatDateTime(item.createdAt)}
-                      {" · "}
-                      {formatBytes(item.sizeBytes)}
-                    </p>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    {item.isImportant ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[11px] font-medium text-white">
+                        <Star className="h-3 w-3 fill-current" />
+                        {t("important")}
+                      </span>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.currentTarget.blur();
+                        setViewerItem(item);
+                      }}
+                      className={cn(
+                        "interactive-press truncate rounded-md text-left font-medium text-primary hover:underline hover:[filter:none] active:[filter:none]",
+                        compact ? "text-xs" : "text-sm",
+                      )}
+                    >
+                      {item.fileName}
+                    </button>
+                    {item.labelName ? (
+                      <span className="rounded-full bg-primary-muted px-2 py-0.5 text-[11px] font-medium text-primary">
+                        {item.labelName}
+                      </span>
+                    ) : null}
+                    {item.folderName ? (
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                        {item.folderName}
+                      </span>
+                    ) : null}
+                    {canVersion && versionCount > 1 ? (
+                      <button
+                        type="button"
+                        onClick={() => void toggleVersions(item)}
+                        className="interactive-press inline-flex items-center gap-1 rounded-full bg-accent-muted px-2 py-0.5 text-[11px] font-medium text-accent"
+                        title={t("versionsTitle")}
+                      >
+                        {t("versionsCount", { count: versionCount })}
+                        {versionsExpanded ? (
+                          <ChevronUp className="h-3 w-3" />
+                        ) : (
+                          <ChevronDown className="h-3 w-3" />
+                        )}
+                      </button>
+                    ) : null}
+                    {item.accessMode && item.accessMode !== "ALL_MEMBERS" ? (
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
+                        title={
+                          item.accessMode === "ALLOWLIST"
+                            ? t("accessModeAllow")
+                            : t("accessModeDeny")
+                        }
+                      >
+                        <Lock className="h-3 w-3" />
+                        {item.accessMode === "ALLOWLIST"
+                          ? t("accessBadgeAllow")
+                          : t("accessBadgeDeny")}
+                      </span>
+                    ) : null}
                   </div>
-                )}
-              </button>
-              <div className="flex shrink-0 gap-1">
-                {canMarkImportant ? (
+                  {compact ? (
+                    <div className="mt-1 space-y-0.5 text-[11px] text-muted-foreground">
+                      <p>
+                        <span className="font-medium text-muted-foreground">
+                          {t("uploadedBy")}:
+                        </span>{" "}
+                        {item.uploadedBy.name}
+                        {item.origin?.kind === "comment"
+                          ? ` · ${t("commentOrigin")}`
+                          : ""}
+                      </p>
+                      <p>
+                        <span className="font-medium text-muted-foreground">
+                          {t("date")}:
+                        </span>{" "}
+                        {formatDateTime(item.createdAt)}
+                        {" · "}
+                        {formatBytes(item.sizeBytes)}
+                        {item.version ? (
+                          <>
+                            {" · "}
+                            {t("versionLabel", { version: item.version })}
+                          </>
+                        ) : null}
+                      </p>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.currentTarget.blur();
+                        setViewerItem(item);
+                      }}
+                      className="interactive-press mt-2 w-full space-y-1 rounded-md border-t border-border/80 pt-2 text-left text-xs text-muted-foreground hover:[filter:none] active:[filter:none]"
+                    >
+                      <p>
+                        <span className="font-medium text-muted-foreground">{t("uploadedBy")}:</span>{" "}
+                        {item.uploadedBy.name}
+                      </p>
+                      <p>
+                        <span className="font-medium text-muted-foreground">{t("source")}:</span>{" "}
+                        {item.origin?.label ?? t("defaultSource")}
+                        {item.origin?.matterCode ? ` (${item.origin.matterCode})` : ""}
+                      </p>
+                      <p>
+                        <span className="font-medium text-muted-foreground">{t("date")}:</span>{" "}
+                        {formatDateTime(item.createdAt)}
+                        {" · "}
+                        {formatBytes(item.sizeBytes)}
+                        {item.version ? (
+                          <>
+                            {" · "}
+                            {t("versionLabel", { version: item.version })}
+                          </>
+                        ) : null}
+                      </p>
+                    </button>
+                  )}
+                </div>
+                <div className="flex shrink-0 flex-wrap justify-end gap-1">
+                  {canMarkImportant ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={isPending}
+                      onClick={() => handleToggleImportant(item)}
+                      className={cn(
+                        "hover:bg-primary-muted hover:text-primary hover:[filter:none] active:[filter:none]",
+                        item.isImportant && "text-primary",
+                      )}
+                      aria-label={
+                        item.isImportant ? t("unmarkImportant") : t("markImportant")
+                      }
+                      title={item.isImportant ? t("unmarkImportant") : t("markImportant")}
+                    >
+                      <Star
+                        className={cn(
+                          "h-4 w-4",
+                          item.isImportant && "fill-current",
+                        )}
+                      />
+                    </Button>
+                  ) : null}
+                  {accessEnabled ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={isPending}
+                      onClick={() => setAccessItem(item)}
+                      className={cn(
+                        "hover:bg-primary-muted hover:text-primary hover:[filter:none] active:[filter:none]",
+                        item.accessMode &&
+                          item.accessMode !== "ALL_MEMBERS" &&
+                          "text-primary",
+                      )}
+                      aria-label={t("accessTitle")}
+                      title={t("accessTitle")}
+                    >
+                      <Lock className="h-4 w-4" />
+                    </Button>
+                  ) : null}
                   <Button
                     variant="ghost"
                     size="sm"
                     disabled={isPending}
-                    onClick={() => handleToggleImportant(item)}
-                    className={cn(
-                      "hover:bg-primary-muted hover:text-primary hover:[filter:none] active:[filter:none]",
-                      item.isImportant && "text-primary",
-                    )}
-                    aria-label={
-                      item.isImportant ? t("unmarkImportant") : t("markImportant")
-                    }
-                    title={item.isImportant ? t("unmarkImportant") : t("markImportant")}
-                  >
-                    <Star
-                      className={cn(
-                        "h-4 w-4",
-                        item.isImportant && "fill-current",
-                      )}
-                    />
-                  </Button>
-                ) : null}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={isPending}
-                  onClick={(e) => {
-                    e.currentTarget.blur();
-                    setViewerItem(item);
-                  }}
+                    onClick={(e) => {
+                      e.currentTarget.blur();
+                      setViewerItem(item);
+                    }}
                     aria-label={tCommon("viewFile")}
                   >
                     <Eye className="h-4 w-4" />
@@ -611,19 +908,120 @@ export function AttachmentPanel({
                   >
                     <Download className="h-4 w-4" />
                   </Button>
+                  {canReplace ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={isPending}
+                      onClick={() => openReplacePicker(item.id)}
+                      className="hover:bg-primary-muted hover:text-primary hover:[filter:none] active:[filter:none]"
+                      aria-label={t("replace")}
+                      title={t("replace")}
+                    >
+                      <Replace className="h-4 w-4" />
+                    </Button>
+                  ) : null}
                   {canDelete ? (
                     <Button
                       variant="ghost"
                       size="sm"
                       disabled={isPending}
-                      onClick={() => handleDelete(item.id, item.fileName)}
+                      onClick={() => handleDelete(item)}
                       className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40 hover:[filter:none] active:[filter:none]"
                       aria-label={t("delete")}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   ) : null}
+                </div>
               </div>
+
+              {canVersion && versionsExpanded ? (
+                <div className="mt-3 w-full space-y-2 border-t border-border/80 pt-3">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    {t("versionsTitle")}
+                  </p>
+                  {versions.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">{tCommon("loading")}</p>
+                  ) : (
+                    versions.map((version) => {
+                      const canDeleteVersion =
+                        canDeleteAll ||
+                        (canUpload && version.uploadedBy.id === currentUserId);
+                      return (
+                        <div
+                          key={version.id}
+                          className="flex flex-col gap-2 rounded-md bg-muted/60 px-2.5 py-2 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          <div className="min-w-0 space-y-0.5 text-xs text-muted-foreground">
+                            <p className="truncate font-medium text-foreground">
+                              {t("versionLabel", { version: version.version })}
+                              {version.isLatest ? (
+                                <span className="ml-1.5 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+                                  {t("versionLatest")}
+                                </span>
+                              ) : null}
+                              <span className="ml-1.5 font-normal text-muted-foreground">
+                                · {version.fileName}
+                              </span>
+                            </p>
+                            <p className="truncate">
+                              {version.uploadedBy.name}
+                              {" · "}
+                              {formatDateTime(version.createdAt)}
+                              {" · "}
+                              {formatBytes(version.sizeBytes)}
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={isPending}
+                              onClick={() =>
+                                setViewerItem({
+                                  ...item,
+                                  id: version.id,
+                                  fileName: version.fileName,
+                                  mimeType: version.mimeType,
+                                  sizeBytes: version.sizeBytes,
+                                  createdAt: version.createdAt,
+                                  uploadedBy: version.uploadedBy,
+                                  version: version.version,
+                                })
+                              }
+                              aria-label={tCommon("viewFile")}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={isPending}
+                              onClick={() => handleDownload(version.id)}
+                              aria-label={tCommon("download")}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            {canDeleteVersion ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled={isPending}
+                                onClick={() => handleDeleteVersion(item, version)}
+                                className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                                aria-label={t("delete")}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            ) : null}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              ) : null}
             </div>
           );
         })
@@ -636,6 +1034,23 @@ export function AttachmentPanel({
       attachment={viewerItem}
       open={!!viewerItem}
       onClose={() => setViewerItem(null)}
+    />
+  );
+
+  const accessDialog = (
+    <AttachmentAccessDialog
+      attachmentId={accessItem?.id ?? ""}
+      fileName={accessItem?.fileName ?? ""}
+      open={!!accessItem}
+      onClose={() => setAccessItem(null)}
+      onSaved={(mode) => {
+        if (!accessItem) return;
+        setAttachments((prev) =>
+          prev.map((a) =>
+            a.id === accessItem.id ? { ...a, accessMode: mode } : a,
+          ),
+        );
+      }}
     />
   );
 
@@ -665,6 +1080,7 @@ export function AttachmentPanel({
         {dialog}
         {uploadDialog}
         {viewer}
+        {accessDialog}
         <div className="min-w-0 space-y-2">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <p className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
@@ -685,6 +1101,7 @@ export function AttachmentPanel({
       {dialog}
       {uploadDialog}
       {viewer}
+      {accessDialog}
       <Card className="rounded-md">
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="flex items-center gap-2">

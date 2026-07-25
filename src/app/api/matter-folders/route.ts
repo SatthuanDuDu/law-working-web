@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
 import { canAccessAttachmentTarget } from "@/lib/access";
 import { createAuditLog } from "@/lib/audit";
+import { canManageMatterDocuments } from "@/lib/permissions";
 
 export async function GET(request: Request) {
   const user = await getSessionUser();
@@ -21,7 +22,7 @@ export async function GET(request: Request) {
   const folders = await prisma.matterFolder.findMany({
     where: { matterId },
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-    include: { _count: { select: { attachments: true } } },
+    include: { _count: { select: { attachments: { where: { isLatest: true } } } } },
   });
 
   return NextResponse.json({
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
   }
 
   const allowed = await canAccessAttachmentTarget(user.id, user.role, { matterId });
-  if (!allowed) {
+  if (!allowed || !canManageMatterDocuments(user.role)) {
     return NextResponse.json({ error: "Không có quyền tạo thư mục" }, { status: 403 });
   }
 

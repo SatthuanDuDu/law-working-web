@@ -8,6 +8,7 @@ import {
   uploadObject,
 } from "@/lib/storage";
 import { createAuditLog } from "@/lib/audit";
+import { canViewAttachmentContent } from "@/lib/attachment-access";
 
 function contentDisposition(kind: "inline" | "attachment", fileName: string) {
   const encoded = encodeURIComponent(fileName);
@@ -30,6 +31,11 @@ export async function GET(
   const allowed = await canAccessAttachmentTarget(user.id, user.role, attachment);
   if (!allowed) {
     return NextResponse.json({ error: "Không có quyền tải file" }, { status: 403 });
+  }
+
+  const canView = await canViewAttachmentContent(user.id, user.role, attachment);
+  if (!canView) {
+    return NextResponse.json({ error: "Không có quyền xem file này" }, { status: 403 });
   }
 
   const dispositionParam = new URL(request.url).searchParams.get("disposition");
@@ -120,6 +126,30 @@ export async function PUT(
 
   try {
     await uploadObject(attachment.storageKey, buffer, contentType);
+
+    // Replace flow creates the new row as non-latest; promote only after bytes exist.
+    if (!attachment.isLatest && attachment.versionGroupId) {
+      const maxVersion = await prisma.attachment.aggregate({
+        where: { versionGroupId: attachment.versionGroupId },
+        _max: { version: true },
+      });
+      if (attachment.version === maxVersion._max.version) {
+        await prisma.$transaction([
+          prisma.attachment.updateMany({
+            where: {
+              versionGroupId: attachment.versionGroupId,
+              isLatest: true,
+            },
+            data: { isLatest: false },
+          }),
+          prisma.attachment.update({
+            where: { id: attachment.id },
+            data: { isLatest: true },
+          }),
+        ]);
+      }
+    }
+
     return new NextResponse(null, { status: 204 });
   } catch (error) {
     console.error("attachment content upload failed:", error);

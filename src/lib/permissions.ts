@@ -16,6 +16,11 @@ export function isManagerOrAbove(role: Role) {
   return role === "ADMIN" || role === "MANAGER";
 }
 
+/** Lawyer-level and above — can upload/replace/delete matter documents. */
+export function canManageMatterDocuments(role: Role) {
+  return role === "ADMIN" || role === "MANAGER" || role === "LAWYER";
+}
+
 export function canManageUsers(role: Role) {
   return role === "ADMIN";
 }

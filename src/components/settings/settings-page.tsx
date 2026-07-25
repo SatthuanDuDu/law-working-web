@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/outlined-field";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { AvatarCropDialog } from "@/components/settings/avatar-crop-dialog";
+import { PushNotificationSettings } from "@/components/settings/push-notification-settings";
 import { cn } from "@/lib/utils";
 import type { SessionUser } from "@/lib/permissions";
 import { useLabelMaps } from "@/i18n/use-label-maps";
@@ -239,6 +240,8 @@ export function SettingsPageClient({
             </div>
           </CardContent>
         </Card>
+
+        <PushNotificationSettings />
 
         <Card>
           <CardHeader>

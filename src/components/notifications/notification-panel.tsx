@@ -303,7 +303,7 @@ export function NotificationPanel({
                 panelActive && "is-active",
               )}
             >
-            <div className="flex items-start justify-between gap-2 border-b border-border bg-surface px-4 py-3">
+            <div className="flex shrink-0 items-start justify-between gap-2 border-b border-border bg-surface px-4 py-3">
               <div className="min-w-0 flex-1">
                 <h2 className="font-semibold text-foreground">{t("title")}</h2>
                 {displayedUnread > 0 && (
@@ -334,7 +334,7 @@ export function NotificationPanel({
               </div>
             </div>
 
-            <div className="flex gap-1 overflow-x-auto border-b border-border bg-surface px-4 py-2">
+            <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-border bg-surface px-4 py-2">
               <button
                 type="button"
                 className={cn(
@@ -361,7 +361,7 @@ export function NotificationPanel({
               </button>
             </div>
 
-            <div className="grid min-w-0 grid-cols-1 gap-2 border-b border-border bg-surface px-4 py-3 sm:grid-cols-2">
+            <div className="grid min-w-0 shrink-0 grid-cols-1 gap-2 border-b border-border bg-surface px-4 py-3 sm:grid-cols-2">
               <div className="space-y-1">
                 <Label htmlFor="filter-date" className="text-xs">
                   Lọc theo ngày

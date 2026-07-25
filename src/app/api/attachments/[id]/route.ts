@@ -4,7 +4,11 @@ import { getSessionUser } from "@/lib/session";
 import { canAccessAttachmentTarget } from "@/lib/access";
 import { deleteObject } from "@/lib/storage";
 import { createAuditLog } from "@/lib/audit";
-import { isAdmin } from "@/lib/permissions";
+import { isAdmin, canManageMatterDocuments } from "@/lib/permissions";
+import {
+  canViewAttachmentContent,
+  cleanupAttachmentAccessIfOrphan,
+} from "@/lib/attachment-access";
 
 export async function GET(
   request: Request,
@@ -22,6 +26,11 @@ export async function GET(
   const allowed = await canAccessAttachmentTarget(user.id, user.role, attachment);
   if (!allowed) {
     return NextResponse.json({ error: "Không có quyền tải file" }, { status: 403 });
+  }
+
+  const canView = await canViewAttachmentContent(user.id, user.role, attachment);
+  if (!canView) {
+    return NextResponse.json({ error: "Không có quyền xem file này" }, { status: 403 });
   }
 
   const mode = new URL(request.url).searchParams.get("mode") || "preview";
@@ -152,7 +161,7 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const user = await getSessionUser();
@@ -164,11 +173,19 @@ export async function DELETE(
     return NextResponse.json({ error: "Không tìm thấy file" }, { status: 404 });
   }
 
-  const isOwner = attachment.uploadedById === user.id;
-  const isElevated = user.role === "ADMIN" || user.role === "MANAGER";
   const allowed = await canAccessAttachmentTarget(user.id, user.role, attachment);
-
-  if (!allowed || (!isOwner && !isElevated)) {
+  const isOwner = attachment.uploadedById === user.id;
+  const canManageDocs = canManageMatterDocuments(user.role);
+  // Comment attachments: author or doc manager. Matter docs: lawyer+ only.
+  if (attachment.commentId) {
+    if (!allowed || (!isOwner && !canManageDocs)) {
+      return NextResponse.json({ error: "Không có quyền xóa file" }, { status: 403 });
+    }
+  } else if (attachment.matterId && !attachment.conversationId) {
+    if (!allowed || !canManageDocs) {
+      return NextResponse.json({ error: "Không có quyền xóa file" }, { status: 403 });
+    }
+  } else if (!allowed || (!isOwner && !canManageDocs)) {
     return NextResponse.json({ error: "Không có quyền xóa file" }, { status: 403 });
   }
 
@@ -185,20 +202,66 @@ export async function DELETE(
     }
   }
 
+  const scope = new URL(request.url).searchParams.get("scope");
+  const deleteGroup = scope === "group";
+
+  if (deleteGroup) {
+    const group = await prisma.attachment.findMany({
+      where: { versionGroupId: attachment.versionGroupId },
+      select: { id: true, storageKey: true, fileName: true },
+    });
+    for (const row of group) {
+      try {
+        await deleteObject(row.storageKey);
+      } catch {
+        // File may already be missing in storage.
+      }
+    }
+    await prisma.attachment.deleteMany({
+      where: { versionGroupId: attachment.versionGroupId },
+    });
+    await cleanupAttachmentAccessIfOrphan(attachment.versionGroupId);
+    await createAuditLog({
+      userId: user.id,
+      action: "DELETE",
+      entityType: "Attachment",
+      entityId: id,
+      details: `Xóa toàn bộ phiên bản: ${attachment.fileName} (${group.length})`,
+    });
+    return NextResponse.json({ success: true, deleted: group.length });
+  }
+
   try {
     await deleteObject(attachment.storageKey);
   } catch {
     // File may already be missing in storage; still remove DB record.
   }
 
+  const wasLatest = attachment.isLatest;
+  const groupId = attachment.versionGroupId;
+
   await prisma.attachment.delete({ where: { id } });
+  await cleanupAttachmentAccessIfOrphan(groupId);
+
+  if (wasLatest) {
+    const previous = await prisma.attachment.findFirst({
+      where: { versionGroupId: groupId },
+      orderBy: { version: "desc" },
+    });
+    if (previous) {
+      await prisma.attachment.update({
+        where: { id: previous.id },
+        data: { isLatest: true },
+      });
+    }
+  }
 
   await createAuditLog({
     userId: user.id,
     action: "DELETE",
     entityType: "Attachment",
     entityId: id,
-    details: attachment.fileName,
+    details: `Xóa phiên bản v${attachment.version}: ${attachment.fileName}`,
   });
 
   return NextResponse.json({ success: true });

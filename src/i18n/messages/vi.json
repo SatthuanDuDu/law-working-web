@@ -38,7 +38,9 @@
     "now": "Now",
     "viewMode": "Chế độ hiển thị",
     "listView": "Danh sách",
-    "gridView": "Khối vuông"
+    "gridView": "Khối vuông",
+    "expandActions": "Mở thao tác nhanh",
+    "collapseActions": "Thu gọn thao tác nhanh"
   },
   "account": {
     "menuLabel": "Quản lý tài khoản",
@@ -1092,13 +1094,13 @@
     "tips": {
       "default": [
         "Dùng menu bên trái để chuyển giữa vụ việc, chat, lịch và chi phí.",
-        "Nút $ góc dưới phải dùng để đăng ký chi phí nhanh.",
+        "Nút + góc dưới phải mở thao tác nhanh (hướng dẫn và thêm chi phí).",
         "Nếu không thấy một chức năng, có thể do quyền vai trò của bạn."
       ],
       "dashboard": [
         "Dashboard tóm tắt việc cần làm hôm nay và hạn sắp tới.",
         "Vào Vụ việc để mở hồ sơ; vào Lịch để xem hạn kế hoạch/công việc.",
-        "Nút $ góc phải để ghi nhận chi phí cho vụ đang mở."
+        "Bấm nút + góc phải rồi chọn biểu tượng $ để ghi chi phí."
       ],
       "mattersList": [
         "Tạo vụ việc mới từ nút góc trên (nếu bạn có quyền).",
@@ -1137,7 +1139,7 @@
       ],
       "expenses": [
         "Trang này thống kê chi phí theo kỳ.",
-        "Thêm khoản chi nhanh bằng nút $ góc phải.",
+        "Thêm khoản chi nhanh: bấm nút + góc phải rồi chọn biểu tượng $.",
         "Chỉ gắn chi phí cho vụ việc đang mở (chưa đóng/lưu trữ)."
       ],
       "clients": [
@@ -1182,7 +1184,7 @@
       },
       "expenses": {
         "q": "Cách ghi nhận chi phí?",
-        "a": "Bấm nút $ góc dưới phải, chọn vụ đang mở, loại chi phí và số tiền. Xem thống kê tại trang Chi phí. Không thêm được chi phí cho vụ đã đóng hoặc lưu trữ."
+        "a": "Bấm nút + góc dưới phải → chọn $, rồi chọn vụ đang mở, loại chi phí và số tiền. Xem thống kê tại trang Chi phí. Không thêm được chi phí cho vụ đã đóng hoặc lưu trữ."
       },
       "roles": {
         "q": "Các vai trò khác nhau thế nào?",

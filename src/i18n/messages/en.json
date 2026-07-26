@@ -38,7 +38,9 @@
     "now": "Now",
     "viewMode": "View mode",
     "listView": "List",
-    "gridView": "Grid"
+    "gridView": "Grid",
+    "expandActions": "Open quick actions",
+    "collapseActions": "Collapse quick actions"
   },
   "account": {
     "menuLabel": "Account menu",
@@ -1092,13 +1094,13 @@
     "tips": {
       "default": [
         "Use the left menu to move between matters, chat, calendar, and expenses.",
-        "The $ button at the bottom-right adds an expense quickly.",
+        "The + button at the bottom-right opens quick actions (help and add expense).",
         "If something is missing, it may be limited by your role."
       ],
       "dashboard": [
         "The dashboard summarizes today’s work and upcoming deadlines.",
         "Open Matters for case files; Calendar for plan/task due dates.",
-        "Use the $ button to log an expense on an open matter."
+        "Tap + at the bottom-right, then $ to log an expense on an open matter."
       ],
       "mattersList": [
         "Create a matter from the top-right button (if you have permission).",
@@ -1137,7 +1139,7 @@
       ],
       "expenses": [
         "This page shows expense stats by period.",
-        "Add a cost quickly with the $ button at the bottom-right.",
+        "Add a cost quickly: tap + at the bottom-right, then $.",
         "Expenses only attach to open (not closed/archived) matters."
       ],
       "clients": [
@@ -1182,7 +1184,7 @@
       },
       "expenses": {
         "q": "How do I log an expense?",
-        "a": "Tap the $ button at the bottom-right, choose an open matter, type, and amount. See stats on Expenses. Closed/archived matters cannot take new expenses."
+        "a": "Tap + at the bottom-right → choose $, then pick an open matter, type, and amount. See stats on Expenses. Closed/archived matters cannot take new expenses."
       },
       "roles": {
         "q": "What do the roles mean?",

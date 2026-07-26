@@ -2,8 +2,7 @@
 
 import { Sidebar } from "@/components/layout/sidebar";
 import { PageHeader } from "@/components/layout/page-header";
-import { AddExpenseFab } from "@/components/expenses/add-expense-fab";
-import { HelpFab } from "@/components/help/help-fab";
+import { UtilitySpeedDial } from "@/components/layout/utility-speed-dial";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 import { NotificationToastHost } from "@/components/notifications/notification-toast-host";
 import {
@@ -78,8 +77,7 @@ export function DashboardShell({
             <PageHeader />
             <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
           </div>
-          <HelpFab />
-          <AddExpenseFab />
+          <UtilitySpeedDial />
           <NotificationToastHost />
         </div>
       </PageMetaProvider>

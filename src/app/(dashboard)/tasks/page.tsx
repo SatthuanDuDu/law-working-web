@@ -53,10 +53,12 @@ export default async function TasksPage() {
         title={tPages("title")}
         description={tPages("description")}
       />
-      <div className="grid gap-8 xl:grid-cols-[380px_1fr]">
-        <TaskForm users={users} matters={matters} />
-        <TaskList tasks={tasks} currentUserId={user.id} canManage={canViewAll} />
-      </div>
+      <TaskList
+        tasks={tasks}
+        currentUserId={user.id}
+        canManage={canViewAll}
+        actions={<TaskForm users={users} matters={matters} />}
+      />
     </>
   );
 }

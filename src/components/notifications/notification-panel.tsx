@@ -1,28 +1,30 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  useTransition,
+} from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { Bell, Clock, X } from "lucide-react";
-import type { Notification, NotificationType } from "@prisma/client";
+import { Bell, CheckCheck, X } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { enUS, vi as viLocale } from "date-fns/locale";
+import type { Notification } from "@prisma/client";
 import {
   markAllNotificationsReadAction,
   markNotificationReadAction,
 } from "@/lib/actions";
-import { useLabelMaps } from "@/i18n/use-label-maps";
 import { useLocale, useTranslations } from "next-intl";
 import { useOverlayAnimation } from "@/hooks/use-overlay-animation";
-import { Button } from "@/components/ui/button";
-import { Label, Select } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/card";
-import { formatDateTime } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import type { UrgentReminderItem } from "@/components/layout/urgent-reminder-stack";
 import { isUrgentReminderActive } from "@/lib/urgent-reminder-window";
 
-type TabKey = "unread" | "read";
-type FilterType = NotificationType | "URGENT_DUE" | "";
+type TabKey = "unread" | "all";
 
 /** Stable client clock for useSyncExternalStore (must not return a new value every read). */
 let clientNowCache = 0;
@@ -54,6 +56,19 @@ function getClientNow() {
 
 function getServerNow() {
   return 0;
+}
+
+function formatRelativeTime(
+  date: Date | string,
+  locale: string,
+  now: number,
+): string {
+  const value = new Date(date).getTime();
+  if (Number.isNaN(value) || now <= 0) return "";
+  return formatDistanceToNow(value, {
+    addSuffix: true,
+    locale: locale === "en" ? enUS : viLocale,
+  });
 }
 
 function formatCountdown(
@@ -106,16 +121,12 @@ export function NotificationPanel({
   const tReminder = useTranslations("reminder");
   const tCommon = useTranslations("common");
   const locale = useLocale();
-  const { notificationType } = useLabelMaps();
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<TabKey>("unread");
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
-  const [filterDate, setFilterDate] = useState("");
-  const [filterType, setFilterType] = useState<FilterType>("");
   const [readLocally, setReadLocally] = useState(0);
   const [isPending, startTransition] = useTransition();
-  // Server snapshot 0 — client uses cached clock (hydration-safe, stable getSnapshot).
   const now = useSyncExternalStore(
     subscribeClientNow,
     getClientNow,
@@ -140,7 +151,8 @@ export function NotificationPanel({
     [urgentReminders, now],
   );
 
-  const displayedUnread = Math.max(0, unreadCount - readLocally) + activeUrgent.length;
+  const displayedUnread =
+    Math.max(0, unreadCount - readLocally) + activeUrgent.length;
 
   useEffect(() => {
     if (!open) return;
@@ -183,8 +195,8 @@ export function NotificationPanel({
       if (!rect) return;
       setPanelAnchor({
         top: rect.bottom + 6,
-        right: Math.max(16, window.innerWidth - rect.right),
-        width: Math.min(448, Math.max(320, window.innerWidth - 32)),
+        right: Math.max(12, window.innerWidth - rect.right),
+        width: Math.min(360, Math.max(300, window.innerWidth - 24)),
       });
     }
 
@@ -219,30 +231,14 @@ export function NotificationPanel({
     loadNotifications();
   }
 
-  const filteredUrgent = useMemo(() => {
-    if (filterType && filterType !== "URGENT_DUE") return [];
-    return activeUrgent.filter((item) => {
-      if (!filterDate) return true;
-      const itemDate = new Date(item.startsAt).toISOString().split("T")[0];
-      return itemDate === filterDate;
-    });
-  }, [activeUrgent, filterType, filterDate]);
-
   const filtered = useMemo(() => {
-    if (filterType === "URGENT_DUE") return [];
     return notifications.filter((item) => {
       if (tab === "unread" && item.isRead) return false;
-      if (tab === "read" && !item.isRead) return false;
-      if (filterType && item.type !== filterType) return false;
-      if (filterDate) {
-        const itemDate = new Date(item.createdAt).toISOString().split("T")[0];
-        if (itemDate !== filterDate) return false;
-      }
       return true;
     });
-  }, [notifications, tab, filterType, filterDate]);
+  }, [notifications, tab]);
 
-  const showUrgent = filteredUrgent.length > 0 && (tab === "unread" || tab === "read");
+  const showUrgent = activeUrgent.length > 0 && tab === "unread";
   const listEmpty = !loading && filtered.length === 0 && !showUrgent;
 
   function markRead(id: string) {
@@ -262,6 +258,8 @@ export function NotificationPanel({
       setReadLocally(unreadCount);
     });
   }
+
+  const unreadLeft = Math.max(0, unreadCount - readLocally);
 
   return (
     <div ref={rootRef} className="relative">
@@ -289,7 +287,7 @@ export function NotificationPanel({
               aria-label={tCommon("close")}
               data-notification-panel
               className={cn(
-                "overlay-backdrop fixed inset-0 z-40 bg-slate-900/25 sm:hidden",
+                "overlay-backdrop fixed inset-0 z-40 bg-slate-900/30 sm:hidden",
                 panelActive && "is-active",
               )}
               onClick={() => setOpen(false)}
@@ -299,222 +297,179 @@ export function NotificationPanel({
               style={desktopPanelStyle}
               className={cn(
                 "floating-panel fixed z-50 flex min-w-0 flex-col overflow-hidden border border-border bg-surface shadow-[var(--shadow-overlay)]",
-                "inset-x-0 bottom-0 max-h-[min(88dvh,100%)] w-full rounded-t-lg sm:inset-auto sm:bottom-auto sm:max-h-[min(66vh,32rem)] sm:rounded-lg",
+                "inset-x-0 bottom-0 max-h-[min(78dvh,100%)] w-full rounded-t-xl sm:inset-auto sm:bottom-auto sm:max-h-[min(70vh,28rem)] sm:rounded-lg",
                 panelActive && "is-active",
               )}
             >
-            <div className="flex shrink-0 items-start justify-between gap-2 border-b border-border bg-surface px-4 py-3">
-              <div className="min-w-0 flex-1">
-                <h2 className="font-semibold text-foreground">{t("title")}</h2>
-                {displayedUnread > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    {displayedUnread} {t("unread").toLowerCase()}
-                  </p>
-                )}
-              </div>
-              <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={isPending || Math.max(0, unreadCount - readLocally) === 0}
+              <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-border sm:hidden" />
+
+              <div className="flex shrink-0 items-center gap-1.5 border-b border-border px-3 py-2 sm:gap-2 sm:px-3.5 sm:py-2.5">
+                <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
+                  {displayedUnread > 0
+                    ? `${t("title")} (${displayedUnread})`
+                    : t("title")}
+                </h2>
+                <button
+                  type="button"
+                  disabled={isPending || unreadLeft === 0}
                   onClick={markAllRead}
                   aria-label={t("markAllRead")}
+                  title={t("markAllRead")}
+                  className={cn(
+                    "interactive-press inline-flex h-8 items-center gap-1 rounded-md px-2 text-xs font-medium",
+                    unreadLeft === 0
+                      ? "text-muted-foreground/50"
+                      : "text-primary hover:bg-primary-muted",
+                  )}
                 >
-                  <span className="sm:hidden">{t("markAllRead")}</span>
-                  <span className="hidden sm:inline">{t("markAllRead")}</span>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
+                  <CheckCheck className="h-3.5 w-3.5" aria-hidden />
+                  <span>{t("markAllReadShort")}</span>
+                </button>
+                <button
+                  type="button"
                   onClick={() => setOpen(false)}
                   aria-label={tCommon("close")}
+                  className="interactive-press inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
                 >
                   <X className="h-4 w-4" />
-                </Button>
+                </button>
               </div>
-            </div>
 
-            <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-border bg-surface px-4 py-2">
-              <button
-                type="button"
-                className={cn(
-                  "interactive-press shrink-0 rounded-md px-3 py-1.5 text-sm",
-                  tab === "unread"
-                    ? "bg-primary text-white hover:bg-primary-hover"
-                    : "text-muted-foreground hover:bg-muted",
-                )}
-                onClick={() => setTab("unread")}
-              >
-                {t("unread")}
-              </button>
-              <button
-                type="button"
-                className={cn(
-                  "interactive-press shrink-0 rounded-md px-3 py-1.5 text-sm",
-                  tab === "read"
-                    ? "bg-primary text-white hover:bg-primary-hover"
-                    : "text-muted-foreground hover:bg-muted",
-                )}
-                onClick={() => setTab("read")}
-              >
-                {tCommon("all")}
-              </button>
-            </div>
-
-            <div className="grid min-w-0 shrink-0 grid-cols-1 gap-2 border-b border-border bg-surface px-4 py-3 sm:grid-cols-2">
-              <div className="space-y-1">
-                <Label htmlFor="filter-date" className="text-xs">
-                  Lọc theo ngày
-                </Label>
-                <Input
-                  id="filter-date"
-                  type="date"
-                  value={filterDate}
-                  onChange={(e) => setFilterDate(e.target.value)}
-                />
+              <div className="flex shrink-0 gap-1 px-3 pb-2 pt-1.5 sm:px-3.5">
+                {(
+                  [
+                    { key: "unread" as const, label: t("unread") },
+                    { key: "all" as const, label: tCommon("all") },
+                  ] as const
+                ).map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    className={cn(
+                      "interactive-press flex-1 rounded-md px-2.5 py-1.5 text-xs font-medium sm:flex-none sm:px-3",
+                      tab === item.key
+                        ? "bg-primary text-white"
+                        : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground",
+                    )}
+                    onClick={() => setTab(item.key)}
+                  >
+                    {item.label}
+                  </button>
+                ))}
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="filter-type" className="text-xs">
-                  Loại thông báo
-                </Label>
-                <Select
-                  id="filter-type"
-                  value={filterType}
-                  onChange={(e) =>
-                    setFilterType(e.target.value as FilterType)
-                  }
-                >
-                  <option value="">{tCommon("all")}</option>
-                  <option value="URGENT_DUE">{t("urgentType")}</option>
-                  {Object.entries(notificationType).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-            </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-surface px-4 py-3">
-              {loading ? (
-                <p className="text-sm text-muted-foreground">{tCommon("loading")}</p>
-              ) : listEmpty ? (
-                <p className="text-sm text-muted-foreground">{t("empty")}</p>
-              ) : (
-                <div className="space-y-3">
-                  {showUrgent ? (
-                    <div className="space-y-2">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-rose-700 dark:text-rose-300">
-                        {t("urgentSection")}
-                      </p>
-                      {filteredUrgent.map((item) => {
-                        const countdown = reminderCountdown(
-                          item,
-                          now,
-                          tReminder,
-                          tCommon,
-                        );
-                        return (
-                          <div
-                            key={`urgent:${item.id}:${item.startsAt}`}
-                            className="rounded-md border border-rose-200 bg-rose-50 p-3 dark:border-rose-900/50 dark:bg-rose-950/30"
-                          >
-                            <div className="flex min-w-0 items-start justify-between gap-2">
-                              <div className="min-w-0 flex-1">
-                                <Link
-                                  href={item.href}
-                                  className="interactive-link break-words font-medium text-foreground"
-                                  onClick={() => setOpen(false)}
-                                >
-                                  {item.title}
-                                </Link>
-                                <p className="mt-1 flex min-w-0 items-center gap-1 break-words text-sm text-rose-800 dark:text-rose-200">
-                                  <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                                  <span>
-                                    {t("urgentMessage", {
-                                      time: item.timeLabel,
-                                      countdown,
-                                    })}
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                {loading ? (
+                  <p className="px-3.5 py-6 text-center text-sm text-muted-foreground">
+                    {tCommon("loading")}
+                  </p>
+                ) : listEmpty ? (
+                  <p className="px-3.5 py-6 text-center text-sm text-muted-foreground">
+                    {t("empty")}
+                  </p>
+                ) : (
+                  <ul className="divide-y divide-border/70">
+                    {showUrgent
+                      ? activeUrgent.map((item) => {
+                          const countdown = reminderCountdown(
+                            item,
+                            now,
+                            tReminder,
+                            tCommon,
+                          );
+                          return (
+                            <li key={`urgent:${item.id}:${item.startsAt}`}>
+                              <Link
+                                href={item.href}
+                                onClick={() => setOpen(false)}
+                                className="interactive-press flex items-start gap-2 px-3 py-2 hover:bg-rose-50/80 sm:px-3.5 dark:hover:bg-rose-950/20"
+                              >
+                                <span
+                                  className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-rose-500"
+                                  aria-hidden
+                                />
+                                <span className="min-w-0 flex-1">
+                                  <span className="block truncate text-[13px] font-semibold leading-snug text-foreground">
+                                    {item.title}
                                   </span>
-                                </p>
-                                <p className="mt-2 break-words text-xs text-muted-foreground">
-                                  {t("urgentType")}
-                                </p>
-                                <Link
-                                  href={item.href}
-                                  className="interactive-link mt-2 inline-block text-sm text-primary"
-                                  onClick={() => setOpen(false)}
-                                >
-                                  {tCommon("details")}
-                                </Link>
-                              </div>
-                              <Badge variant="warning" className="shrink-0">
-                                {t("urgentSection")}
-                              </Badge>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : null}
+                                  <span className="mt-0.5 block truncate text-xs leading-snug text-muted-foreground">
+                                    {t("urgentType")} · {item.timeLabel}
+                                  </span>
+                                  <span className="mt-1 block text-[11px] leading-none tabular-nums text-rose-700 dark:text-rose-300">
+                                    {countdown}
+                                  </span>
+                                </span>
+                              </Link>
+                            </li>
+                          );
+                        })
+                      : null}
 
-                  {filtered.map((notification) => (
-                    <div
-                      key={notification.id}
-                      className={cn(
-                        "rounded-md border p-3",
-                        notification.isRead
-                          ? "border-border bg-muted"
-                          : "border-primary/20 bg-primary-muted",
-                      )}
-                    >
-                      <div className="flex min-w-0 items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <p className="break-words font-medium text-foreground">
-                            {notification.title}
-                          </p>
-                          <p className="mt-1 break-words text-sm text-muted-foreground">
-                            {notification.message}
-                          </p>
-                          <p className="mt-2 break-words text-xs text-muted-foreground">
-                            {formatDateTime(notification.createdAt, locale)} •{" "}
-                            {notificationType[notification.type]}
-                          </p>
-                          {notification.link && (
-                            <Link
-                              href={notification.link}
-                              className="interactive-link mt-2 inline-block text-sm text-primary"
-                              onClick={() => {
+                    {filtered.map((notification) => {
+                      const href = notification.link || "#";
+                      const relative = formatRelativeTime(
+                        notification.createdAt,
+                        locale,
+                        now,
+                      );
+                      return (
+                        <li key={notification.id}>
+                          <Link
+                            href={href}
+                            onClick={() => {
+                              if (!notification.isRead) {
                                 markRead(notification.id);
-                                setOpen(false);
-                              }}
-                            >
-                              {tCommon("details")}
-                            </Link>
-                          )}
-                        </div>
-                        {!notification.isRead && (
-                          <Badge variant="warning" className="shrink-0">
-                            {t("unread")}
-                          </Badge>
-                        )}
-                      </div>
-                      {!notification.isRead && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="mt-2"
-                          disabled={isPending}
-                          onClick={() => markRead(notification.id)}
-                        >
-                          {t("markAllRead")}
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                              }
+                              setOpen(false);
+                            }}
+                            className={cn(
+                              "interactive-press flex items-start gap-2 px-3 py-2 transition-colors sm:px-3.5",
+                              notification.isRead
+                                ? "hover:bg-muted/50"
+                                : "bg-primary-muted/30 hover:bg-primary-muted/50",
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full",
+                                notification.isRead
+                                  ? "bg-transparent"
+                                  : "bg-primary",
+                              )}
+                              aria-hidden
+                            />
+                            <span className="min-w-0 flex-1">
+                              <span
+                                className={cn(
+                                  "block truncate text-[13px] leading-snug text-foreground",
+                                  !notification.isRead
+                                    ? "font-semibold"
+                                    : "font-medium",
+                                )}
+                              >
+                                {notification.title}
+                              </span>
+                              {notification.message ? (
+                                <span className="mt-0.5 block truncate text-xs leading-snug text-muted-foreground">
+                                  {notification.message}
+                                </span>
+                              ) : null}
+                              {relative ? (
+                                <time
+                                  dateTime={String(notification.createdAt)}
+                                  className="mt-1 block text-[11px] leading-none text-muted-foreground/80"
+                                >
+                                  {relative}
+                                </time>
+                              ) : null}
+                            </span>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
             </aside>
           </>,
           document.body,

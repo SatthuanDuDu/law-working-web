@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useTransition, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { updateTaskStatusAction } from "@/lib/actions";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
@@ -29,10 +29,12 @@ export function TaskList({
   tasks,
   currentUserId,
   canManage,
+  actions,
 }: {
   tasks: TaskListItem[];
   currentUserId: string;
   canManage: boolean;
+  actions?: ReactNode;
 }) {
   const t = useTranslations("tasks");
   const { taskStatus, taskPriority } = useLabelMaps();
@@ -140,7 +142,10 @@ export function TaskList({
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0">
           <CardTitle>{t("listTitle")}</CardTitle>
-          <ListViewToggle mode={mode} onChange={setMode} />
+          <div className="flex flex-wrap items-center gap-2">
+            {actions}
+            <ListViewToggle mode={mode} onChange={setMode} />
+          </div>
         </CardHeader>
         <CardContent className={cn(isPending && "pointer-events-none opacity-60")}>
           {tasks.length === 0 ? (

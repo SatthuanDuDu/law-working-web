@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {
   addMonths,
+  addWeeks,
   eachDayOfInterval,
   endOfMonth,
   endOfWeek,
@@ -14,6 +15,7 @@ import {
   startOfMonth,
   startOfWeek,
   subMonths,
+  subWeeks,
 } from "date-fns";
 import { enUS, vi as viLocale } from "date-fns/locale";
 import { createPortal } from "react-dom";
@@ -22,7 +24,7 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Check, Circle, CircleDot, Ban, Clock, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge, Card, CardContent, CardHeader, CardTitle, Select } from "@/components/ui/card";
 import {
   CalendarAddPlanDialog,
   type CalendarMatterOption,
@@ -194,7 +196,6 @@ function CalendarChipLabel({
     </>
   );
 }
-
 type CalendarPlanStep = {
   id: string;
   title: string;
@@ -895,6 +896,137 @@ function PlanPreviewChip({ step }: { step: CalendarPlanStep }) {
   );
 }
 
+function WeekActionRow({
+  item,
+}: {
+  item:
+    | { kind: "task"; task: CalendarTask }
+    | { kind: "plan"; step: CalendarPlanStep };
+}) {
+  const t = useTranslations("calendar");
+  const labels = useLabelMaps();
+
+  if (item.kind === "plan") {
+    const { step } = item;
+    return (
+      <Link
+        href={`/matters/${step.matterId}/plan`}
+        className="interactive-press block rounded-md border border-border bg-surface px-3 py-3 hover:border-primary/35 hover:bg-primary-muted/20"
+      >
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Badge>{t("kindPlan")}</Badge>
+              <Badge variant="info">
+                {labels.planStepStatus[step.status]}
+              </Badge>
+              <Badge variant="warning">
+                {labels.taskPriority[step.priority]}
+              </Badge>
+            </div>
+            <p className="mt-2 break-words text-sm font-semibold leading-snug text-foreground">
+              {step.title}
+            </p>
+          </div>
+          <span className="flex shrink-0 items-center gap-1 text-xs font-medium tabular-nums text-muted-foreground">
+            <Clock className="h-3.5 w-3.5" aria-hidden />
+            {format(new Date(step.dueAt), "HH:mm")}
+          </span>
+        </div>
+        <div className="mt-2 grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+          <p className="min-w-0 break-words">
+            <span className="font-medium text-foreground/80">
+              {t("taskMatter")}:{" "}
+            </span>
+            {step.matterCode} · {step.matterTitle}
+          </p>
+          <p>
+            <span className="font-medium text-foreground/80">
+              {t("taskSchedule")}:{" "}
+            </span>
+            {format(new Date(step.dueAt), "dd/MM/yyyy HH:mm")}
+          </p>
+        </div>
+      </Link>
+    );
+  }
+
+  const { task } = item;
+  const href = task.matterId ? `/matters/${task.matterId}` : "/tasks";
+  const matterLine = task.matterCode
+    ? `${task.matterCode}${task.matterTitle ? ` · ${task.matterTitle}` : ""}`
+    : "—";
+
+  return (
+    <Link
+      href={href}
+      className="interactive-press block rounded-md border border-border bg-surface px-3 py-3 hover:border-primary/35 hover:bg-primary-muted/20"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Badge>{t("kindTask")}</Badge>
+            <Badge variant="info">{labels.taskStatus[task.status]}</Badge>
+            <Badge variant="warning">
+              {labels.taskPriority[task.priority]}
+            </Badge>
+          </div>
+          <p className="mt-2 break-words text-sm font-semibold leading-snug text-foreground">
+            {task.title}
+          </p>
+          {task.description ? (
+            <p className="mt-1 whitespace-pre-wrap break-words text-xs leading-relaxed text-muted-foreground">
+              {task.description}
+            </p>
+          ) : null}
+        </div>
+        <span className="flex shrink-0 items-center gap-1 text-xs font-medium tabular-nums text-muted-foreground">
+          <Clock className="h-3.5 w-3.5" aria-hidden />
+          {format(new Date(task.dueDate), "HH:mm")}
+        </span>
+      </div>
+      <div className="mt-2 grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+        <p className="min-w-0 break-words">
+          <span className="font-medium text-foreground/80">
+            {t("taskMatter")}:{" "}
+          </span>
+          {matterLine}
+        </p>
+        <p>
+          <span className="font-medium text-foreground/80">
+            {t("assignee")}:{" "}
+          </span>
+          {task.assigneeName}
+        </p>
+        {task.clientName ? (
+          <p>
+            <span className="font-medium text-foreground/80">
+              {t("taskClient")}:{" "}
+            </span>
+            {task.clientName}
+          </p>
+        ) : null}
+        {task.leadLawyerName ? (
+          <p>
+            <span className="font-medium text-foreground/80">
+              {t("leadLawyer")}:{" "}
+            </span>
+            {task.leadLawyerName}
+          </p>
+        ) : null}
+        {task.collaboratorNames?.length ? (
+          <p className="sm:col-span-2">
+            <span className="font-medium text-foreground/80">
+              {t("collaborators")}:{" "}
+            </span>
+            {task.collaboratorNames.join(", ")}
+          </p>
+        ) : null}
+      </div>
+    </Link>
+  );
+}
+
 function DayCellScrollList({ children }: { children: ReactNode }) {
   const t = useTranslations("calendar");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -1149,6 +1281,15 @@ function MonthYearPicker({
   );
 }
 
+const AGENDA_PAD_DEFAULT = 4;
+const AGENDA_PAD_MAX = 26;
+const AGENDA_PAD_STEP = 2;
+const AGENDA_EDGE_PX = 140;
+
+function mondayIndex(day: Date) {
+  return (day.getDay() + 6) % 7;
+}
+
 export function CalendarMonth({
   tasks,
   planSteps = [],
@@ -1167,8 +1308,26 @@ export function CalendarMonth({
   const router = useRouter();
   const t = useTranslations("calendar");
   const labels = useLabelMaps();
+  const [viewMode, setViewMode] = useState<"week" | "month">("week");
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
+  const [weekAnchor, setWeekAnchor] = useState(() =>
+    startOfWeek(new Date(), { weekStartsOn: 1 }),
+  );
+  const [agendaPivot, setAgendaPivot] = useState(() =>
+    startOfWeek(new Date(), { weekStartsOn: 1 }),
+  );
+  const [agendaPadWeeks, setAgendaPadWeeks] = useState(AGENDA_PAD_DEFAULT);
+  const [matterFilter, setMatterFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [addPlanDay, setAddPlanDay] = useState<Date | null>(null);
+  const weekScrollerRef = useRef<HTMLDivElement>(null);
+  const suppressWeekSyncRef = useRef(false);
+  const pendingScrollDayRef = useRef<string | null>(
+    format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd"),
+  );
+  const expandFromTopRef = useRef(false);
+  const prevScrollHeightRef = useRef(0);
+  const expandingRef = useRef(false);
 
   const weekdayLabels = [
     t("weekdayMon"),
@@ -1180,42 +1339,303 @@ export function CalendarMonth({
     t("weekdaySun"),
   ];
 
-  const days = useMemo(() => {
+  const weekEnd = useMemo(
+    () => endOfWeek(weekAnchor, { weekStartsOn: 1 }),
+    [weekAnchor],
+  );
+
+  const agendaStart = useMemo(
+    () => startOfWeek(subWeeks(agendaPivot, agendaPadWeeks), { weekStartsOn: 1 }),
+    [agendaPivot, agendaPadWeeks],
+  );
+  const agendaEnd = useMemo(
+    () => endOfWeek(addWeeks(agendaPivot, agendaPadWeeks), { weekStartsOn: 1 }),
+    [agendaPivot, agendaPadWeeks],
+  );
+  const agendaDays = useMemo(
+    () => eachDayOfInterval({ start: agendaStart, end: agendaEnd }),
+    [agendaStart, agendaEnd],
+  );
+
+  const monthDays = useMemo(() => {
     const start = startOfWeek(startOfMonth(month), { weekStartsOn: 1 });
     const end = endOfWeek(endOfMonth(month), { weekStartsOn: 1 });
     return eachDayOfInterval({ start, end });
   }, [month]);
 
-  const monthTasks = useMemo(() => {
-    const start = startOfMonth(month);
-    const end = endOfMonth(month);
+  const matterOptions = useMemo(() => {
+    const map = new Map<string, { id: string; code: string; title: string }>();
+    for (const m of matters) {
+      map.set(m.id, { id: m.id, code: m.code, title: m.title });
+    }
+    for (const task of tasks) {
+      if (task.matterId && task.matterCode) {
+        map.set(task.matterId, {
+          id: task.matterId,
+          code: task.matterCode,
+          title: task.matterTitle ?? task.matterCode,
+        });
+      }
+    }
+    for (const step of planSteps) {
+      map.set(step.matterId, {
+        id: step.matterId,
+        code: step.matterCode,
+        title: step.matterTitle,
+      });
+    }
+    return Array.from(map.values()).sort((a, b) =>
+      a.code.localeCompare(b.code),
+    );
+  }, [matters, tasks, planSteps]);
+
+  const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
-      const due = new Date(task.dueDate);
-      return due >= start && due <= end;
+      if (matterFilter === "none") {
+        if (task.matterId) return false;
+      } else if (matterFilter !== "all" && task.matterId !== matterFilter) {
+        return false;
+      }
+      if (statusFilter === "all") return true;
+      if (!statusFilter.startsWith("task:")) return false;
+      return task.status === statusFilter.slice(5);
     });
-  }, [tasks, month]);
+  }, [tasks, matterFilter, statusFilter]);
+
+  const filteredPlans = useMemo(() => {
+    return planSteps.filter((step) => {
+      if (matterFilter === "none") return false;
+      if (matterFilter !== "all" && step.matterId !== matterFilter) {
+        return false;
+      }
+      if (statusFilter === "all") return true;
+      if (!statusFilter.startsWith("plan:")) return false;
+      return step.status === statusFilter.slice(5);
+    });
+  }, [planSteps, matterFilter, statusFilter]);
+
+  const periodStart = useMemo(
+    () => (viewMode === "week" ? weekAnchor : startOfMonth(month)),
+    [viewMode, weekAnchor, month],
+  );
+  const periodEnd = useMemo(
+    () =>
+      viewMode === "week"
+        ? endOfWeek(weekAnchor, { weekStartsOn: 1 })
+        : endOfMonth(month),
+    [viewMode, weekAnchor, month],
+  );
+
+  const gridStart = useMemo(
+    () =>
+      viewMode === "week"
+        ? agendaStart
+        : startOfWeek(startOfMonth(month), { weekStartsOn: 1 }),
+    [viewMode, agendaStart, month],
+  );
+  const gridEnd = useMemo(
+    () =>
+      viewMode === "week"
+        ? agendaEnd
+        : endOfWeek(endOfMonth(month), { weekStartsOn: 1 }),
+    [viewMode, agendaEnd, month],
+  );
+
+  const periodTasks = useMemo(() => {
+    return filteredTasks
+      .filter((task) => {
+        const due = new Date(task.dueDate);
+        return due >= periodStart && due <= periodEnd;
+      })
+      .sort(
+        (a, b) =>
+          new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime() ||
+          a.title.localeCompare(b.title),
+      );
+  }, [filteredTasks, periodStart, periodEnd]);
+
+  const periodPlans = useMemo(() => {
+    return filteredPlans
+      .filter((step) => {
+        const due = new Date(step.dueAt);
+        return due >= periodStart && due <= periodEnd;
+      })
+      .sort(
+        (a, b) =>
+          new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime() ||
+          a.title.localeCompare(b.title),
+      );
+  }, [filteredPlans, periodStart, periodEnd]);
 
   const tasksByDay = useMemo(() => {
     const map = new Map<string, CalendarTask[]>();
-    for (const task of monthTasks) {
-      const key = format(new Date(task.dueDate), "yyyy-MM-dd");
+    for (const task of filteredTasks) {
+      const due = new Date(task.dueDate);
+      if (due < gridStart || due > gridEnd) continue;
+      const key = format(due, "yyyy-MM-dd");
       const list = map.get(key) ?? [];
       list.push(task);
       map.set(key, list);
     }
     return map;
-  }, [monthTasks]);
+  }, [filteredTasks, gridStart, gridEnd]);
 
   const plansByDay = useMemo(() => {
     const map = new Map<string, CalendarPlanStep[]>();
-    for (const step of planSteps) {
-      const key = format(new Date(step.dueAt), "yyyy-MM-dd");
+    for (const step of filteredPlans) {
+      const due = new Date(step.dueAt);
+      if (due < gridStart || due > gridEnd) continue;
+      const key = format(due, "yyyy-MM-dd");
       const list = map.get(key) ?? [];
       list.push(step);
       map.set(key, list);
     }
     return map;
-  }, [planSteps]);
+  }, [filteredPlans, gridStart, gridEnd]);
+
+  type DeadlineItem =
+    | { kind: "task"; sortAt: number; task: CalendarTask }
+    | { kind: "plan"; sortAt: number; step: CalendarPlanStep };
+
+  const periodDeadlines = useMemo(() => {
+    const items: DeadlineItem[] = [
+      ...periodTasks.map(
+        (task): DeadlineItem => ({
+          kind: "task",
+          sortAt: new Date(task.dueDate).getTime(),
+          task,
+        }),
+      ),
+      ...periodPlans.map(
+        (step): DeadlineItem => ({
+          kind: "plan",
+          sortAt: new Date(step.dueAt).getTime(),
+          step,
+        }),
+      ),
+    ];
+    return items.sort(
+      (a, b) =>
+        a.sortAt - b.sortAt ||
+        (a.kind === "task" ? a.task.title : a.step.title).localeCompare(
+          b.kind === "task" ? b.task.title : b.step.title,
+        ),
+    );
+  }, [periodTasks, periodPlans]);
+
+  const weekRangeLabel = t("weekRange", {
+    start: format(weekAnchor, "dd/MM"),
+    end: format(weekEnd, "dd/MM/yyyy"),
+  });
+
+  const jumpToWeek = useCallback((target: Date) => {
+    const monday = startOfWeek(target, { weekStartsOn: 1 });
+    suppressWeekSyncRef.current = true;
+    pendingScrollDayRef.current = format(monday, "yyyy-MM-dd");
+    setWeekAnchor(monday);
+    setAgendaPivot(monday);
+    setAgendaPadWeeks(AGENDA_PAD_DEFAULT);
+  }, []);
+
+  function goToToday() {
+    const now = new Date();
+    jumpToWeek(now);
+    setMonth(startOfMonth(now));
+  }
+
+  function expandAgenda(fromTop: boolean) {
+    if (expandingRef.current) return;
+    if (agendaPadWeeks >= AGENDA_PAD_MAX) return;
+    const el = weekScrollerRef.current;
+    if (fromTop && el) {
+      expandFromTopRef.current = true;
+      prevScrollHeightRef.current = el.scrollHeight;
+    }
+    expandingRef.current = true;
+    setAgendaPadWeeks((pad) => Math.min(AGENDA_PAD_MAX, pad + AGENDA_PAD_STEP));
+  }
+
+  function handleWeekScroll(event: UIEvent<HTMLDivElement>) {
+    const el = event.currentTarget;
+    if (el.scrollTop < AGENDA_EDGE_PX) {
+      expandAgenda(true);
+    } else if (el.scrollHeight - el.scrollTop - el.clientHeight < AGENDA_EDGE_PX) {
+      expandAgenda(false);
+    }
+  }
+
+  useLayoutEffect(() => {
+    if (viewMode !== "week") return;
+    const el = weekScrollerRef.current;
+    if (!el) return;
+
+    if (expandFromTopRef.current) {
+      const delta = el.scrollHeight - prevScrollHeightRef.current;
+      if (delta > 0) el.scrollTop += delta;
+      expandFromTopRef.current = false;
+    }
+
+    if (pendingScrollDayRef.current) {
+      const node = el.querySelector<HTMLElement>(
+        `[data-day="${pendingScrollDayRef.current}"]`,
+      );
+      node?.scrollIntoView({ block: "start" });
+      pendingScrollDayRef.current = null;
+      requestAnimationFrame(() => {
+        suppressWeekSyncRef.current = false;
+      });
+    }
+
+    expandingRef.current = false;
+  }, [agendaDays, viewMode]);
+
+  useEffect(() => {
+    if (viewMode !== "week") return;
+    const root = weekScrollerRef.current;
+    if (!root) return;
+
+    const ratios = new Map<string, number>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const key = (entry.target as HTMLElement).dataset.day;
+          if (!key) continue;
+          if (entry.isIntersecting) {
+            ratios.set(key, entry.intersectionRatio);
+          } else {
+            ratios.delete(key);
+          }
+        }
+        if (suppressWeekSyncRef.current || ratios.size === 0) return;
+        let bestKey = "";
+        let bestRatio = 0;
+        for (const [key, ratio] of ratios) {
+          if (ratio > bestRatio) {
+            bestRatio = ratio;
+            bestKey = key;
+          }
+        }
+        if (!bestKey) return;
+        const monday = startOfWeek(new Date(`${bestKey}T12:00:00`), {
+          weekStartsOn: 1,
+        });
+        setWeekAnchor((prev) =>
+          isSameDay(prev, monday) ? prev : monday,
+        );
+      },
+      {
+        root,
+        threshold: [0.15, 0.35, 0.55, 0.75],
+      },
+    );
+
+    const nodes = root.querySelectorAll<HTMLElement>("[data-day]");
+    nodes.forEach((node) => observer.observe(node));
+    return () => observer.disconnect();
+  }, [agendaDays, viewMode]);
+
+  const filterSelectClass =
+    "h-9 w-full min-w-0 rounded-md border border-border bg-surface px-2.5 text-sm text-foreground";
 
   return (
     <div className="space-y-6">
@@ -1226,130 +1646,411 @@ export function CalendarMonth({
         workTypes={workTypes}
         onClose={() => setAddPlanDay(null)}
       />
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => setMonth(subMonths(month, 1))}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <MonthYearPicker value={month} onChange={setMonth} />
-          <Button variant="outline" size="icon" onClick={() => setMonth(addMonths(month, 1))}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-        {showAllFilter && (
-          <div className="flex rounded-lg border border-border p-1">
-            <Button
-              size="sm"
-              variant={scope === "mine" ? "default" : "ghost"}
-              onClick={() => router.push("/calendar?scope=mine")}
-            >
-              {t("scopeMine")}
-            </Button>
-            <Button
-              size="sm"
-              variant={scope === "all" ? "default" : "ghost"}
-              onClick={() => router.push("/calendar?scope=all")}
-            >
-              {t("scopeAll")}
-            </Button>
+
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {viewMode === "week" ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  aria-label={t("prevWeek")}
+                  onClick={() => jumpToWeek(subWeeks(weekAnchor, 1))}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="min-w-0 text-sm font-semibold text-foreground sm:text-base">
+                  {weekRangeLabel}
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  aria-label={t("nextWeek")}
+                  onClick={() => jumpToWeek(addWeeks(weekAnchor, 1))}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="sm" onClick={goToToday}>
+                  {t("today")}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setMonth(subMonths(month, 1))}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <MonthYearPicker value={month} onChange={setMonth} />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setMonth(addMonths(month, 1))}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="sm" onClick={goToToday}>
+                  {t("today")}
+                </Button>
+              </>
+            )}
           </div>
-        )}
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex rounded-lg border border-border p-1">
+              <Button
+                size="sm"
+                variant={viewMode === "week" ? "default" : "ghost"}
+                onClick={() => setViewMode("week")}
+              >
+                {t("week")}
+              </Button>
+              <Button
+                size="sm"
+                variant={viewMode === "month" ? "default" : "ghost"}
+                onClick={() => setViewMode("month")}
+              >
+                {t("month")}
+              </Button>
+            </div>
+            {showAllFilter ? (
+              <div className="flex rounded-lg border border-border p-1">
+                <Button
+                  size="sm"
+                  variant={scope === "mine" ? "default" : "ghost"}
+                  onClick={() => router.push("/calendar?scope=mine")}
+                >
+                  {t("scopeMine")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant={scope === "all" ? "default" : "ghost"}
+                  onClick={() => router.push("/calendar?scope=all")}
+                >
+                  {t("scopeAll")}
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="grid w-full grid-cols-2 gap-2 rounded-md border border-border bg-muted/30 p-2 sm:w-fit sm:min-w-[30rem]">
+          <label className="flex min-w-0 flex-col gap-1">
+            <span className="text-xs font-medium text-muted-foreground">
+              {t("filterMatter")}
+            </span>
+            <Select
+              value={matterFilter}
+              onChange={(e) => setMatterFilter(e.target.value)}
+              className={filterSelectClass}
+              aria-label={t("filterMatter")}
+            >
+              <option value="all">{t("filterAll")}</option>
+              <option value="none">{t("noMatterFilter")}</option>
+              {matterOptions.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.code} — {m.title}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <label className="flex min-w-0 flex-col gap-1">
+            <span className="text-xs font-medium text-muted-foreground">
+              {t("filterStatus")}
+            </span>
+            <Select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className={filterSelectClass}
+              aria-label={t("filterStatus")}
+            >
+              <option value="all">{t("filterAll")}</option>
+              <optgroup label={t("kindTask")}>
+                {Object.entries(labels.taskStatus).map(([value, label]) => (
+                  <option key={`task:${value}`} value={`task:${value}`}>
+                    {label}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label={t("kindPlan")}>
+                {Object.entries(labels.planStepStatus).map(([value, label]) => (
+                  <option key={`plan:${value}`} value={`plan:${value}`}>
+                    {label}
+                  </option>
+                ))}
+              </optgroup>
+            </Select>
+          </label>
+        </div>
       </div>
 
-      <Card className="surface">
-        <CardHeader>
-          <CardTitle>{t("monthGrid")}</CardTitle>
-          <p className="text-sm font-normal text-muted-foreground">
-            {t("monthGridHint")}
-          </p>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <div className="min-w-0 p-0.5 sm:p-1">
-          <div className="grid min-w-0 grid-cols-7 gap-0.5 text-center text-[10px] font-semibold uppercase text-muted-foreground sm:gap-2 sm:text-xs">
-            {weekdayLabels.map((d) => (
-              <div key={d} className="py-1 sm:py-2">
-                {d}
-              </div>
-            ))}
-          </div>
-          <div className="mt-1 grid min-w-0 grid-cols-7 gap-0.5 sm:mt-0 sm:gap-2">
-            {days.map((day) => {
+      {viewMode === "week" ? (
+        <Card className="surface overflow-hidden">
+          <CardHeader className="border-b border-border pb-4">
+            <CardTitle>{t("weekAgenda")}</CardTitle>
+            <p className="text-sm font-normal text-muted-foreground">
+              {t("weekAgendaHint")}
+            </p>
+          </CardHeader>
+          <CardContent className="p-0 pt-0">
+            <div
+              ref={weekScrollerRef}
+              onScroll={handleWeekScroll}
+              className="max-h-[65dvh] snap-y snap-proximity space-y-3 overflow-y-auto overscroll-contain px-3 py-3 scroll-smooth sm:max-h-[42rem] sm:px-5"
+            >
+            {agendaDays.map((day) => {
               const key = format(day, "yyyy-MM-dd");
-              const dayTasks = tasksByDay.get(key) ?? [];
-              const dayPlans = plansByDay.get(key) ?? [];
-              const inMonth = isSameMonth(day, month);
+              const weekdayLabel = weekdayLabels[mondayIndex(day)];
+              const isMonday = day.getDay() === 1;
+              const dayTasks = [...(tasksByDay.get(key) ?? [])].sort(
+                (a, b) =>
+                  new Date(a.dueDate).getTime() -
+                    new Date(b.dueDate).getTime() ||
+                  a.title.localeCompare(b.title),
+              );
+              const dayPlans = [...(plansByDay.get(key) ?? [])].sort(
+                (a, b) =>
+                  new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime() ||
+                  a.title.localeCompare(b.title),
+              );
+              const dayActions = [
+                ...dayTasks.map((task) => ({
+                  kind: "task" as const,
+                  sortAt: new Date(task.dueDate).getTime(),
+                  task,
+                })),
+                ...dayPlans.map((step) => ({
+                  kind: "plan" as const,
+                  sortAt: new Date(step.dueAt).getTime(),
+                  step,
+                })),
+              ].sort(
+                (a, b) =>
+                  a.sortAt - b.sortAt ||
+                  (a.kind === "task" ? a.task.title : a.step.title).localeCompare(
+                    b.kind === "task" ? b.task.title : b.step.title,
+                  ),
+              );
+              const isToday = isSameDay(day, new Date());
+              const hasItems = dayActions.length > 0;
 
               return (
-                <div
-                  key={key}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setAddPlanDay(day)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      setAddPlanDay(day);
-                    }
-                  }}
-                  className={cn(
-                    "interactive-press flex min-h-20 cursor-pointer flex-col rounded-md border p-0.5 text-left transition-colors duration-200 sm:min-h-36 sm:rounded-lg sm:p-2.5",
-                    inMonth
-                      ? "border-border bg-surface/80 hover:border-primary/30 hover:bg-primary-muted/40"
-                      : "border-border/50 bg-muted/40 text-muted-foreground hover:bg-primary-muted/20",
-                    isSameDay(day, new Date()) && "ring-2 ring-primary/40",
-                  )}
-                >
-                  <div className="flex shrink-0 items-center justify-between gap-1">
-                    <p className="text-[10px] font-semibold sm:text-xs">{format(day, "d")}</p>
-                    <Plus className="h-3 w-3 text-muted-foreground sm:h-3.5 sm:w-3.5" aria-hidden />
-                  </div>
-                  {dayPlans.length > 0 || dayTasks.length > 0 ? (
-                    <div className="flex min-h-0 flex-1 flex-col">
-                      <DayCellScrollList>
-                        {dayPlans.map((step) => (
-                          <PlanPreviewChip key={step.id} step={step} />
-                        ))}
-                        {dayTasks.map((task) => (
-                          <TaskPreviewChip key={task.id} task={task} />
-                        ))}
-                      </DayCellScrollList>
-                    </div>
+                <div key={key} className="space-y-2">
+                  {isMonday ? (
+                    <p className="px-0.5 pt-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      {t("weekRange", {
+                        start: format(day, "dd/MM"),
+                        end: format(
+                          endOfWeek(day, { weekStartsOn: 1 }),
+                          "dd/MM/yyyy",
+                        ),
+                      })}
+                    </p>
                   ) : null}
+                  <div
+                    data-day={key}
+                    className={cn(
+                      "snap-start scroll-mt-3 rounded-md border border-border bg-surface/80 p-3",
+                      isToday && "bg-primary-muted/25 ring-2 ring-primary/40",
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-foreground">
+                          {weekdayLabel}
+                          <span className="ml-2 font-normal text-muted-foreground">
+                            {format(day, "dd/MM/yyyy")}
+                          </span>
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0"
+                        onClick={() => setAddPlanDay(day)}
+                      >
+                        <Plus className="h-3.5 w-3.5" aria-hidden />
+                        {t("addPlan")}
+                      </Button>
+                    </div>
+
+                    {hasItems ? (
+                      <div className="mt-3 space-y-2">
+                        {dayActions.map((item) =>
+                          item.kind === "task" ? (
+                            <WeekActionRow
+                              key={`task-${item.task.id}`}
+                              item={{ kind: "task", task: item.task }}
+                            />
+                          ) : (
+                            <WeekActionRow
+                              key={`plan-${item.step.id}`}
+                              item={{ kind: "plan", step: item.step }}
+                            />
+                          ),
+                        )}
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-sm text-muted-foreground">
+                        {t("noEvents")}
+                      </p>
+                    )}
+                  </div>
                 </div>
               );
             })}
-          </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="surface">
+          <CardHeader>
+            <CardTitle>{t("monthGrid")}</CardTitle>
+            <p className="text-sm font-normal text-muted-foreground">
+              {t("monthGridHint")}
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <div className="min-w-0 p-0.5 sm:p-1">
+                <div className="grid min-w-0 grid-cols-7 gap-0.5 text-center text-[10px] font-semibold uppercase text-muted-foreground sm:gap-2 sm:text-xs">
+                  {weekdayLabels.map((d) => (
+                    <div key={d} className="py-1 sm:py-2">
+                      {d}
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-1 grid min-w-0 grid-cols-7 gap-0.5 sm:mt-0 sm:gap-2">
+                  {monthDays.map((day) => {
+                    const key = format(day, "yyyy-MM-dd");
+                    const dayTasks = tasksByDay.get(key) ?? [];
+                    const dayPlans = plansByDay.get(key) ?? [];
+                    const inMonth = isSameMonth(day, month);
+
+                    return (
+                      <div
+                        key={key}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setAddPlanDay(day)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setAddPlanDay(day);
+                          }
+                        }}
+                        className={cn(
+                          "interactive-press flex min-h-20 cursor-pointer flex-col rounded-md border p-0.5 text-left transition-colors duration-200 sm:min-h-36 sm:rounded-lg sm:p-2.5",
+                          inMonth
+                            ? "border-border bg-surface/80 hover:border-primary/30 hover:bg-primary-muted/40"
+                            : "border-border/50 bg-muted/40 text-muted-foreground hover:bg-primary-muted/20",
+                          isSameDay(day, new Date()) && "ring-2 ring-primary/40",
+                        )}
+                      >
+                        <div className="flex shrink-0 items-center justify-between gap-1">
+                          <p className="text-[10px] font-semibold sm:text-xs">
+                            {format(day, "d")}
+                          </p>
+                          <Plus
+                            className="h-3 w-3 text-muted-foreground sm:h-3.5 sm:w-3.5"
+                            aria-hidden
+                          />
+                        </div>
+                        {dayPlans.length > 0 || dayTasks.length > 0 ? (
+                          <div className="flex min-h-0 flex-1 flex-col">
+                            <DayCellScrollList>
+                              {dayPlans.map((step) => (
+                                <PlanPreviewChip key={step.id} step={step} />
+                              ))}
+                              {dayTasks.map((task) => (
+                                <TaskPreviewChip key={task.id} task={task} />
+                              ))}
+                            </DayCellScrollList>
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="surface">
         <CardHeader>
-          <CardTitle>{t("deadlineListTitle")}</CardTitle>
+          <CardTitle>
+            {viewMode === "week"
+              ? t("deadlineListTitleWeek")
+              : t("deadlineListTitle")}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {monthTasks.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("noDeadlinesThisMonth")}</p>
+          {periodDeadlines.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {viewMode === "week"
+                ? t("noDeadlinesThisWeek")
+                : t("noDeadlinesThisMonth")}
+            </p>
           ) : (
-            monthTasks.map((task) => (
-              <div key={task.id} className="rounded-lg border border-border p-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-medium">{task.title}</p>
-                  <Badge variant="info">{labels.taskStatus[task.status]}</Badge>
+            periodDeadlines.map((item) =>
+              item.kind === "task" ? (
+                <div
+                  key={`task-${item.task.id}`}
+                  className="rounded-lg border border-border p-3"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-medium">{item.task.title}</p>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <Badge variant="default">{t("kindTask")}</Badge>
+                      <Badge variant="info">
+                        {labels.taskStatus[item.task.status]}
+                      </Badge>
+                    </div>
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {t("dueAt", {
+                      date: format(new Date(item.task.dueDate), "dd/MM/yyyy"),
+                    })}{" "}
+                    • {item.task.assigneeName}
+                    {item.task.clientName ? ` • ${item.task.clientName}` : ""}
+                    {item.task.matterCode ? ` • ${item.task.matterCode}` : ""}
+                  </p>
+                  <Badge variant="warning" className="mt-2">
+                    {labels.taskPriority[item.task.priority]}
+                  </Badge>
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {t("dueAt", { date: format(new Date(task.dueDate), "dd/MM/yyyy") })} •{" "}
-                  {task.assigneeName}
-                  {task.clientName ? ` • ${task.clientName}` : ""}
-                  {task.matterCode ? ` • ${task.matterCode}` : ""}
-                </p>
-                <Badge variant="warning" className="mt-2">
-                  {labels.taskPriority[task.priority]}
-                </Badge>
-              </div>
-            ))
+              ) : (
+                <div
+                  key={`plan-${item.step.id}`}
+                  className="rounded-lg border border-border p-3"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-medium">{item.step.title}</p>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <Badge variant="default">{t("kindPlan")}</Badge>
+                      <Badge variant="info">
+                        {labels.planStepStatus[item.step.status]}
+                      </Badge>
+                    </div>
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {t("dueAt", {
+                      date: format(new Date(item.step.dueAt), "dd/MM/yyyy HH:mm"),
+                    })}{" "}
+                    • {item.step.matterCode} — {item.step.matterTitle}
+                  </p>
+                  <Badge variant="warning" className="mt-2">
+                    {labels.taskPriority[item.step.priority]}
+                  </Badge>
+                </div>
+              ),
+            )
           )}
         </CardContent>
       </Card>

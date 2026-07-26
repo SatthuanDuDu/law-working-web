@@ -27,7 +27,6 @@ export default async function CalendarPage({
     prisma.task.findMany({
       where: {
         dueDate: { gte: rangeStart, lte: rangeEnd },
-        status: { in: ["TODO", "IN_PROGRESS"] },
         ...(scope === "mine" ? { assigneeId: user.id } : {}),
       },
       select: {

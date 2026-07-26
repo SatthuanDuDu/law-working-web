@@ -143,7 +143,7 @@ function OutlinedField({
   className?: string;
 }) {
   return (
-    <div className={cn("space-y-1.5", className)}>
+    <div className={cn("min-w-0 space-y-1.5", className)}>
       <Label htmlFor={htmlFor} className={fieldLabelClass}>
         {label}
       </Label>

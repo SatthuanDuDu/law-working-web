@@ -52,7 +52,7 @@ function OutlinedField({
   className?: string;
 }) {
   return (
-    <div className={cn("space-y-1.5", className)}>
+    <div className={cn("min-w-0 space-y-1.5", className)}>
       <Label htmlFor={htmlFor} className={fieldLabelClass}>
         {label}
       </Label>
@@ -115,8 +115,8 @@ function MatterPlanAddForm({
   );
 
   return (
-    <div className="grid min-h-0 flex-1 gap-0 md:grid-cols-[minmax(0,14rem)_1fr] lg:grid-cols-[minmax(0,16rem)_1fr]">
-      <aside className="max-h-[40vh] overflow-y-auto border-b border-border bg-muted p-4 md:max-h-[min(70vh,32rem)] md:border-b-0 md:border-r">
+    <div className="grid min-h-0 min-w-0 flex-1 gap-0 overflow-x-hidden md:grid-cols-[minmax(0,14rem)_1fr] lg:grid-cols-[minmax(0,16rem)_1fr]">
+      <aside className="max-h-[40vh] min-w-0 overflow-y-auto border-b border-border bg-muted p-4 md:max-h-[min(70vh,32rem)] md:border-b-0 md:border-r">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {t("existingSteps")}
         </p>
@@ -166,7 +166,7 @@ function MatterPlanAddForm({
 
       <form
         onSubmit={handleSubmit}
-        className="flex min-h-0 flex-col gap-5 overflow-y-auto p-4 sm:p-5"
+        className="flex min-h-0 min-w-0 flex-col gap-5 overflow-x-hidden overflow-y-auto p-4 sm:p-5"
       >
         <p className="text-sm font-semibold text-foreground">
           {t("newStepInfo")}
@@ -322,7 +322,7 @@ export function MatterPlanAddDialog({
         aria-modal="true"
         aria-labelledby="matter-plan-add-title"
         className={cn(
-          "overlay-panel relative z-10 flex max-h-[min(92vh,40rem)] w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-[var(--shadow-overlay)]",
+          "overlay-panel relative z-10 flex max-h-[min(92vh,40rem)] w-full min-w-0 max-w-5xl flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-[var(--shadow-overlay)]",
           active && "is-active",
         )}
       >

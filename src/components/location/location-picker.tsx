@@ -157,7 +157,7 @@ export function LocationPicker({
   }
 
   return (
-    <div className={cn("space-y-2", className)}>
+    <div className={cn("min-w-0 max-w-full space-y-2", className)}>
       {value ? (
         <div className="flex min-w-0 items-start gap-2 rounded-md border border-border bg-muted/60 px-3 py-2">
           <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
@@ -186,11 +186,11 @@ export function LocationPicker({
         </div>
       ) : null}
 
-      <div className="relative">
+      <div className="relative min-w-0 max-w-full">
         <label htmlFor={inputId} className="sr-only">
           {t("search")}
         </label>
-        <div className="flex gap-2">
+        <div className="flex min-w-0 max-w-full gap-2">
           <div className="relative min-w-0 flex-1">
             <input
               id={inputId}
@@ -226,7 +226,7 @@ export function LocationPicker({
               aria-controls={listId}
               aria-autocomplete="list"
               className={cn(
-                "interactive-field h-11 w-full min-w-0 rounded-[5px] border border-border bg-surface px-3 pr-9 text-base text-foreground sm:text-sm",
+                "interactive-field h-11 w-full min-w-0 max-w-full rounded-[5px] border border-border bg-surface px-3 pr-9 text-base text-foreground sm:text-sm",
                 "placeholder:text-muted-foreground",
               )}
             />

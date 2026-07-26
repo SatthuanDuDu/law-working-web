@@ -16,7 +16,7 @@ export function SectionHeader({
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-3 rounded-md border border-border/80 bg-muted/70 px-3.5 py-2.5 shadow-[var(--shadow-overlay)]",
+        "flex items-center justify-between gap-3 rounded-md border border-border/60 bg-muted/35 px-3.5 py-2.5",
         className,
       )}
     >

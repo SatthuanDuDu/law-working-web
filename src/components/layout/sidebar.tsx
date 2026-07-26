@@ -602,7 +602,7 @@ export function Sidebar({
         ) : null}
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-50 flex w-[min(20rem,86vw)] flex-col overflow-hidden border-r border-primary/20 bg-primary text-white shadow-xl transition-transform duration-300 ease-out lg:hidden",
+            "fixed inset-y-0 left-0 z-50 flex w-[min(17.5rem,86vw)] flex-col overflow-hidden border-r border-primary/20 bg-primary text-white shadow-xl transition-transform duration-300 ease-out lg:hidden",
             mobileOpen ? "translate-x-0" : "-translate-x-full pointer-events-none",
           )}
           aria-hidden={!mobileOpen}
@@ -627,7 +627,7 @@ export function Sidebar({
       <aside
         className={cn(
           "relative flex h-full flex-col overflow-visible border-r border-primary/20 bg-primary text-white transition-all duration-300 ease-in-out",
-          collapsed ? "w-[4.75rem]" : "w-64",
+          collapsed ? "w-[4.75rem]" : "w-56",
         )}
       >
         <SidebarContent
@@ -672,28 +672,28 @@ function SidebarContent({
 
       <div
         className={cn(
-          "flex items-center border-b border-white/10 bg-white/5 py-5 backdrop-blur-md",
-          collapsed ? "justify-center px-3" : "gap-3 px-6",
+          "flex items-center border-b border-white/10 bg-white/5 py-4 backdrop-blur-md",
+          collapsed ? "justify-center px-3" : "gap-2.5 px-4",
         )}
       >
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white ring-1 ring-white/20">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white ring-1 ring-white/20">
           <Image
             src="/logo-nslaw.png"
             alt="NSLAW"
-            width={40}
-            height={40}
+            width={36}
+            height={36}
             className="h-full w-full object-contain"
           />
         </div>
         {!collapsed && (
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">NSLAW</p>
-            <p className="text-xs text-white/60">{tAccount("brandSubtitle")}</p>
+            <p className="truncate text-xs text-white/60">{tAccount("brandSubtitle")}</p>
           </div>
         )}
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+      <nav className="flex-1 space-y-1 overflow-y-auto px-2.5 py-3">
         {NAV_ITEMS.map((item) => {
           const active =
             pathname === item.href || pathname.startsWith(`${item.href}/`);

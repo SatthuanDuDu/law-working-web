@@ -59,7 +59,7 @@
     "sectionAdmin": "Quản trị"
   },
   "nav": {
-    "dashboard": "Dashboard",
+    "dashboard": "Tổng quan",
     "matters": "Vụ việc",
     "clients": "Khách hàng",
     "chat": "Trò chuyện",
@@ -68,7 +68,7 @@
     "calendar": "Lịch & hạn",
     "calendarDue": "Lịch & hạn, {count} sắp tới hạn",
     "settings": "Cài đặt",
-    "workload": "Workload",
+    "workload": "Phân bổ việc",
     "expenses": "Chi phí",
     "users": "Nhân viên",
     "workTypes": "Loại công việc",
@@ -81,7 +81,7 @@
   },
   "pages": {
     "dashboard": {
-      "title": "Dashboard",
+      "title": "Tổng quan",
       "description": "Tổng quan công việc hôm nay",
       "greeting": "Xin chào, {name}"
     },
@@ -118,7 +118,7 @@
       "description": "Quản lý tài khoản cá nhân"
     },
     "workload": {
-      "title": "Workload",
+      "title": "Phân bổ việc",
       "description": "Phân bổ công việc theo nhân viên và phòng ban"
     },
     "expenses": {
@@ -613,6 +613,11 @@
     "viewCalendar": "Xem lịch",
     "openCalendarHint": "Mở lịch để thêm hạn",
     "noUpcoming3Days": "Không có hạn nào trong 3 ngày tới.",
+    "countdownLeft": "Còn {value}",
+    "countdownOverdue": "Trễ {value}",
+    "countdownDaysHours": "{days} ngày {hours} giờ",
+    "countdownHoursMinutes": "{hours} giờ {minutes} phút",
+    "countdownMinutes": "{minutes} phút",
     "statusDistribution": "Phân bố trạng thái",
     "activeOpen": "{count} đang mở",
     "totalMattersLabel": "Tổng vụ việc",

@@ -241,7 +241,7 @@ export default async function DashboardPage() {
   const openItems = openTasksList.map(serializeTask);
   const inProgressItems = inProgressTasksList.map(serializeTask);
 
-  type UpcomingItem = UpcomingDeadlineItem & { dueAt: Date };
+  type UpcomingItem = Omit<UpcomingDeadlineItem, "dueAt"> & { dueAt: Date };
 
   const upcomingItems: UpcomingItem[] = [
     ...upcomingDeadlines.map((task) => ({
@@ -291,6 +291,7 @@ export default async function DashboardPage() {
       planStatus: item.planStatus,
       statusLabel: item.statusLabel,
       statusVariant: item.statusVariant,
+      dueAt: item.dueAt.toISOString(),
       dueLabel: item.dueLabel,
       matterCodeShort: item.matterCodeShort,
     }),

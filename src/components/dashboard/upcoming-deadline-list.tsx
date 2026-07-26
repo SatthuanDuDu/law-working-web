@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
-import { ChevronDown } from "lucide-react";
+import { useEffect, useState, useTransition } from "react";
+import { ChevronDown, Clock3 } from "lucide-react";
 import type { MatterPlanStepStatus } from "@prisma/client";
 import { updateMatterPlanStepAction } from "@/lib/actions";
 import { useLabelMaps } from "@/i18n/use-label-maps";
@@ -21,9 +21,64 @@ export type UpcomingDeadlineItem = {
   statusLabel: string;
   statusVariant: "default" | "info" | "warning" | "danger";
   planStatus?: MatterPlanStepStatus;
+  dueAt: string;
   dueLabel: string;
   matterCodeShort: string | null;
 };
+
+function deadlineTime(item: UpcomingDeadlineItem) {
+  if (item.kind === "plan") return new Date(item.dueAt).getTime();
+
+  // Tasks use a date-only input, so their deadline is the end of that local day.
+  const [year, month, day] = item.dueAt.slice(0, 10).split("-").map(Number);
+  return new Date(year, month - 1, day, 23, 59, 59, 999).getTime();
+}
+
+function DeadlineCountdown({ item }: { item: UpcomingDeadlineItem }) {
+  const t = useTranslations("dashboard");
+  const [now, setNow] = useState<number | null>(null);
+
+  useEffect(() => {
+    const kickoff = window.setTimeout(() => setNow(Date.now()), 0);
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => {
+      window.clearTimeout(kickoff);
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  if (now == null) return null;
+
+  const remainingMs = deadlineTime(item) - now;
+  const overdue = remainingMs <= 0;
+  const totalMinutes = Math.max(1, Math.ceil(Math.abs(remainingMs) / 60_000));
+  const days = Math.floor(totalMinutes / 1_440);
+  const hours = Math.floor((totalMinutes % 1_440) / 60);
+  const minutes = totalMinutes % 60;
+  const value =
+    days > 0
+      ? t("countdownDaysHours", { days, hours })
+      : hours > 0
+        ? t("countdownHoursMinutes", { hours, minutes })
+        : t("countdownMinutes", { minutes: totalMinutes });
+
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold tabular-nums",
+        overdue
+          ? "bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300"
+          : remainingMs <= 24 * 60 * 60 * 1_000
+            ? "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"
+            : "bg-primary-muted text-primary",
+      )}
+      aria-label={overdue ? t("countdownOverdue", { value }) : t("countdownLeft", { value })}
+    >
+      <Clock3 className="h-3.5 w-3.5" aria-hidden />
+      {overdue ? t("countdownOverdue", { value }) : t("countdownLeft", { value })}
+    </span>
+  );
+}
 
 export function UpcomingDeadlineList({
   items,
@@ -88,8 +143,9 @@ export function UpcomingDeadlineList({
                   {item.title}
                 </p>
               </Link>
-              {showPlanSelect ? (
-                <div className="relative shrink-0">
+              <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                {showPlanSelect ? (
+                  <div className="relative shrink-0">
                   <Select
                     value={item.planStatus}
                     disabled={isPending && pendingId === item.planStepId}
@@ -114,12 +170,14 @@ export function UpcomingDeadlineList({
                     className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
                     aria-hidden
                   />
-                </div>
-              ) : (
-                <Badge variant={item.statusVariant} className="shrink-0">
-                  {item.statusLabel}
-                </Badge>
-              )}
+                  </div>
+                ) : (
+                  <Badge variant={item.statusVariant} className="shrink-0">
+                    {item.statusLabel}
+                  </Badge>
+                )}
+                <DeadlineCountdown item={item} />
+              </div>
             </div>
             <Link
               href={item.href}

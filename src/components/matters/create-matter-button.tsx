@@ -6,6 +6,7 @@ import { Loader2, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { useMatterFormData } from "@/hooks/use-matter-form-data";
+import { HEADER_TOOLBAR_BTN_SOLID } from "@/components/layout/header-toolbar";
 
 const CreateMatterModal = dynamic(
   () =>
@@ -29,17 +30,14 @@ export function CreateMatterButton() {
     <>
       <Button
         type="button"
-        className="shrink-0"
+        size="icon"
+        className={HEADER_TOOLBAR_BTN_SOLID}
         onClick={() => void handleOpen()}
         disabled={loading}
         aria-label={t("create")}
+        title={t("create")}
       >
-        {loading ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Plus className="h-4 w-4" />
-        )}
-        <span className="hidden sm:inline">{t("create")}</span>
+        {loading ? <Loader2 className="animate-spin" /> : <Plus />}
       </Button>
       {open && formData ? (
         <CreateMatterModal

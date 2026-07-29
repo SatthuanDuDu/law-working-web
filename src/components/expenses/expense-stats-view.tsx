@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { ExpenseKpiStrip } from "@/components/expenses/expense-kpi-strip";
 import { ExpenseStatsTables } from "@/components/expenses/expense-stats-tables";
 import type { ExpenseStatsDto } from "@/lib/expense-stats";
+import { liquidPanelClass } from "@/lib/liquid-panel";
 import { cn } from "@/lib/utils";
 
 const ExpenseCharts = dynamic(
@@ -86,43 +87,45 @@ export function ExpenseStatsView({ stats }: { stats: ExpenseStatsDto }) {
   return (
     <div className="space-y-4">
       <div
-        className={cn(
-          "sticky top-0 z-10 -mx-4 border-b border-border/70 bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:-mx-6 sm:px-6",
-          pending && "opacity-80",
-        )}
+        className={cn("sticky z-10 min-w-0", pending && "opacity-80")}
+        style={{ top: "var(--page-header-offset)" }}
       >
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="min-w-0">
-            <p className="text-xs text-muted-foreground">{t("filterLabel")}</p>
-            <div className="mt-1.5 max-w-sm">
-              <DateRangeFilter
-                dateFrom={stats.from}
-                dateTo={stats.to}
-                onChange={({ dateFrom, dateTo }) => {
-                  if (!dateFrom || !dateTo) return;
-                  pushRange(dateFrom, dateTo);
-                }}
-              />
+        <div
+          className={cn(liquidPanelClass, "min-w-0 rounded-md p-2.5 sm:p-3")}
+        >
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">{t("filterLabel")}</p>
+              <div className="mt-1.5 max-w-sm">
+                <DateRangeFilter
+                  dateFrom={stats.from}
+                  dateTo={stats.to}
+                  onChange={({ dateFrom, dateTo }) => {
+                    if (!dateFrom || !dateTo) return;
+                    pushRange(dateFrom, dateTo);
+                  }}
+                />
+              </div>
             </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {presets.map((preset) => {
-              const active =
-                preset.from === stats.from && preset.to === stats.to;
-              return (
-                <Button
-                  key={preset.key}
-                  type="button"
-                  variant={active ? "default" : "outline"}
-                  size="sm"
-                  className="interactive-press"
-                  disabled={pending}
-                  onClick={() => pushRange(preset.from, preset.to)}
-                >
-                  {preset.label}
-                </Button>
-              );
-            })}
+            <div className="flex flex-wrap gap-2">
+              {presets.map((preset) => {
+                const active =
+                  preset.from === stats.from && preset.to === stats.to;
+                return (
+                  <Button
+                    key={preset.key}
+                    type="button"
+                    variant={active ? "default" : "outline"}
+                    size="sm"
+                    className="interactive-press"
+                    disabled={pending}
+                    onClick={() => pushRange(preset.from, preset.to)}
+                  >
+                    {preset.label}
+                  </Button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>

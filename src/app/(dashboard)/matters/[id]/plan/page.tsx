@@ -27,7 +27,7 @@ export default async function MatterPlanPage({
   const matterIds = await getAccessibleMatterIds(user.id, user.role);
   if (matterIds && !matterIds.includes(id)) notFound();
 
-  const [matter, workTypes] = await Promise.all([
+  const [matter, workTypes, assigneeUsers] = await Promise.all([
     prisma.matter.findUnique({
       where: { id },
       include: {
@@ -37,6 +37,11 @@ export default async function MatterPlanPage({
         planSteps: {
           include: {
             workType: { select: { id: true, name: true } },
+            assignees: {
+              include: {
+                user: { select: { id: true, name: true, avatarKey: true } },
+              },
+            },
             attachments: {
               where: { commentId: null, isLatest: true },
               include: {
@@ -67,6 +72,11 @@ export default async function MatterPlanPage({
       },
     }),
     prisma.workType.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.user.findMany({
       where: { isActive: true },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
@@ -116,6 +126,7 @@ export default async function MatterPlanPage({
     statusChangedAt: step.statusChangedAt?.toISOString() ?? null,
     sortOrder: step.sortOrder,
     workType: step.workType,
+    assignees: step.assignees.map((row) => row.user),
     locationName: step.locationName,
     locationAddress: step.locationAddress,
     locationPlaceId: step.locationPlaceId,
@@ -176,10 +187,7 @@ export default async function MatterPlanPage({
 
   return (
     <>
-      <PageHeaderSlot
-        title={tPages("title")}
-        description={`${matter.code} • ${matter.title}`}
-      />
+      <PageHeaderSlot title={tPages("title")} />
 
       <div className="grid min-w-0 items-start gap-6 xl:grid-cols-3">
         <aside className="min-w-0 xl:sticky xl:top-32 xl:z-10 xl:self-start">
@@ -199,6 +207,7 @@ export default async function MatterPlanPage({
               matterId={matter.id}
               steps={planSteps}
               workTypes={workTypes}
+              assigneeOptions={assigneeUsers}
               canEdit={canEditContent}
               canUploadDocuments={canManageDocs}
               canComment={canEditContent}

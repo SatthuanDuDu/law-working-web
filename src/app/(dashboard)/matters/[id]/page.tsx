@@ -103,10 +103,7 @@ export default async function MatterHubPage({
 
   return (
     <>
-      <PageHeaderSlot
-        title={matter.title}
-        description={`${matter.code} • ${matter.client.name}`}
-      />
+      <PageHeaderSlot title={matter.title} />
 
       <div className="grid gap-6 xl:grid-cols-3">
         <div className="xl:col-span-1">

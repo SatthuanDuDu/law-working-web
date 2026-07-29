@@ -54,7 +54,7 @@ export function MatterAiSummary({
   }
 
   return (
-    <Card className={cn("glass-surface rounded-[5px]", className)}>
+    <Card className={cn("rounded-[5px]", className)}>
       <button
         type="button"
         onClick={handleToggle}

@@ -69,10 +69,7 @@ export default async function MattersPage() {
 
   return (
     <>
-      <PageHeaderSlot
-        title={tPages("title")}
-        description={tPages("description")}
-      />
+      <PageHeaderSlot title={tPages("title")} />
       <Suspense fallback={null}>
         <MattersList
           matters={listItems}

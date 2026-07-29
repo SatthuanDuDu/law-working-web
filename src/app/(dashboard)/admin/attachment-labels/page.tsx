@@ -18,10 +18,7 @@ export default async function AdminAttachmentLabelsPage() {
 
   return (
     <>
-      <PageHeaderSlot
-        title={tPages("title")}
-        description={tPages("description")}
-      />
+      <PageHeaderSlot title={tPages("title")} />
       <div className="grid gap-8 xl:grid-cols-[360px_1fr]">
         <Card className="rounded-[5px]">
           <CardHeader>

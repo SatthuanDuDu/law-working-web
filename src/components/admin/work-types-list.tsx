@@ -10,9 +10,10 @@ import {
 } from "@/lib/actions";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { EditWorkTypeModal } from "@/components/admin/edit-work-type-modal";
-import { Badge, Card, CardContent, CardHeader, CardTitle, Select } from "@/components/ui/card";
+import { Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FilterSelect } from "@/components/ui/filter-select";
 import { cn } from "@/lib/utils";
 
 export type WorkTypeListItem = {
@@ -119,18 +120,17 @@ export function WorkTypesList({ items }: { items: WorkTypeListItem[] }) {
                 aria-label={t("searchLabel")}
               />
             </div>
-            <Select
+            <FilterSelect
               value={statusFilter}
-              onChange={(event) =>
-                setStatusFilter(event.target.value as StatusFilter)
-              }
-              className="h-9 sm:w-48"
+              onChange={(next) => setStatusFilter(next as StatusFilter)}
+              className="h-auto sm:w-48"
               aria-label={tCommon("status")}
-            >
-              <option value="all">{t("allStatuses")}</option>
-              <option value="active">{tAdmin("inUse")}</option>
-              <option value="inactive">{tAdmin("inactiveShort")}</option>
-            </Select>
+              options={[
+                { value: "all", label: t("allStatuses") },
+                { value: "active", label: tAdmin("inUse") },
+                { value: "inactive", label: tAdmin("inactiveShort") },
+              ]}
+            />
           </div>
           {actionError ? (
             <p className="text-sm text-red-600">{actionError}</p>

@@ -32,6 +32,7 @@ import {
 } from "@/components/calendar/calendar-add-plan-dialog";
 import { useLabelMaps } from "@/i18n/use-label-maps";
 import { cn } from "@/lib/utils";
+import { liquidPanelClass } from "@/lib/liquid-panel";
 import type { MatterPlanStepStatus, TaskPriority, TaskStatus } from "@prisma/client";
 
 /** Soft Material tonal chips by task priority (lists / tooltips) */
@@ -109,6 +110,35 @@ const CALENDAR_CHIP_BASE =
 const CALENDAR_CHIP_NORMAL = "bg-primary hover:bg-primary-hover";
 const CALENDAR_CHIP_URGENT =
   "bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600";
+
+/**
+ * Mobile ghost-click guard: after opening a chip sheet, ignore day-cell
+ * "add plan" clicks for a short window (touch → click lands on the cell under the finger).
+ */
+let suppressDayAddUntil = 0;
+
+function suppressDayAddClick(ms = 500) {
+  suppressDayAddUntil = Date.now() + ms;
+}
+
+function isDayAddClickSuppressed() {
+  return Date.now() < suppressDayAddUntil;
+}
+
+function stopDayCellBubble(event: {
+  stopPropagation: () => void;
+}) {
+  event.stopPropagation();
+}
+
+function guardChipOpen(event: {
+  stopPropagation: () => void;
+  preventDefault: () => void;
+}) {
+  event.stopPropagation();
+  event.preventDefault();
+  suppressDayAddClick();
+}
 
 type ChipStatusKind = "todo" | "progress" | "done" | "blocked" | "cancelled";
 
@@ -202,6 +232,7 @@ type CalendarPlanStep = {
   status: MatterPlanStepStatus;
   priority: TaskPriority;
   dueAt: string;
+  assigneeName: string | null;
   matterId: string;
   matterCode: string;
   matterTitle: string;
@@ -670,6 +701,12 @@ function PlanPreviewContent({
           {step.matterTitle}
         </span>
       </div>
+      <div className="flex gap-2 text-xs">
+        <span className="w-20 shrink-0 text-muted-foreground">{t("assignee")}</span>
+        <span className="min-w-0 font-medium text-foreground">
+          {step.assigneeName ?? "—"}
+        </span>
+      </div>
     </div>
   );
 }
@@ -704,15 +741,24 @@ function TaskPreviewChip({ task }: { task: CalendarTask }) {
     <>
       <div
         ref={rootRef}
+        data-calendar-chip
         className="relative"
-        onClick={(e) => e.stopPropagation()}
+        onPointerDown={stopDayCellBubble}
+        onClick={stopDayCellBubble}
         onMouseEnter={coarse ? undefined : showPopup}
         onMouseLeave={coarse ? undefined : hidePopup}
         onFocus={coarse ? undefined : showPopup}
         onBlur={coarse ? undefined : hidePopup}
       >
         {coarse ? (
-          <button type="button" className={chipClass} onClick={showPopup}>
+          <button
+            type="button"
+            className={chipClass}
+            onClick={(e) => {
+              guardChipOpen(e);
+              showPopup();
+            }}
+          >
             {label}
           </button>
         ) : href ? (
@@ -817,15 +863,24 @@ function PlanPreviewChip({ step }: { step: CalendarPlanStep }) {
     <>
       <div
         ref={rootRef}
+        data-calendar-chip
         className="relative"
-        onClick={(e) => e.stopPropagation()}
+        onPointerDown={stopDayCellBubble}
+        onClick={stopDayCellBubble}
         onMouseEnter={coarse ? undefined : showPopup}
         onMouseLeave={coarse ? undefined : hidePopup}
         onFocus={coarse ? undefined : showPopup}
         onBlur={coarse ? undefined : hidePopup}
       >
         {coarse ? (
-          <button type="button" className={chipClass} onClick={showPopup}>
+          <button
+            type="button"
+            className={chipClass}
+            onClick={(e) => {
+              guardChipOpen(e);
+              showPopup();
+            }}
+          >
             {label}
           </button>
         ) : (
@@ -911,7 +966,7 @@ function WeekActionRow({
     return (
       <Link
         href={`/matters/${step.matterId}/plan`}
-        className="interactive-press block rounded-md border border-border bg-surface px-3 py-3 hover:border-primary/35 hover:bg-primary-muted/20"
+        className="interactive-press block min-w-0 px-1 py-2.5 hover:bg-primary-muted/40 hover:[filter:none] active:[filter:none]"
       >
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
@@ -924,7 +979,7 @@ function WeekActionRow({
                 {labels.taskPriority[step.priority]}
               </Badge>
             </div>
-            <p className="mt-2 break-words text-sm font-semibold leading-snug text-foreground">
+            <p className="mt-1.5 break-words text-sm font-semibold leading-snug text-foreground">
               {step.title}
             </p>
           </div>
@@ -933,7 +988,7 @@ function WeekActionRow({
             {format(new Date(step.dueAt), "HH:mm")}
           </span>
         </div>
-        <div className="mt-2 grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+        <div className="mt-1.5 grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
           <p className="min-w-0 break-words">
             <span className="font-medium text-foreground/80">
               {t("taskMatter")}:{" "}
@@ -945,6 +1000,12 @@ function WeekActionRow({
               {t("taskSchedule")}:{" "}
             </span>
             {format(new Date(step.dueAt), "dd/MM/yyyy HH:mm")}
+          </p>
+          <p className="min-w-0 break-words sm:col-span-2">
+            <span className="font-medium text-foreground/80">
+              {t("assignee")}:{" "}
+            </span>
+            {step.assigneeName ?? "—"}
           </p>
         </div>
       </Link>
@@ -960,7 +1021,7 @@ function WeekActionRow({
   return (
     <Link
       href={href}
-      className="interactive-press block rounded-md border border-border bg-surface px-3 py-3 hover:border-primary/35 hover:bg-primary-muted/20"
+      className="interactive-press block min-w-0 px-1 py-2.5 hover:bg-primary-muted/40 hover:[filter:none] active:[filter:none]"
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
@@ -1295,6 +1356,7 @@ export function CalendarMonth({
   planSteps = [],
   matters = [],
   workTypes = [],
+  assigneeOptions = [],
   showAllFilter,
   scope,
 }: {
@@ -1302,6 +1364,7 @@ export function CalendarMonth({
   planSteps?: CalendarPlanStep[];
   matters?: CalendarMatterOption[];
   workTypes?: CalendarWorkTypeOption[];
+  assigneeOptions?: { id: string; name: string }[];
   showAllFilter: boolean;
   scope: "mine" | "all";
 }) {
@@ -1638,169 +1701,200 @@ export function CalendarMonth({
     "h-9 w-full min-w-0 rounded-md border border-border bg-surface px-2.5 text-sm text-foreground";
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-4 sm:space-y-6">
       <CalendarAddPlanDialog
         open={!!addPlanDay}
         day={addPlanDay}
         matters={matters}
         workTypes={workTypes}
+        assigneeOptions={assigneeOptions}
         onClose={() => setAddPlanDay(null)}
       />
 
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            {viewMode === "week" ? (
-              <>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  aria-label={t("prevWeek")}
-                  onClick={() => jumpToWeek(subWeeks(weekAnchor, 1))}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="min-w-0 text-sm font-semibold text-foreground sm:text-base">
-                  {weekRangeLabel}
-                </span>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  aria-label={t("nextWeek")}
-                  onClick={() => jumpToWeek(addWeeks(weekAnchor, 1))}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="sm" onClick={goToToday}>
-                  {t("today")}
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setMonth(subMonths(month, 1))}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <MonthYearPicker value={month} onChange={setMonth} />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setMonth(addMonths(month, 1))}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="sm" onClick={goToToday}>
-                  {t("today")}
-                </Button>
-              </>
-            )}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex rounded-lg border border-border p-1">
-              <Button
-                size="sm"
-                variant={viewMode === "week" ? "default" : "ghost"}
-                onClick={() => setViewMode("week")}
-              >
-                {t("week")}
-              </Button>
-              <Button
-                size="sm"
-                variant={viewMode === "month" ? "default" : "ghost"}
-                onClick={() => setViewMode("month")}
-              >
-                {t("month")}
-              </Button>
+      <div
+        className="sticky z-10 min-w-0"
+        style={{ top: "var(--page-header-offset)" }}
+      >
+        <div
+          className={cn(liquidPanelClass, "min-w-0 rounded-md p-2.5 sm:p-3")}
+        >
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
+              {viewMode === "week" ? (
+                <>
+                  <div className="inline-flex min-w-0 max-w-full items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9 shrink-0"
+                      aria-label={t("prevWeek")}
+                      onClick={() => jumpToWeek(subWeeks(weekAnchor, 1))}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="min-w-0 truncate px-0.5 text-sm font-semibold tabular-nums text-foreground sm:text-base">
+                      {weekRangeLabel}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9 shrink-0"
+                      aria-label={t("nextWeek")}
+                      onClick={() => jumpToWeek(addWeeks(weekAnchor, 1))}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 shrink-0"
+                    onClick={goToToday}
+                  >
+                    {t("today")}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <div className="inline-flex min-w-0 max-w-full items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9 shrink-0"
+                      aria-label={t("prevMonth")}
+                      onClick={() => setMonth(subMonths(month, 1))}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <MonthYearPicker value={month} onChange={setMonth} />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9 shrink-0"
+                      aria-label={t("nextMonth")}
+                      onClick={() => setMonth(addMonths(month, 1))}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 shrink-0"
+                    onClick={goToToday}
+                  >
+                    {t("today")}
+                  </Button>
+                </>
+              )}
             </div>
-            {showAllFilter ? (
-              <div className="flex rounded-lg border border-border p-1">
+
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
+              <div className="flex rounded-md border border-border p-0.5">
                 <Button
                   size="sm"
-                  variant={scope === "mine" ? "default" : "ghost"}
-                  onClick={() => router.push("/calendar?scope=mine")}
+                  className="h-8"
+                  variant={viewMode === "week" ? "default" : "ghost"}
+                  onClick={() => setViewMode("week")}
                 >
-                  {t("scopeMine")}
+                  {t("week")}
                 </Button>
                 <Button
                   size="sm"
-                  variant={scope === "all" ? "default" : "ghost"}
-                  onClick={() => router.push("/calendar?scope=all")}
+                  className="h-8"
+                  variant={viewMode === "month" ? "default" : "ghost"}
+                  onClick={() => setViewMode("month")}
                 >
-                  {t("scopeAll")}
+                  {t("month")}
                 </Button>
               </div>
-            ) : null}
+              {showAllFilter ? (
+                <div className="flex rounded-md border border-border p-0.5">
+                  <Button
+                    size="sm"
+                    className="h-8"
+                    variant={scope === "mine" ? "default" : "ghost"}
+                    onClick={() => router.push("/calendar?scope=mine")}
+                  >
+                    {t("scopeMine")}
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="h-8"
+                    variant={scope === "all" ? "default" : "ghost"}
+                    onClick={() => router.push("/calendar?scope=all")}
+                  >
+                    {t("scopeAll")}
+                  </Button>
+                </div>
+              ) : null}
+            </div>
           </div>
-        </div>
-
-        <div className="grid w-full grid-cols-2 gap-2 rounded-md border border-border bg-muted/30 p-2 sm:w-fit sm:min-w-[30rem]">
-          <label className="flex min-w-0 flex-col gap-1">
-            <span className="text-xs font-medium text-muted-foreground">
-              {t("filterMatter")}
-            </span>
-            <Select
-              value={matterFilter}
-              onChange={(e) => setMatterFilter(e.target.value)}
-              className={filterSelectClass}
-              aria-label={t("filterMatter")}
-            >
-              <option value="all">{t("filterAll")}</option>
-              <option value="none">{t("noMatterFilter")}</option>
-              {matterOptions.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.code} — {m.title}
-                </option>
-              ))}
-            </Select>
-          </label>
-          <label className="flex min-w-0 flex-col gap-1">
-            <span className="text-xs font-medium text-muted-foreground">
-              {t("filterStatus")}
-            </span>
-            <Select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className={filterSelectClass}
-              aria-label={t("filterStatus")}
-            >
-              <option value="all">{t("filterAll")}</option>
-              <optgroup label={t("kindTask")}>
-                {Object.entries(labels.taskStatus).map(([value, label]) => (
-                  <option key={`task:${value}`} value={`task:${value}`}>
-                    {label}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label={t("kindPlan")}>
-                {Object.entries(labels.planStepStatus).map(([value, label]) => (
-                  <option key={`plan:${value}`} value={`plan:${value}`}>
-                    {label}
-                  </option>
-                ))}
-              </optgroup>
-            </Select>
-          </label>
         </div>
       </div>
 
+      <div className="grid w-full grid-cols-2 gap-2 rounded-md border border-border bg-muted/30 p-2 sm:w-fit sm:min-w-[30rem]">
+        <label className="flex min-w-0 flex-col gap-1">
+          <span className="text-xs font-medium text-muted-foreground">
+            {t("filterMatter")}
+          </span>
+          <Select
+            value={matterFilter}
+            onChange={(e) => setMatterFilter(e.target.value)}
+            className={filterSelectClass}
+            aria-label={t("filterMatter")}
+          >
+            <option value="all">{t("filterAll")}</option>
+            <option value="none">{t("noMatterFilter")}</option>
+            {matterOptions.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.code} — {m.title}
+              </option>
+            ))}
+          </Select>
+        </label>
+        <label className="flex min-w-0 flex-col gap-1">
+          <span className="text-xs font-medium text-muted-foreground">
+            {t("filterStatus")}
+          </span>
+          <Select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className={filterSelectClass}
+            aria-label={t("filterStatus")}
+          >
+            <option value="all">{t("filterAll")}</option>
+            <optgroup label={t("kindTask")}>
+              {Object.entries(labels.taskStatus).map(([value, label]) => (
+                <option key={`task:${value}`} value={`task:${value}`}>
+                  {label}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label={t("kindPlan")}>
+              {Object.entries(labels.planStepStatus).map(([value, label]) => (
+                <option key={`plan:${value}`} value={`plan:${value}`}>
+                  {label}
+                </option>
+              ))}
+            </optgroup>
+          </Select>
+        </label>
+      </div>
+
       {viewMode === "week" ? (
-        <Card className="surface overflow-hidden">
-          <CardHeader className="border-b border-border pb-4">
-            <CardTitle>{t("weekAgenda")}</CardTitle>
-            <p className="text-sm font-normal text-muted-foreground">
-              {t("weekAgendaHint")}
-            </p>
-          </CardHeader>
-          <CardContent className="p-0 pt-0">
-            <div
-              ref={weekScrollerRef}
-              onScroll={handleWeekScroll}
-              className="max-h-[65dvh] snap-y snap-proximity space-y-3 overflow-y-auto overscroll-contain px-3 py-3 scroll-smooth sm:max-h-[42rem] sm:px-5"
-            >
+        <section
+          aria-label={t("weekAgenda")}
+          className={cn(
+            liquidPanelClass,
+            "min-w-0 overflow-hidden rounded-md shadow-[var(--shadow-overlay)]",
+          )}
+        >
+          <div
+            ref={weekScrollerRef}
+            onScroll={handleWeekScroll}
+            className="max-h-[min(70dvh,42rem)] snap-y snap-proximity space-y-3 overflow-y-auto overscroll-contain px-3 py-3 scroll-smooth sm:px-4"
+          >
             {agendaDays.map((day) => {
               const key = format(day, "yyyy-MM-dd");
               const weekdayLabel = weekdayLabels[mondayIndex(day)];
@@ -1853,8 +1947,8 @@ export function CalendarMonth({
                   <div
                     data-day={key}
                     className={cn(
-                      "snap-start scroll-mt-3 rounded-md border border-border bg-surface/80 p-3",
-                      isToday && "bg-primary-muted/25 ring-2 ring-primary/40",
+                      "snap-start scroll-mt-3 border-b border-border/60 py-3 last:border-b-0",
+                      isToday && "rounded-md bg-primary-muted/30 px-2 ring-1 ring-primary/35",
                     )}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -1879,7 +1973,7 @@ export function CalendarMonth({
                     </div>
 
                     {hasItems ? (
-                      <div className="mt-3 space-y-2">
+                      <div className="mt-2 min-w-0 divide-y divide-border/50">
                         {dayActions.map((item) =>
                           item.kind === "task" ? (
                             <WeekActionRow
@@ -1895,7 +1989,7 @@ export function CalendarMonth({
                         )}
                       </div>
                     ) : (
-                      <p className="mt-3 text-sm text-muted-foreground">
+                      <p className="mt-2 text-sm text-muted-foreground">
                         {t("noEvents")}
                       </p>
                     )}
@@ -1903,86 +1997,104 @@ export function CalendarMonth({
                 </div>
               );
             })}
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       ) : (
-        <Card className="surface">
-          <CardHeader>
-            <CardTitle>{t("monthGrid")}</CardTitle>
-            <p className="text-sm font-normal text-muted-foreground">
-              {t("monthGridHint")}
-            </p>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <div className="min-w-0 p-0.5 sm:p-1">
-                <div className="grid min-w-0 grid-cols-7 gap-0.5 text-center text-[10px] font-semibold uppercase text-muted-foreground sm:gap-2 sm:text-xs">
-                  {weekdayLabels.map((d) => (
-                    <div key={d} className="py-1 sm:py-2">
-                      {d}
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-1 grid min-w-0 grid-cols-7 gap-0.5 sm:mt-0 sm:gap-2">
-                  {monthDays.map((day) => {
-                    const key = format(day, "yyyy-MM-dd");
-                    const dayTasks = tasksByDay.get(key) ?? [];
-                    const dayPlans = plansByDay.get(key) ?? [];
-                    const inMonth = isSameMonth(day, month);
+        <section
+          aria-label={t("monthGrid")}
+          className={cn(
+            liquidPanelClass,
+            "min-w-0 overflow-hidden rounded-md p-2 shadow-[var(--shadow-overlay)] sm:p-3",
+          )}
+        >
+          <div className="overflow-x-auto">
+            <div className="min-w-0 p-0.5 sm:p-1">
+              <div className="grid min-w-0 grid-cols-7 gap-0.5 text-center text-[10px] font-semibold uppercase text-muted-foreground sm:gap-2 sm:text-xs">
+                {weekdayLabels.map((d) => (
+                  <div key={d} className="py-1 sm:py-2">
+                    {d}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-1 grid min-w-0 grid-cols-7 gap-0.5 sm:mt-0 sm:gap-2">
+                {monthDays.map((day) => {
+                  const key = format(day, "yyyy-MM-dd");
+                  const dayTasks = tasksByDay.get(key) ?? [];
+                  const dayPlans = plansByDay.get(key) ?? [];
+                  const inMonth = isSameMonth(day, month);
 
-                    return (
-                      <div
-                        key={key}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => setAddPlanDay(day)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
+                  return (
+                    <div
+                      key={key}
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => {
+                        if (isDayAddClickSuppressed()) return;
+                        if (
+                          (e.target as HTMLElement | null)?.closest?.(
+                            "[data-calendar-chip]",
+                          )
+                        ) {
+                          return;
+                        }
+                        setAddPlanDay(day);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          if (isDayAddClickSuppressed()) return;
+                          setAddPlanDay(day);
+                        }
+                      }}
+                      className={cn(
+                        "interactive-press flex min-h-20 cursor-pointer flex-col rounded-md border p-0.5 text-left transition-colors duration-200 sm:min-h-36 sm:rounded-lg sm:p-2.5",
+                        inMonth
+                          ? "border-border bg-surface/80 hover:border-primary/30 hover:bg-primary-muted/40"
+                          : "border-border/50 bg-muted/40 text-muted-foreground hover:bg-primary-muted/20",
+                        isSameDay(day, new Date()) && "ring-2 ring-primary/40",
+                      )}
+                    >
+                      <div className="flex shrink-0 items-center justify-between gap-1">
+                        <p className="text-[10px] font-semibold sm:text-xs">
+                          {format(day, "d")}
+                        </p>
+                        <button
+                          type="button"
+                          className="interactive-press inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-primary-muted hover:text-primary"
+                          aria-label={t("addPlan")}
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setAddPlanDay(day);
-                          }
-                        }}
-                        className={cn(
-                          "interactive-press flex min-h-20 cursor-pointer flex-col rounded-md border p-0.5 text-left transition-colors duration-200 sm:min-h-36 sm:rounded-lg sm:p-2.5",
-                          inMonth
-                            ? "border-border bg-surface/80 hover:border-primary/30 hover:bg-primary-muted/40"
-                            : "border-border/50 bg-muted/40 text-muted-foreground hover:bg-primary-muted/20",
-                          isSameDay(day, new Date()) && "ring-2 ring-primary/40",
-                        )}
-                      >
-                        <div className="flex shrink-0 items-center justify-between gap-1">
-                          <p className="text-[10px] font-semibold sm:text-xs">
-                            {format(day, "d")}
-                          </p>
+                          }}
+                        >
                           <Plus
-                            className="h-3 w-3 text-muted-foreground sm:h-3.5 sm:w-3.5"
+                            className="h-3 w-3 sm:h-3.5 sm:w-3.5"
                             aria-hidden
                           />
-                        </div>
-                        {dayPlans.length > 0 || dayTasks.length > 0 ? (
-                          <div className="flex min-h-0 flex-1 flex-col">
-                            <DayCellScrollList>
-                              {dayPlans.map((step) => (
-                                <PlanPreviewChip key={step.id} step={step} />
-                              ))}
-                              {dayTasks.map((task) => (
-                                <TaskPreviewChip key={task.id} task={task} />
-                              ))}
-                            </DayCellScrollList>
-                          </div>
-                        ) : null}
+                        </button>
                       </div>
-                    );
-                  })}
-                </div>
+                      {dayPlans.length > 0 || dayTasks.length > 0 ? (
+                        <div className="flex min-h-0 flex-1 flex-col">
+                          <DayCellScrollList>
+                            {dayPlans.map((step) => (
+                              <PlanPreviewChip key={step.id} step={step} />
+                            ))}
+                            {dayTasks.map((task) => (
+                              <TaskPreviewChip key={task.id} task={task} />
+                            ))}
+                          </DayCellScrollList>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       )}
 
-      <Card className="surface">
+      <Card>
         <CardHeader>
           <CardTitle>
             {viewMode === "week"

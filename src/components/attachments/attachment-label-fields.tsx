@@ -34,7 +34,7 @@ export function AttachmentLabelFields({
         value={labelChoice}
         disabled={disabled}
         onChange={(e) => onLabelChoiceChange(e.target.value)}
-        className={cn("w-full", compact ? "h-9 text-xs" : "h-10 text-sm")}
+        className={cn("w-full", compact ? "h-9" : "h-10")}
         aria-label={t("labelAria")}
       >
         <option value="">{t("selectLabel")}</option>
@@ -51,7 +51,7 @@ export function AttachmentLabelFields({
           disabled={disabled}
           onChange={(e) => onCustomLabelChange(e.target.value)}
           placeholder={t("customLabelPlaceholder")}
-          className={compact ? "h-9 text-xs" : undefined}
+          className={compact ? "h-9" : undefined}
         />
       ) : null}
     </div>

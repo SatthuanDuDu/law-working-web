@@ -1,12 +1,15 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
   useSyncExternalStore,
   useTransition,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
 } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
@@ -21,10 +24,20 @@ import {
 import { useLocale, useTranslations } from "next-intl";
 import { useOverlayAnimation } from "@/hooks/use-overlay-animation";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { HEADER_TOOLBAR_BTN } from "@/components/layout/header-toolbar";
 import type { UrgentReminderItem } from "@/components/layout/urgent-reminder-stack";
 import { isUrgentReminderActive } from "@/lib/urgent-reminder-window";
+import {
+  getUrgentDeadlineMs,
+  getUrgentRemainingParts,
+} from "@/lib/urgent-reminder-countdown";
 
 type TabKey = "unread" | "all";
+
+const SHEET_DISMISS_PX = 96;
+const SHEET_EXPAND_PX = 48;
+const SHEET_COLLAPSE_PX = 56;
 
 /** Stable client clock for useSyncExternalStore (must not return a new value every read). */
 let clientNowCache = 0;
@@ -71,24 +84,24 @@ function formatRelativeTime(
   });
 }
 
-function formatCountdown(
-  msRemaining: number,
-  t: ReturnType<typeof useTranslations>,
+function formatCountdownValue(
+  parts: Exclude<ReturnType<typeof getUrgentRemainingParts>, { overdue: true }>,
   tCommon: ReturnType<typeof useTranslations>,
 ): string {
-  if (msRemaining <= 0) return t("overdue");
-  const totalMinutes = Math.ceil(msRemaining / 60_000);
+  const { days, hours, minutes, totalMinutes } = parts;
+  if (days > 0) {
+    if (minutes === 0) {
+      return tCommon("daysHours", { days, hours });
+    }
+    return tCommon("daysHoursMinutes", { days, hours, mins: minutes });
+  }
   if (totalMinutes < 60) {
-    return t("remaining", { value: tCommon("minutes", { count: totalMinutes }) });
+    return tCommon("minutes", { count: totalMinutes });
   }
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
   if (minutes === 0) {
-    return t("remaining", { value: tCommon("hours", { count: hours }) });
+    return tCommon("hours", { count: hours });
   }
-  return t("remaining", {
-    value: tCommon("hoursMinutes", { hours, mins: minutes }),
-  });
+  return tCommon("hoursMinutes", { hours, mins: minutes });
 }
 
 function reminderCountdown(
@@ -97,17 +110,11 @@ function reminderCountdown(
   t: ReturnType<typeof useTranslations>,
   tCommon: ReturnType<typeof useTranslations>,
 ): string {
-  const startsAt = new Date(item.startsAt).getTime();
-  if (now < startsAt) {
-    return formatCountdown(startsAt - now, t, tCommon);
-  }
-  if (item.endsAt) {
-    const endsAt = new Date(item.endsAt).getTime();
-    if (!Number.isNaN(endsAt)) {
-      return formatCountdown(endsAt - now, t, tCommon);
-    }
-  }
-  return t("overdue");
+  const deadline = getUrgentDeadlineMs(item.startsAt, item.endsAt);
+  if (deadline == null) return t("overdue");
+  const parts = getUrgentRemainingParts(deadline - now);
+  if (parts.overdue) return t("overdue");
+  return t("remaining", { value: formatCountdownValue(parts, tCommon) });
 }
 
 export function NotificationPanel({
@@ -133,12 +140,19 @@ export function NotificationPanel({
     getServerNow,
   );
   const rootRef = useRef<HTMLDivElement>(null);
+  const sheetDragRef = useRef<{
+    pointerId: number;
+    startY: number;
+  } | null>(null);
   const [panelAnchor, setPanelAnchor] = useState<{
     top: number;
     right: number;
     width: number;
   } | null>(null);
   const [isDesktopPanel, setIsDesktopPanel] = useState(false);
+  const [sheetExpanded, setSheetExpanded] = useState(false);
+  const [sheetDragY, setSheetDragY] = useState(0);
+  const [sheetDragging, setSheetDragging] = useState(false);
   const { mounted: panelMounted, active: panelActive } = useOverlayAnimation(open);
 
   const activeUrgent = useMemo(
@@ -154,6 +168,14 @@ export function NotificationPanel({
   const displayedUnread =
     Math.max(0, unreadCount - readLocally) + activeUrgent.length;
 
+  const closePanel = useCallback(() => {
+    setOpen(false);
+    setSheetExpanded(false);
+    setSheetDragY(0);
+    setSheetDragging(false);
+    sheetDragRef.current = null;
+  }, []);
+
   useEffect(() => {
     if (!open) return;
 
@@ -161,12 +183,12 @@ export function NotificationPanel({
       if (!rootRef.current?.contains(event.target as Node)) {
         const target = event.target as HTMLElement | null;
         if (target?.closest("[data-notification-panel]")) return;
-        setOpen(false);
+        closePanel();
       }
     }
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") closePanel();
     }
 
     document.addEventListener("mousedown", handlePointerDown);
@@ -175,7 +197,7 @@ export function NotificationPanel({
       document.removeEventListener("mousedown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [open]);
+  }, [open, closePanel]);
 
   useEffect(() => {
     const media = window.matchMedia("(min-width: 640px)");
@@ -217,6 +239,83 @@ export function NotificationPanel({
           width: panelAnchor.width,
         }
       : undefined;
+
+  const mobileSheetStyle = useMemo((): CSSProperties | undefined => {
+    if (isDesktopPanel) return undefined;
+
+    const dismissY = Math.max(0, sheetDragY);
+    const expandPull = Math.max(0, -sheetDragY);
+    const baseMax = sheetExpanded ? "min(94dvh, 100%)" : "min(78dvh, 100%)";
+    const style: CSSProperties = {
+      maxHeight:
+        sheetDragging && expandPull > 0
+          ? `min(94dvh, calc(${sheetExpanded ? "94dvh" : "78dvh"} + ${expandPull}px))`
+          : baseMax,
+    };
+
+    if (sheetDragging || dismissY > 0) {
+      style.transform = `translateY(${dismissY}px)`;
+      style.transition = sheetDragging ? "none" : undefined;
+    }
+
+    return style;
+  }, [isDesktopPanel, sheetDragY, sheetDragging, sheetExpanded]);
+
+  function endSheetDrag(deltaY: number) {
+    setSheetDragging(false);
+    sheetDragRef.current = null;
+
+    if (deltaY >= SHEET_DISMISS_PX) {
+      closePanel();
+      return;
+    }
+
+    if (deltaY <= -SHEET_EXPAND_PX) {
+      setSheetExpanded(true);
+      setSheetDragY(0);
+      return;
+    }
+
+    if (sheetExpanded && deltaY >= SHEET_COLLAPSE_PX) {
+      setSheetExpanded(false);
+      setSheetDragY(0);
+      return;
+    }
+
+    setSheetDragY(0);
+  }
+
+  function onSheetHandlePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (isDesktopPanel || event.button !== 0) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    sheetDragRef.current = {
+      pointerId: event.pointerId,
+      startY: event.clientY,
+    };
+    setSheetDragging(true);
+    setSheetDragY(0);
+  }
+
+  function onSheetHandlePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    const drag = sheetDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    setSheetDragY(event.clientY - drag.startY);
+  }
+
+  function onSheetHandlePointerUp(event: ReactPointerEvent<HTMLDivElement>) {
+    const drag = sheetDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    endSheetDrag(event.clientY - drag.startY);
+  }
+
+  function onSheetHandlePointerCancel(event: ReactPointerEvent<HTMLDivElement>) {
+    const drag = sheetDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    endSheetDrag(0);
+  }
 
   function loadNotifications() {
     setLoading(true);
@@ -260,24 +359,30 @@ export function NotificationPanel({
   }
 
   const unreadLeft = Math.max(0, unreadCount - readLocally);
+  const backdropDragFade =
+    !isDesktopPanel && sheetDragY > 0
+      ? Math.max(0.15, 1 - sheetDragY / (SHEET_DISMISS_PX * 1.6))
+      : undefined;
 
   return (
     <div ref={rootRef} className="relative">
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="icon"
         aria-label={t("title")}
         aria-expanded={open}
-        className="interactive-press relative rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-primary"
-        onClick={() => (open ? setOpen(false) : openPanel())}
+        className={cn(HEADER_TOOLBAR_BTN, "relative")}
+        onClick={() => (open ? closePanel() : openPanel())}
       >
-        <Bell className="h-5 w-5" />
+        <Bell />
         {displayedUnread > 0 && (
-          <span className="absolute right-1 top-1 flex h-2.5 w-2.5">
+          <span className="absolute right-1.5 top-1.5 flex h-2 w-2">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
           </span>
         )}
-      </button>
+      </Button>
 
       {panelMounted &&
         createPortal(
@@ -290,18 +395,50 @@ export function NotificationPanel({
                 "overlay-backdrop fixed inset-0 z-40 bg-slate-900/30 sm:hidden",
                 panelActive && "is-active",
               )}
-              onClick={() => setOpen(false)}
+              style={
+                backdropDragFade != null
+                  ? { opacity: panelActive ? backdropDragFade : undefined }
+                  : undefined
+              }
+              onClick={closePanel}
             />
             <aside
               data-notification-panel
-              style={desktopPanelStyle}
+              style={{ ...desktopPanelStyle, ...mobileSheetStyle }}
               className={cn(
                 "floating-panel fixed z-50 flex min-w-0 flex-col overflow-hidden border border-border bg-surface shadow-[var(--shadow-overlay)]",
                 "inset-x-0 bottom-0 max-h-[min(78dvh,100%)] w-full rounded-t-xl sm:inset-auto sm:bottom-auto sm:max-h-[min(70vh,28rem)] sm:rounded-lg",
+                sheetExpanded && !isDesktopPanel && "max-h-[min(94dvh,100%)]",
                 panelActive && "is-active",
               )}
             >
-              <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-border sm:hidden" />
+              <div
+                role="button"
+                aria-label={t("dragSheet")}
+                tabIndex={0}
+                className={cn(
+                  "flex touch-none flex-col items-center pb-1 pt-2 sm:hidden",
+                  "cursor-grab active:cursor-grabbing",
+                )}
+                onPointerDown={onSheetHandlePointerDown}
+                onPointerMove={onSheetHandlePointerMove}
+                onPointerUp={onSheetHandlePointerUp}
+                onPointerCancel={onSheetHandlePointerCancel}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") closePanel();
+                  if (event.key === "ArrowUp") {
+                    event.preventDefault();
+                    setSheetExpanded(true);
+                  }
+                  if (event.key === "ArrowDown") {
+                    event.preventDefault();
+                    if (sheetExpanded) setSheetExpanded(false);
+                    else closePanel();
+                  }
+                }}
+              >
+                <span className="h-1 w-10 shrink-0 rounded-full bg-border" aria-hidden />
+              </div>
 
               <div className="flex shrink-0 items-center gap-1.5 border-b border-border px-3 py-2 sm:gap-2 sm:px-3.5 sm:py-2.5">
                 <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
@@ -327,7 +464,7 @@ export function NotificationPanel({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setOpen(false)}
+                  onClick={closePanel}
                   aria-label={tCommon("close")}
                   className="interactive-press inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
                 >
@@ -381,7 +518,7 @@ export function NotificationPanel({
                             <li key={`urgent:${item.id}:${item.startsAt}`}>
                               <Link
                                 href={item.href}
-                                onClick={() => setOpen(false)}
+                                onClick={closePanel}
                                 className="interactive-press flex items-start gap-2 px-3 py-2 hover:bg-rose-50/80 sm:px-3.5 dark:hover:bg-rose-950/20"
                               >
                                 <span
@@ -420,7 +557,7 @@ export function NotificationPanel({
                               if (!notification.isRead) {
                                 markRead(notification.id);
                               }
-                              setOpen(false);
+                              closePanel();
                             }}
                             className={cn(
                               "interactive-press flex items-start gap-2 px-3 py-2 transition-colors sm:px-3.5",

@@ -20,10 +20,7 @@ export default async function ExpensesPage({
 
   return (
     <div className="space-y-4">
-      <PageHeaderSlot
-        title={tPages("title")}
-        description={tPages("description")}
-      />
+      <PageHeaderSlot title={tPages("title")} />
       <ExpenseStatsView stats={stats} />
     </div>
   );

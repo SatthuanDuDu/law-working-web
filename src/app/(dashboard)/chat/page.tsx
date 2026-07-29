@@ -24,7 +24,7 @@ export default async function ChatPage({
 
   return (
     <>
-      <PageHeaderSlot title={tPages("title")} description={tPages("description")} />
+      <PageHeaderSlot title={tPages("title")} />
       <ChatWorkspace initialConversationId={params.c ?? null} />
     </>
   );

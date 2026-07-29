@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { liquidPanelClass } from "@/lib/liquid-panel";
+
+export { liquidPanelClass };
 
 export function SectionHeader({
   title,
@@ -16,26 +19,28 @@ export function SectionHeader({
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-3 rounded-md border border-border/60 bg-muted/35 px-3.5 py-2.5",
+        "flex min-w-0 items-center justify-between gap-3 px-1 py-1.5 sm:px-1.5",
         className,
       )}
     >
-      <div className="flex min-w-0 items-center gap-2.5">
+      <div className="flex min-w-0 flex-1 items-center gap-2.5">
         {icon ? (
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-muted text-primary">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary-muted text-primary">
             {icon}
           </span>
         ) : null}
-        <h3 className="truncate text-sm font-semibold text-foreground">{title}</h3>
+        <h3 className="min-w-0 truncate text-sm font-semibold text-foreground">
+          {title}
+        </h3>
       </div>
-      {action ? <div className="shrink-0">{action}</div> : null}
+      {action ? <div className="max-w-[45%] shrink-0 truncate">{action}</div> : null}
     </div>
   );
 }
 
 /**
- * Content panel: solid surface by default (tables/lists).
- * Pass elevated for short chrome-like panels that may sit with glass.
+ * Content panel with liquid glass (app-wide, same as Tổng quan).
+ * Pass `solid` for opaque surface when glass is unsuitable (rare).
  */
 export function SectionPanel({
   title,
@@ -43,22 +48,22 @@ export function SectionPanel({
   action,
   children,
   className,
-  elevated = false,
+  solid = false,
 }: {
   title: string;
   icon?: ReactNode;
   action?: ReactNode;
   children: ReactNode;
   className?: string;
+  solid?: boolean;
+  /** @deprecated Ignored — panels are liquid by default. */
   elevated?: boolean;
 }) {
   return (
     <Card
+      solid={solid}
       className={cn(
-        "flex flex-col overflow-hidden p-[10px]",
-        elevated
-          ? "glass-surface border-[color:var(--glass-border)]"
-          : "surface border-border",
+        "flex min-w-0 max-w-full flex-col overflow-hidden p-3 sm:p-3.5",
         className,
       )}
     >
@@ -66,11 +71,9 @@ export function SectionPanel({
         title={title}
         icon={icon}
         action={action}
-        className="mb-[10px]"
+        className="mb-3 min-w-0"
       />
-      <div className="min-w-0 flex-1 px-1 pb-1 pt-0 sm:px-2 sm:pb-2">
-        {children}
-      </div>
+      <div className="min-w-0 max-w-full flex-1 overflow-x-clip">{children}</div>
     </Card>
   );
 }

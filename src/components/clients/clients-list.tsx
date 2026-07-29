@@ -212,7 +212,7 @@ function MultiSelectFilter({
       <div
         ref={fieldRef}
         className={cn(
-          "interactive-field flex h-10 w-full cursor-pointer items-center rounded-[5px] border border-border bg-surface pl-3 pr-1 text-sm",
+          "interactive-field flex h-10 w-full cursor-pointer items-center rounded-[5px] border border-border bg-surface pl-3 pr-1 text-sm leading-normal",
           "hover:border-primary/35 hover:bg-muted/90",
           open && "border-primary/40 bg-muted/90",
           values.length > 0 && "border-primary/40 bg-primary-muted/40 hover:bg-primary-muted/55",
@@ -525,118 +525,87 @@ export function ClientsList({
     <>
       {dialog}
       <div className="flex min-h-0 min-w-0 flex-col gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-muted-foreground">
-            {visibleClients.length === clients.length
-              ? t("clientCount", { count: clients.length })
-              : t("clientCountFiltered", {
-                  visible: visibleClients.length,
-                  total: clients.length,
-                })}
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <ListViewToggle mode={mode} onChange={setMode} />
-            <CreateClientButton />
+        <div className="shrink-0 border-b border-border/60 pb-3">
+          <div className="flex items-end gap-2">
+            <div className="flex min-w-0 flex-1 items-end gap-2 overflow-x-auto pb-0.5">
+              <div className="min-w-[9.5rem] flex-1">
+                <MultiSelectFilter
+                  label={t("filterName")}
+                  emptyLabel={tCommon("all")}
+                  values={filters.names}
+                  onChange={(names) => setFilters({ ...filters, names })}
+                  options={nameOptions}
+                  sortActive={filters.sortBy === "name"}
+                  sortDir={filters.sortDir}
+                  onToggleSort={() => setFilters(toggleSort(filters, "name"))}
+                />
+              </div>
+              <div className="min-w-[8rem] flex-1">
+                <MultiSelectFilter
+                  label={t("filterCity")}
+                  emptyLabel={tCommon("all")}
+                  values={filters.cities}
+                  onChange={(cities) => setFilters({ ...filters, cities })}
+                  options={cityOptions}
+                  sortActive={filters.sortBy === "city"}
+                  sortDir={filters.sortDir}
+                  onToggleSort={() => setFilters(toggleSort(filters, "city"))}
+                />
+              </div>
+              <div className="min-w-[9rem] flex-1">
+                <MultiSelectFilter
+                  label={t("filterBusinessType")}
+                  emptyLabel={tCommon("all")}
+                  values={filters.businessTypes}
+                  onChange={(businessTypes) =>
+                    setFilters({
+                      ...filters,
+                      businessTypes: businessTypes as ClientBusinessType[],
+                    })
+                  }
+                  options={businessTypeOptions}
+                  sortActive={filters.sortBy === "businessType"}
+                  sortDir={filters.sortDir}
+                  onToggleSort={() =>
+                    setFilters(toggleSort(filters, "businessType"))
+                  }
+                />
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                tabIndex={hasActiveFilters ? 0 : -1}
+                aria-hidden={!hasActiveFilters}
+                aria-disabled={!hasActiveFilters}
+                aria-label={tFilters("clearFilters")}
+                className={cn(
+                  "h-10 shrink-0 text-red-600 transition-opacity duration-500 ease-out hover:bg-red-50 hover:text-red-700",
+                  hasActiveFilters
+                    ? "opacity-100"
+                    : "pointer-events-none opacity-0",
+                )}
+                onClick={() => {
+                  if (!hasActiveFilters) return;
+                  setFilters({
+                    ...DEFAULT_FILTERS,
+                    sortBy: filters.sortBy,
+                    sortDir: filters.sortDir,
+                  });
+                }}
+              >
+                <X className="h-3.5 w-3.5" />
+                {tFilters("clearFilters")}
+              </Button>
+            </div>
+            <div className="shrink-0 self-end pb-0.5">
+              <CreateClientButton />
+            </div>
           </div>
         </div>
 
-        <div className="shrink-0 rounded-md border border-border bg-surface px-3 py-3">
-          <div className="flex items-end gap-2 overflow-x-auto pb-0.5">
-            <div className="min-w-[9.5rem] flex-1">
-              <MultiSelectFilter
-                label={t("filterName")}
-                emptyLabel={tCommon("all")}
-                values={filters.names}
-                onChange={(names) => setFilters({ ...filters, names })}
-                options={nameOptions}
-                sortActive={filters.sortBy === "name"}
-                sortDir={filters.sortDir}
-                onToggleSort={() => setFilters(toggleSort(filters, "name"))}
-              />
-            </div>
-            <div className="min-w-[8rem] flex-1">
-              <MultiSelectFilter
-                label={t("filterCity")}
-                emptyLabel={tCommon("all")}
-                values={filters.cities}
-                onChange={(cities) => setFilters({ ...filters, cities })}
-                options={cityOptions}
-                sortActive={filters.sortBy === "city"}
-                sortDir={filters.sortDir}
-                onToggleSort={() => setFilters(toggleSort(filters, "city"))}
-              />
-            </div>
-            <div className="min-w-[9rem] flex-1">
-              <MultiSelectFilter
-                label={t("filterBusinessType")}
-                emptyLabel={tCommon("all")}
-                values={filters.businessTypes}
-                onChange={(businessTypes) =>
-                  setFilters({
-                    ...filters,
-                    businessTypes: businessTypes as ClientBusinessType[],
-                  })
-                }
-                options={businessTypeOptions}
-                sortActive={filters.sortBy === "businessType"}
-                sortDir={filters.sortDir}
-                onToggleSort={() => setFilters(toggleSort(filters, "businessType"))}
-              />
-            </div>
-            <div className="min-w-[7.5rem] flex-1 sm:max-w-[10rem]">
-              <p className="mb-1 truncate text-xs text-muted-foreground">{t("filterMatterCount")}</p>
-              <div
-                className={cn(
-                  "interactive-field flex h-10 w-full items-center justify-between gap-2 rounded-[5px] border border-border bg-surface px-3 text-sm",
-                  "hover:border-primary/35 hover:bg-muted/90",
-                  filters.sortBy === "matters" &&
-                    "border-primary/40 bg-primary-muted/40",
-                )}
-              >
-                <button
-                  type="button"
-                  onClick={() => setFilters(toggleSort(filters, "matters"))}
-                  className="interactive-press min-w-0 flex-1 truncate text-left"
-                >
-                  {filters.sortBy === "matters"
-                    ? filters.sortDir === "asc"
-                      ? tFilters("sortAsc")
-                      : tFilters("sortDesc")
-                    : tFilters("sort")}
-                </button>
-                <SortToggle
-                  active={filters.sortBy === "matters"}
-                  sortDir={filters.sortDir}
-                  onToggle={() => setFilters(toggleSort(filters, "matters"))}
-                  label={t("filterMatterCount")}
-                />
-              </div>
-            </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              tabIndex={hasActiveFilters ? 0 : -1}
-              aria-hidden={!hasActiveFilters}
-              aria-disabled={!hasActiveFilters}
-              aria-label={tFilters("clearFilters")}
-              className={cn(
-                "h-10 shrink-0 text-red-600 transition-opacity duration-500 ease-out hover:bg-red-50 hover:text-red-700",
-                hasActiveFilters ? "opacity-100" : "pointer-events-none opacity-0",
-              )}
-              onClick={() => {
-                if (!hasActiveFilters) return;
-                setFilters({
-                  ...DEFAULT_FILTERS,
-                  sortBy: filters.sortBy,
-                  sortDir: filters.sortDir,
-                });
-              }}
-            >
-              <X className="h-3.5 w-3.5" />
-              {tFilters("clearFilters")}
-            </Button>
-          </div>
+        <div className="flex justify-end">
+          <ListViewToggle mode={mode} onChange={setMode} size="sm" />
         </div>
 
         <div className="min-h-0 flex-1 space-y-4">
@@ -665,9 +634,9 @@ export function ClientsList({
                   .join(" · ");
 
                 return (
-                  <Card key={client.id} className="rounded-[5px]">
-                    <CardContent className="flex h-full flex-col gap-3 p-4">
-                      <div className="min-w-0 space-y-1.5">
+                  <Card key={client.id} className="rounded-md border-border/50">
+                    <CardContent className="flex h-full flex-col gap-2 p-3 sm:gap-3 sm:p-4">
+                      <div className="min-w-0 space-y-1">
                         <div className="flex flex-wrap items-center gap-1.5">
                           <span className="rounded-md bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-primary">
                             {client.code}
@@ -682,11 +651,11 @@ export function ClientsList({
                         <h3 className="truncate text-sm font-semibold text-foreground">
                           {client.name}
                         </h3>
-                        <p className="line-clamp-2 text-xs text-muted-foreground">
+                        <p className="line-clamp-1 text-xs text-muted-foreground sm:line-clamp-2">
                           {meta || "—"}
                         </p>
                         {client.notes ? (
-                          <p className="line-clamp-2 text-xs text-foreground/80">
+                          <p className="hidden line-clamp-2 text-xs text-foreground/80 sm:block">
                             {client.notes}
                           </p>
                         ) : null}
@@ -700,8 +669,8 @@ export function ClientsList({
               })}
             </div>
           ) : (
-            <Card className="rounded-[5px]">
-              <CardContent className="divide-y divide-border/70 p-0">
+            <Card className="rounded-md border-border/50">
+              <CardContent className="divide-y divide-border/60 p-0">
                 {visibleClients.map((client) => {
                   const meta = [
                     client.phone,
@@ -713,8 +682,8 @@ export function ClientsList({
                     .join(" · ");
 
                   return (
-                    <div key={client.id} className="px-4 py-3 sm:px-6">
-                      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-4">
+                    <div key={client.id} className="px-3 py-2.5 sm:px-5 sm:py-3">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-1.5">
                             <span className="rounded-md bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-primary">
@@ -734,7 +703,7 @@ export function ClientsList({
                             {meta || "—"}
                           </p>
                           {client.notes ? (
-                            <p className="mt-1 line-clamp-1 text-xs text-foreground/80">
+                            <p className="mt-0.5 line-clamp-1 text-xs text-foreground/80 sm:mt-1">
                               {client.notes}
                             </p>
                           ) : null}

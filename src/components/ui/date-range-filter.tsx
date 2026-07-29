@@ -197,7 +197,7 @@ export function DateRangeFilter({
           openPicker();
         }}
         className={cn(
-          "interactive-field flex h-9 w-full cursor-pointer items-center gap-2 rounded-md border border-border bg-surface px-3 text-left text-sm",
+          "interactive-field flex h-9 w-full cursor-pointer items-center gap-2 rounded-md border border-border bg-surface px-3 text-left text-sm leading-normal",
           "hover:border-primary/35 hover:bg-muted/90",
           open && "border-primary/40 bg-muted/90",
           hasValue &&

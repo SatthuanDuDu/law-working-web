@@ -291,7 +291,7 @@ export function MattersList({
 
   function renderListCard(matter: MatterListItem) {
     return (
-      <Card key={matter.id} className="rounded-[5px]">
+      <Card key={matter.id} className="rounded-md border-border/50">
         <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
@@ -360,7 +360,7 @@ export function MattersList({
 
   function renderGridCard(matter: MatterListItem) {
     return (
-      <Card key={matter.id} className="flex h-full flex-col rounded-[5px]">
+      <Card key={matter.id} className="flex h-full flex-col rounded-md border-border/50">
         <CardHeader className="space-y-2 pb-2">
           <div className="flex flex-wrap items-start gap-2">
             <CardTitle className="min-w-0 flex-1 text-base leading-snug">
@@ -421,16 +421,8 @@ export function MattersList({
           clients={filterOptions.clients}
         />
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-muted-foreground">
-            {visibleMatters.length === matters.length
-              ? t("matterCount", { count: matters.length })
-              : t("matterCountFiltered", {
-                  visible: visibleMatters.length,
-                  total: matters.length,
-                })}
-          </p>
-          <ListViewToggle mode={mode} onChange={setMode} />
+        <div className="flex justify-end">
+          <ListViewToggle mode={mode} onChange={setMode} size="sm" />
         </div>
 
         {matters.length === 0 ? (

@@ -192,10 +192,7 @@ export default async function MatterReportPage({
 
   return (
     <>
-      <PageHeaderSlot
-        title={tPages("title")}
-        description={`${matter.code} • ${matter.title}`}
-      />
+      <PageHeaderSlot title={tPages("title")} />
 
       <div className="grid gap-6 xl:grid-cols-3">
         <div className="xl:col-span-1">

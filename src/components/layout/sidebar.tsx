@@ -214,7 +214,7 @@ function NavLinkContent({
             "ml-auto shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
             active
               ? "bg-primary/15 text-primary"
-              : "bg-white/20 text-white",
+              : "bg-white/20 text-white group-hover/nav:bg-primary/15 group-hover/nav:text-primary",
           )}
         >
           {badgeText}
@@ -251,12 +251,15 @@ function NavLink({
         href={href}
         onClick={onNavigate}
         aria-label={ariaLabel || label}
+        data-active={active ? "true" : undefined}
         className={cn(
-          "interactive-press flex min-h-10 items-center rounded-md text-sm",
+          "sidebar-nav-liquid group/nav interactive-press flex min-h-10 items-center rounded-md border border-transparent text-sm transition-[background-color,box-shadow,color,border-color] duration-150",
+          "hover:backdrop-blur-[20px] hover:backdrop-saturate-150 data-[active=true]:backdrop-blur-[20px] data-[active=true]:backdrop-saturate-150",
+          "motion-reduce:hover:backdrop-blur-none motion-reduce:data-[active=true]:backdrop-blur-none",
           collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2.5",
           active
-            ? "bg-white text-primary font-medium shadow-sm"
-            : "text-white/80 hover:bg-white/10 hover:text-white",
+            ? "is-active font-medium text-primary"
+            : "text-white/85 hover:text-primary",
         )}
       >
         <NavLinkContent
@@ -523,12 +526,15 @@ function AccountMenu({
           aria-expanded={open}
           aria-controls={menuId}
           onClick={toggleMenu}
+          data-active={open ? "true" : undefined}
           className={cn(
-            "interactive-press flex w-full items-center rounded-md transition-colors",
+            "sidebar-nav-liquid interactive-press flex w-full items-center rounded-md border border-transparent transition-[background-color,box-shadow,color,border-color] duration-150",
+            "hover:backdrop-blur-[20px] hover:backdrop-saturate-150 data-[active=true]:backdrop-blur-[20px] data-[active=true]:backdrop-saturate-150",
+            "motion-reduce:hover:backdrop-blur-none motion-reduce:data-[active=true]:backdrop-blur-none",
             collapsed
-              ? "justify-center px-2 py-2.5 text-white/80 hover:bg-white/10 hover:text-white"
-              : "gap-3 bg-white/10 px-3 py-3 text-left hover:bg-white/15",
-            open && (collapsed ? "bg-white/10 text-white" : "bg-white/15"),
+              ? "justify-center px-2 py-2.5 text-white/85 hover:text-primary"
+              : "gap-3 px-3 py-3 text-left text-white/90 hover:text-primary",
+            open && "is-active text-primary",
           )}
         >
           {collapsed ? (
@@ -537,12 +543,19 @@ function AccountMenu({
             <>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{user.name}</p>
-                <p className="text-xs text-white/60">{roles[user.role]}</p>
+                <p
+                  className={cn(
+                    "text-xs",
+                    open ? "text-primary/65" : "text-white/60",
+                  )}
+                >
+                  {roles[user.role]}
+                </p>
               </div>
               <ChevronUp
                 className={cn(
-                  "h-4 w-4 shrink-0 text-white/50 transition-transform",
-                  open && "rotate-180",
+                  "h-4 w-4 shrink-0 transition-transform",
+                  open ? "rotate-180 text-primary/50" : "text-white/50",
                 )}
                 aria-hidden
               />

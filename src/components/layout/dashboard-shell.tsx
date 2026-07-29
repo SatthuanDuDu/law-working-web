@@ -38,12 +38,11 @@ function ServerMetaSync({ meta }: { meta: PageMeta }) {
   const lastKey = useRef("");
 
   useLayoutEffect(() => {
-    const key = `${meta.title}\0${meta.description ?? ""}`;
+    const key = meta.title;
     if (lastKey.current === key) return;
     lastKey.current = key;
     setMeta(meta);
-    // Intentionally depend on title/description strings, not meta object identity.
-  }, [meta, meta.title, meta.description, setMeta]);
+  }, [meta, meta.title, setMeta]);
 
   return null;
 }
@@ -73,9 +72,9 @@ export function DashboardShell({
             <Sidebar user={user} variant="desktop" />
           </div>
           <Sidebar user={user} variant="mobile" />
-          <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+          <div className="liquid-glass-canvas flex min-h-screen min-w-0 flex-1 flex-col">
             <PageHeader />
-            <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
+            <main className="min-w-0 flex-1 p-3 sm:p-6 lg:p-8">{children}</main>
           </div>
           <UtilitySpeedDial />
           <NotificationToastHost />

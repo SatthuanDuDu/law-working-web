@@ -9,11 +9,14 @@ import {
   CheckCircle2,
   ListTodo,
 } from "lucide-react";
-import { PageHeaderSlot } from "@/components/layout/page-header-slot";
 import {
   ExpandableStatCard,
   type DashboardTaskItem,
 } from "@/components/dashboard/expandable-stat-card";
+import {
+  ExpandableMattersCard,
+  type DashboardMatterItem,
+} from "@/components/dashboard/expandable-matters-card";
 import { Badge } from "@/components/ui/card";
 import { SectionPanel } from "@/components/ui/section-panel";
 import {
@@ -25,6 +28,10 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
 import { isManagerOrAbove } from "@/lib/permissions";
 import { formatDate, cn } from "@/lib/utils";
+import {
+  listDivideClass,
+  listRowClass,
+} from "@/lib/list-surface";
 import { getLabelMaps } from "@/i18n/server-labels";
 import { getTranslations } from "next-intl/server";
 import { getAccessibleMatterIds } from "@/lib/access";
@@ -73,7 +80,12 @@ function serializeTask(task: {
   priority: TaskPriority;
   dueDate: Date | null;
   matterId: string | null;
-  matter: { id: string; code: string; title: string } | null;
+  matter: {
+    id: string;
+    code: string;
+    title: string;
+    leadLawyer: { id: string; name: string; avatarKey: string | null } | null;
+  } | null;
 }): DashboardTaskItem {
   return {
     id: task.id,
@@ -84,6 +96,13 @@ function serializeTask(task: {
     matterId: task.matterId ?? task.matter?.id ?? null,
     matterCode: task.matter?.code ?? null,
     matterTitle: task.matter?.title ?? null,
+    leadLawyer: task.matter?.leadLawyer
+      ? {
+          id: task.matter.leadLawyer.id,
+          name: task.matter.leadLawyer.name,
+          avatarKey: task.matter.leadLawyer.avatarKey,
+        }
+      : null,
   };
 }
 
@@ -91,10 +110,10 @@ function ActionLink({ href, children }: { href: string; children: ReactNode }) {
   return (
     <Link
       href={href}
-      className="interactive-link inline-flex items-center gap-1 text-sm font-medium text-primary"
+      className="interactive-link inline-flex max-w-full items-center gap-1 truncate text-sm font-medium text-primary"
     >
-      {children}
-      <ArrowUpRight className="h-3.5 w-3.5" />
+      <span className="truncate">{children}</span>
+      <ArrowUpRight className="h-3.5 w-3.5 shrink-0" />
     </Link>
   );
 }
@@ -120,13 +139,19 @@ function shortenCode(code: string | null | undefined) {
   return `${code.slice(0, 8)}…${code.slice(-6)}`;
 }
 
-const matterSelect = { id: true, code: true, title: true } as const;
+const OPEN_MATTER_STATUSES = ["NEW", "IN_PROGRESS", "ON_HOLD"] as const;
+
+const matterSelect = {
+  id: true,
+  code: true,
+  title: true,
+  leadLawyer: { select: { id: true, name: true, avatarKey: true } },
+} as const;
 
 export default async function DashboardPage() {
   const user = await requireAuth();
   const labels = await getLabelMaps();
   const t = await getTranslations("dashboard");
-  const tPages = await getTranslations("pages.dashboard");
   const tCommon = await getTranslations("common");
   const now = new Date();
   const todayStart = startOfDay(now);
@@ -142,9 +167,8 @@ export default async function DashboardPage() {
   const [
     openTasks,
     overdueTasks,
-    inProgressTasks,
     openTasksList,
-    inProgressTasksList,
+    openMattersList,
     matters,
     recentTasks,
     upcomingDeadlines,
@@ -158,26 +182,42 @@ export default async function DashboardPage() {
         dueDate: { lt: now },
       },
     }),
-    prisma.task.count({
-      where: {
-        assigneeId: user.id,
-        status: "IN_PROGRESS",
-      },
-    }),
     prisma.task.findMany({
       where: openTaskWhere,
       include: { matter: { select: matterSelect } },
       orderBy: [{ dueDate: "asc" }, { updatedAt: "desc" }],
       take: 8,
     }),
-    prisma.task.findMany({
+    prisma.matter.findMany({
       where: {
-        assigneeId: user.id,
-        status: "IN_PROGRESS",
+        ...matterWhere,
+        status: { in: [...OPEN_MATTER_STATUSES] },
       },
-      include: { matter: { select: matterSelect } },
-      orderBy: [{ dueDate: "asc" }, { updatedAt: "desc" }],
-      take: 8,
+      select: {
+        id: true,
+        code: true,
+        title: true,
+        status: true,
+        client: { select: { name: true } },
+        leadLawyer: { select: { id: true, name: true, avatarKey: true } },
+        planSteps: {
+          orderBy: { sortOrder: "asc" },
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            dueAt: true,
+            sortOrder: true,
+            assignees: {
+              include: {
+                user: { select: { id: true, name: true, avatarKey: true } },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 30,
     }),
     prisma.matter.findMany({
       where: matterWhere,
@@ -215,6 +255,11 @@ export default async function DashboardPage() {
             members: { select: { userId: true } },
           },
         },
+        assignees: {
+          include: {
+            user: { select: { id: true, name: true, avatarKey: true } },
+          },
+        },
         workType: { select: { name: true } },
       },
       orderBy: { dueAt: "asc" },
@@ -235,11 +280,43 @@ export default async function DashboardPage() {
   }));
   const totalMatters = statusCounts.reduce((sum, item) => sum + item.count, 0);
   const activeMatters = statusCounts
-    .filter((item) => item.status !== "CLOSED")
+    .filter((item) =>
+      (OPEN_MATTER_STATUSES as readonly MatterStatus[]).includes(item.status),
+    )
     .reduce((sum, item) => sum + item.count, 0);
 
   const openItems = openTasksList.map(serializeTask);
-  const inProgressItems = inProgressTasksList.map(serializeTask);
+  const openMatterItems: DashboardMatterItem[] = openMattersList.map((matter) => ({
+    id: matter.id,
+    code: matter.code,
+    title: matter.title,
+    status: matter.status,
+    clientName: matter.client?.name ?? null,
+    leadLawyer: matter.leadLawyer
+      ? {
+          id: matter.leadLawyer.id,
+          name: matter.leadLawyer.name,
+          avatarKey: matter.leadLawyer.avatarKey,
+        }
+      : null,
+    planSteps: matter.planSteps.map((step) => ({
+      id: step.id,
+      title: step.title,
+      status: step.status,
+      dueAt: step.dueAt?.toISOString() ?? null,
+      sortOrder: step.sortOrder,
+      assignees: step.assignees.map((row) => ({
+        id: row.user.id,
+        name: row.user.name,
+        avatarKey: row.user.avatarKey,
+      })),
+    })),
+  }));
+  const openPlanStepsTotal = openMatterItems.reduce(
+    (sum, matter) =>
+      sum + matter.planSteps.filter((step) => step.status !== "DONE").length,
+    0,
+  );
 
   type UpcomingItem = Omit<UpcomingDeadlineItem, "dueAt"> & { dueAt: Date };
 
@@ -254,6 +331,14 @@ export default async function DashboardPage() {
       statusVariant: priorityVariant(task.priority),
       dueLabel: formatDate(task.dueDate!),
       matterCodeShort: shortenCode(task.matter?.code),
+      person: task.matter?.leadLawyer
+        ? {
+            id: task.matter.leadLawyer.id,
+            name: task.matter.leadLawyer.name,
+            avatarKey: task.matter.leadLawyer.avatarKey,
+            role: "leadLawyer" as const,
+          }
+        : null,
     })),
     ...upcomingPlanSteps.map((step) => {
       const canEditPlan =
@@ -274,6 +359,11 @@ export default async function DashboardPage() {
         statusVariant: "info" as const,
         dueLabel: formatDate(step.dueAt!),
         matterCodeShort: shortenCode(step.matter.code),
+        assignees: step.assignees.map((row) => ({
+          id: row.user.id,
+          name: row.user.name,
+          avatarKey: row.user.avatarKey,
+        })),
       };
     }),
   ]
@@ -294,67 +384,62 @@ export default async function DashboardPage() {
       dueAt: item.dueAt.toISOString(),
       dueLabel: item.dueLabel,
       matterCodeShort: item.matterCodeShort,
+      person: item.person,
+      assignees: item.assignees,
     }),
   );
 
   return (
-    <div className="space-y-6">
-      <PageHeaderSlot
-        title={tPages("greeting", { name: user.name })}
-        description={tPages("description")}
-      />
-
-      <div className="grid gap-4 sm:grid-cols-2">
+    <div className="relative min-w-0 max-w-full space-y-4 sm:space-y-6">
+      <div className="grid min-w-0 gap-3 sm:grid-cols-2 sm:gap-4">
         <ExpandableStatCard
           label={t("openTasks")}
           value={String(openTasks)}
           sub={
             overdueTasks > 0 ? (
-              <span className="inline-flex items-center gap-1 font-medium text-rose-600">
-                <AlertTriangle className="h-3.5 w-3.5" />
-                {t("overdueCount", { count: overdueTasks })}
+              <span className="inline-flex min-w-0 items-center gap-1 font-medium text-rose-600">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                <span className="min-w-0 break-words">
+                  {overdueTasks === openTasks
+                    ? t("overdueLabel")
+                    : t("overdueCount", { count: overdueTasks })}
+                </span>
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 font-medium text-emerald-600">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                {t("onTrack")}
+              <span className="inline-flex min-w-0 items-center gap-1 font-medium text-emerald-600">
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                <span className="min-w-0 break-words">{t("onTrack")}</span>
               </span>
             )
           }
-          icon={<ListTodo className="h-[18px] w-[18px]" />}
+          icon={<ListTodo className="h-4 w-4" />}
           tone="primary"
           items={openItems}
           emptyLabel={t("openTasksEmpty")}
         />
-        <ExpandableStatCard
+        <ExpandableMattersCard
           label={t("activeMatters")}
           value={String(activeMatters)}
           sub={
-            <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span className="text-muted-foreground">
-                {t("totalMatters", { count: totalMatters })}
+            openPlanStepsTotal > 0 ? (
+              <span className="min-w-0 break-words font-medium text-sky-700 dark:text-sky-300">
+                {t("openPlanStepCount", { count: openPlanStepsTotal })}
               </span>
-              <span className="text-border" aria-hidden>
-                ·
-              </span>
-              <span className="font-medium text-sky-700 dark:text-sky-300">
-                {t("inProgressTasks", { count: inProgressTasks })}
-              </span>
-            </span>
+            ) : null
           }
-          icon={<Briefcase className="h-[18px] w-[18px]" />}
+          icon={<Briefcase className="h-4 w-4" />}
           tone="sky"
-          items={inProgressItems}
+          matters={openMatterItems}
           emptyLabel={t("activeMattersEmpty")}
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid min-w-0 gap-4 lg:grid-cols-3">
         <SectionPanel
           title={t("upcoming")}
           icon={<CalendarClock className="h-4 w-4" />}
           action={<ActionLink href="/calendar">{t("viewCalendar")}</ActionLink>}
-          className="lg:col-span-2"
+          className="min-w-0 lg:col-span-2"
         >
           {upcomingListItems.length === 0 ? (
             <EmptyState
@@ -377,29 +462,30 @@ export default async function DashboardPage() {
               {t("activeOpen", { count: activeMatters })}
             </span>
           }
+          className="min-w-0"
         >
           {totalMatters === 0 ? (
             <EmptyState>{t("noMattersYet")}</EmptyState>
           ) : (
-            <div className="space-y-4">
-              <div>
+            <div className="min-w-0 space-y-4">
+              <div className="min-w-0">
                 <p className="text-3xl font-bold tabular-nums text-foreground">
                   {totalMatters}
                 </p>
                 <p className="text-sm text-muted-foreground">{t("totalMattersLabel")}</p>
               </div>
-              <div className="space-y-3">
+              <div className="min-w-0 space-y-3">
                 {statusCounts.map(({ status, count }) => {
                   const pct = totalMatters
                     ? Math.round((count / totalMatters) * 100)
                     : 0;
                   return (
-                    <div key={status}>
-                      <div className="mb-1 flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">
+                    <div key={status} className="min-w-0">
+                      <div className="mb-1 flex min-w-0 items-center justify-between gap-2 text-sm">
+                        <span className="min-w-0 truncate text-muted-foreground">
                           {labels.matterStatus[status]}
                         </span>
-                        <span className="font-medium tabular-nums text-foreground">
+                        <span className="shrink-0 font-medium tabular-nums text-foreground">
                           {count}
                         </span>
                       </div>
@@ -421,31 +507,39 @@ export default async function DashboardPage() {
         </SectionPanel>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid min-w-0 gap-4 lg:grid-cols-2">
         <SectionPanel
           title={t("myMatters")}
           icon={<Briefcase className="h-4 w-4" />}
           action={<ActionLink href="/matters">{tCommon("all")}</ActionLink>}
+          className="min-w-0"
         >
           {matters.length === 0 ? (
             <EmptyState>{t("noMyMatters")}</EmptyState>
           ) : (
-            <div className="space-y-2.5">
+            <div className={listDivideClass}>
               {matters.map((matter) => (
                 <Link
                   key={matter.id}
                   href={`/matters/${matter.id}`}
-                  className="interactive-press group flex items-center justify-between gap-3 rounded-md border border-border/80 bg-surface/50 px-4 py-3 transition-colors hover:border-primary/30 hover:bg-primary-muted/40 hover:[filter:none] active:[filter:none]"
+                  className={cn(
+                    listRowClass,
+                    "group flex w-full max-w-full items-center justify-between gap-3",
+                  )}
                 >
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="truncate font-medium text-foreground">
+                  <div className="min-w-0 flex-1 overflow-hidden">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <p className="min-w-0 max-w-full truncate font-medium text-foreground">
                         {matter.title}
                       </p>
                       <MatterStatusBadge status={matter.status} />
                     </div>
-                    <p className="mt-0.5 text-sm text-muted-foreground">
-                      {matter.code} • {matter.client.name} • {matter.leadLawyer.name}
+                    <p className="mt-0.5 truncate text-sm text-muted-foreground">
+                      {shortenCode(matter.code)}
+                      {" · "}
+                      {matter.client.name}
+                      {" · "}
+                      {matter.leadLawyer.name}
                     </p>
                   </div>
                   <ArrowUpRight className="h-4 w-4 shrink-0 text-border transition-colors group-hover:text-primary" />
@@ -455,26 +549,34 @@ export default async function DashboardPage() {
           )}
         </SectionPanel>
 
-        <SectionPanel title={t("recentTasks")} icon={<ListTodo className="h-4 w-4" />}>
+        <SectionPanel
+          title={t("recentTasks")}
+          icon={<ListTodo className="h-4 w-4" />}
+          className="min-w-0"
+        >
           {recentTasks.length === 0 ? (
             <EmptyState>{t("noRecentTasks")}</EmptyState>
           ) : (
-            <div className="space-y-2.5">
+            <div className={listDivideClass}>
               {recentTasks.map((task) => (
                 <Link
                   key={task.id}
                   href={taskHref(task.matterId)}
-                  className="interactive-press block rounded-md border border-border/80 bg-surface/50 px-4 py-3 transition-colors hover:border-primary/30 hover:bg-primary-muted/40 hover:[filter:none] active:[filter:none]"
+                  className={cn(listRowClass, "w-full max-w-full")}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="min-w-0 truncate font-medium text-foreground">
+                  <div className="flex min-w-0 items-start justify-between gap-2">
+                    <p className="min-w-0 flex-1 truncate font-medium text-foreground">
                       {task.title}
                     </p>
-                    <Badge variant="info">{labels.taskStatus[task.status]}</Badge>
+                    <Badge variant="info" className="shrink-0">
+                      {labels.taskStatus[task.status]}
+                    </Badge>
                   </div>
-                  <p className="mt-1 text-sm text-muted-foreground">
+                  <p className="mt-1 truncate text-sm text-muted-foreground">
                     {t("updatedAt", { date: formatDate(task.updatedAt) })}
-                    {task.matter ? ` • ${task.matter.code}` : ""}
+                    {task.matter
+                      ? ` · ${shortenCode(task.matter.code)}`
+                      : ""}
                   </p>
                 </Link>
               ))}

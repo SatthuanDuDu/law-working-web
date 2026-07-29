@@ -61,6 +61,9 @@ export const matterPlanStepSchema = z.object({
   matterId: z.string().min(1),
   title: z.string().min(1, "Vui lòng nhập chi tiết công việc"),
   workTypeId: z.string().optional().nullable(),
+  assigneeIds: z
+    .array(z.string().min(1))
+    .min(1, "Vui lòng chọn ít nhất một nhân viên phụ trách"),
   startedAt: z.string().optional().nullable(),
   dueAt: z.string().optional().nullable(),
   status: z
@@ -79,6 +82,7 @@ export const matterPlanStepUpdateSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1).optional(),
   workTypeId: z.string().optional().nullable(),
+  assigneeIds: z.array(z.string().min(1)).min(1).optional(),
   startedAt: z.string().optional().nullable(),
   dueAt: z.string().optional().nullable(),
   status: z.enum(["NOT_STARTED", "IN_PROGRESS", "DONE", "BLOCKED"]).optional(),

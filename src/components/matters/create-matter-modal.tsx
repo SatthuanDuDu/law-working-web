@@ -32,7 +32,7 @@ const outlinedFieldLabelClass =
   "pointer-events-none absolute left-3 top-0 z-[1] -translate-y-1/2 bg-surface px-1.5 text-sm font-medium text-foreground";
 
 const outlinedFieldInputClass =
-  "interactive-field w-full rounded-[5px] border border-border bg-surface px-3 pb-2.5 pt-3";
+  "interactive-field w-full rounded-[5px] border border-border bg-surface px-3 pb-2.5 pt-3 text-sm leading-normal text-foreground";
 
 function OutlinedField({
   label,

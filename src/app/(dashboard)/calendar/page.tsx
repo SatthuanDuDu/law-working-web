@@ -23,7 +23,7 @@ export default async function CalendarPage({
   const rangeEnd = endOfMonth(addMonths(now, 12));
   const accessibleMatterIds = await getAccessibleMatterIds(user.id, user.role);
 
-  const [tasks, planSteps, matters, workTypes] = await Promise.all([
+  const [tasks, planSteps, matters, workTypes, assigneeUsers] = await Promise.all([
     prisma.task.findMany({
       where: {
         dueDate: { gte: rangeStart, lte: rangeEnd },
@@ -57,9 +57,11 @@ export default async function CalendarPage({
     prisma.matterPlanStep.findMany({
       where: {
         dueAt: { gte: rangeStart, lte: rangeEnd },
-        ...(accessibleMatterIds
-          ? { matterId: { in: accessibleMatterIds } }
-          : {}),
+        ...(scope === "mine"
+          ? { assignees: { some: { userId: user.id } } }
+          : accessibleMatterIds
+            ? { matterId: { in: accessibleMatterIds } }
+            : {}),
       },
       select: {
         id: true,
@@ -67,6 +69,9 @@ export default async function CalendarPage({
         status: true,
         priority: true,
         dueAt: true,
+        assignees: {
+          include: { user: { select: { name: true } } },
+        },
         matter: { select: { id: true, code: true, title: true } },
       },
       orderBy: { dueAt: "asc" },
@@ -80,6 +85,11 @@ export default async function CalendarPage({
       orderBy: { updatedAt: "desc" },
     }),
     prisma.workType.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.user.findMany({
       where: { isActive: true },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
@@ -119,6 +129,8 @@ export default async function CalendarPage({
       status: step.status,
       priority: step.priority,
       dueAt: step.dueAt!.toISOString(),
+      assigneeName:
+        step.assignees.map((row) => row.user.name).join(", ") || null,
       matterId: step.matter.id,
       matterCode: step.matter.code,
       matterTitle: step.matter.title,
@@ -126,15 +138,13 @@ export default async function CalendarPage({
 
   return (
     <>
-      <PageHeaderSlot
-        title={tPages("title")}
-        description={tPages("description")}
-      />
+      <PageHeaderSlot title={tPages("title")} />
       <CalendarMonth
         tasks={serialized}
         planSteps={serializedPlans}
         matters={matters}
         workTypes={workTypes}
+        assigneeOptions={assigneeUsers}
         showAllFilter={canViewAll}
         scope={scope}
       />

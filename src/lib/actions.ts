@@ -1028,12 +1028,24 @@ export async function deleteCommentAction(commentId: string) {
   return { success: true };
 }
 
+function parseAssigneeIds(formData: FormData): string[] {
+  return Array.from(
+    new Set(
+      formData
+        .getAll("assigneeIds")
+        .map((value) => String(value).trim())
+        .filter(Boolean),
+    ),
+  );
+}
+
 export async function createMatterPlanStepAction(formData: FormData) {
   const user = await requireAuth();
   const parsed = matterPlanStepSchema.safeParse({
     matterId: formData.get("matterId"),
     title: formData.get("title"),
     workTypeId: formData.get("workTypeId") || null,
+    assigneeIds: parseAssigneeIds(formData),
     startedAt: formData.get("startedAt") || null,
     dueAt: formData.get("dueAt") || null,
     status: formData.get("status") || "NOT_STARTED",
@@ -1052,6 +1064,14 @@ export async function createMatterPlanStepAction(formData: FormData) {
   const access = await assertCanEditMatterPlan(user.id, user.role, parsed.data.matterId);
   if (access.error || !access.matter) return { error: access.error ?? (await actionError("noPermission")) };
 
+  const assignees = await prisma.user.findMany({
+    where: { id: { in: parsed.data.assigneeIds }, isActive: true },
+    select: { id: true },
+  });
+  if (assignees.length !== parsed.data.assigneeIds.length) {
+    return { error: "Không tìm thấy nhân viên phụ trách" };
+  }
+
   const last = await prisma.matterPlanStep.findFirst({
     where: { matterId: parsed.data.matterId },
     orderBy: { sortOrder: "desc" },
@@ -1059,12 +1079,14 @@ export async function createMatterPlanStepAction(formData: FormData) {
   });
 
   const location = parseLocationFromFormData(formData);
+  const planLink = `/matters/${parsed.data.matterId}/plan`;
+  const title = parsed.data.title.trim();
 
   try {
     const step = await prisma.matterPlanStep.create({
       data: {
         matterId: parsed.data.matterId,
-        title: parsed.data.title.trim(),
+        title,
         workTypeId: parsed.data.workTypeId || null,
         startedAt: parsed.data.startedAt ? new Date(parsed.data.startedAt) : null,
         dueAt: parsed.data.dueAt ? new Date(parsed.data.dueAt) : null,
@@ -1072,7 +1094,26 @@ export async function createMatterPlanStepAction(formData: FormData) {
         priority: parsed.data.priority,
         sortOrder: (last?.sortOrder ?? 0) + 1,
         ...locationToPrismaFields(location),
+        assignees: {
+          create: parsed.data.assigneeIds.map((userId) => ({ userId })),
+        },
       },
+    });
+
+    await prisma.notification.createMany({
+      data: parsed.data.assigneeIds.map((userId) => ({
+        userId,
+        type: "PLAN_ASSIGNED" as const,
+        title: "Được giao bước kế hoạch",
+        message: `${access.matter.code}: ${title}`,
+        link: planLink,
+      })),
+    });
+    void notifyUsersPush(parsed.data.assigneeIds, {
+      title: "Được giao bước kế hoạch",
+      body: `${access.matter.code}: ${title}`,
+      url: planLink,
+      tag: `plan-assigned-${step.id}`,
     });
 
     await createAuditLog({
@@ -1099,10 +1140,12 @@ export async function createMatterPlanStepAction(formData: FormData) {
 
 export async function updateMatterPlanStepAction(formData: FormData) {
   const user = await requireAuth();
+  const hasAssigneeIds = formData.has("assigneeIds");
   const parsed = matterPlanStepUpdateSchema.safeParse({
     id: formData.get("id"),
     title: formData.get("title") || undefined,
     workTypeId: formData.has("workTypeId") ? formData.get("workTypeId") || null : undefined,
+    assigneeIds: hasAssigneeIds ? parseAssigneeIds(formData) : undefined,
     startedAt: formData.has("startedAt") ? formData.get("startedAt") || null : undefined,
     dueAt: formData.has("dueAt") ? formData.get("dueAt") || null : undefined,
     status: formData.get("status") || undefined,
@@ -1132,16 +1175,37 @@ export async function updateMatterPlanStepAction(formData: FormData) {
 
   const step = await prisma.matterPlanStep.findUnique({
     where: { id: parsed.data.id },
-    select: { id: true, matterId: true, status: true, title: true },
+    select: {
+      id: true,
+      matterId: true,
+      status: true,
+      title: true,
+      assignees: { select: { userId: true } },
+    },
   });
   if (!step) return { error: "Không tìm thấy bước kế hoạch" };
 
   const access = await assertCanEditMatterPlan(user.id, user.role, step.matterId);
   if (access.error) return { error: access.error };
 
+  const nextAssigneeIds = parsed.data.assigneeIds;
+  if (nextAssigneeIds) {
+    const assignees = await prisma.user.findMany({
+      where: { id: { in: nextAssigneeIds }, isActive: true },
+      select: { id: true },
+    });
+    if (assignees.length !== nextAssigneeIds.length) {
+      return { error: "Không tìm thấy nhân viên phụ trách" };
+    }
+  }
+
   const nextStatus = parsed.data.status as MatterPlanStepStatus | undefined;
   const statusChanged =
     nextStatus !== undefined && nextStatus !== step.status;
+  const previousAssigneeIds = step.assignees.map((row) => row.userId);
+  const newlyAssignedIds = nextAssigneeIds
+    ? nextAssigneeIds.filter((id) => !previousAssigneeIds.includes(id))
+    : [];
 
   const locationTouched =
     formData.has("locationCleared") ||
@@ -1152,31 +1216,65 @@ export async function updateMatterPlanStepAction(formData: FormData) {
     ? locationToPrismaFields(parseLocationFromFormData(formData))
     : null;
 
-  await prisma.matterPlanStep.update({
-    where: { id: step.id },
-    data: {
-      ...(parsed.data.title !== undefined ? { title: parsed.data.title.trim() } : {}),
-      ...(parsed.data.workTypeId !== undefined
-        ? { workTypeId: parsed.data.workTypeId || null }
-        : {}),
-      ...(parsed.data.startedAt !== undefined
-        ? { startedAt: parsed.data.startedAt ? new Date(parsed.data.startedAt) : null }
-        : {}),
-      ...(parsed.data.dueAt !== undefined
-        ? { dueAt: parsed.data.dueAt ? new Date(parsed.data.dueAt) : null }
-        : {}),
-      ...(nextStatus !== undefined
-        ? {
-            status: nextStatus,
-            ...(statusChanged ? { statusChangedAt: new Date() } : {}),
-          }
-        : {}),
-      ...(parsed.data.priority !== undefined ? { priority: parsed.data.priority } : {}),
-      ...(locationFields ?? {}),
-    },
+  await prisma.$transaction(async (tx) => {
+    await tx.matterPlanStep.update({
+      where: { id: step.id },
+      data: {
+        ...(parsed.data.title !== undefined ? { title: parsed.data.title.trim() } : {}),
+        ...(parsed.data.workTypeId !== undefined
+          ? { workTypeId: parsed.data.workTypeId || null }
+          : {}),
+        ...(parsed.data.startedAt !== undefined
+          ? { startedAt: parsed.data.startedAt ? new Date(parsed.data.startedAt) : null }
+          : {}),
+        ...(parsed.data.dueAt !== undefined
+          ? { dueAt: parsed.data.dueAt ? new Date(parsed.data.dueAt) : null }
+          : {}),
+        ...(nextStatus !== undefined
+          ? {
+              status: nextStatus,
+              ...(statusChanged ? { statusChangedAt: new Date() } : {}),
+            }
+          : {}),
+        ...(parsed.data.priority !== undefined ? { priority: parsed.data.priority } : {}),
+        ...(locationFields ?? {}),
+      },
+    });
+
+    if (nextAssigneeIds) {
+      await tx.matterPlanStepAssignee.deleteMany({ where: { stepId: step.id } });
+      if (nextAssigneeIds.length > 0) {
+        await tx.matterPlanStepAssignee.createMany({
+          data: nextAssigneeIds.map((userId) => ({
+            stepId: step.id,
+            userId,
+          })),
+        });
+      }
+    }
   });
 
   const title = parsed.data.title?.trim() || step.title;
+  if (newlyAssignedIds.length > 0) {
+    const planLink = `/matters/${step.matterId}/plan`;
+    const matterCode = access.matter?.code ?? step.matterId;
+    await prisma.notification.createMany({
+      data: newlyAssignedIds.map((userId) => ({
+        userId,
+        type: "PLAN_ASSIGNED" as const,
+        title: "Được giao bước kế hoạch",
+        message: `${matterCode}: ${title}`,
+        link: planLink,
+      })),
+    });
+    void notifyUsersPush(newlyAssignedIds, {
+      title: "Được giao bước kế hoạch",
+      body: `${matterCode}: ${title}`,
+      url: planLink,
+      tag: `plan-assigned-${step.id}`,
+    });
+  }
+
   await createAuditLog({
     userId: user.id,
     action: "UPDATE",

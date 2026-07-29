@@ -198,7 +198,7 @@ function MultiSelectFilter({
       <div
         ref={fieldRef}
         className={cn(
-          "interactive-field flex h-10 w-full cursor-pointer items-center rounded-lg border border-border bg-surface pl-3 pr-1 text-sm",
+          "interactive-field flex h-10 w-full cursor-pointer items-center rounded-lg border border-border bg-surface pl-3 pr-1 text-sm leading-normal",
           "hover:border-primary/35 hover:bg-muted/90",
           open && "border-primary/40 bg-muted/90",
           values.length > 0 && "border-primary/40 bg-primary-muted/40 hover:bg-primary-muted/55",
@@ -328,7 +328,7 @@ export function MattersFiltersBar({
     Boolean(filters.dateTo);
 
   return (
-    <div className="rounded-md border border-border bg-surface px-3 py-3">
+    <div className="shrink-0 border-b border-border/60 pb-3">
       <div className="flex items-end gap-2 overflow-x-auto pb-0.5">
         <div className="min-w-[8.5rem] flex-1">
           <MultiSelectFilter

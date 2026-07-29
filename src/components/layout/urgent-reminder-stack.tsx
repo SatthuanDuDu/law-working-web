@@ -14,6 +14,10 @@ import { ChevronDown, Clock, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { isUrgentReminderActive } from "@/lib/urgent-reminder-window";
+import {
+  getUrgentDeadlineMs,
+  getUrgentRemainingParts,
+} from "@/lib/urgent-reminder-countdown";
 
 export type UrgentReminderItem = {
   id: string;
@@ -41,27 +45,24 @@ function isDismissedTemporarily(
   return now - dismissedAtMs < REDISPLAY_AFTER_MS;
 }
 
-function formatCountdown(
-  msRemaining: number,
-  phase: "to-start" | "to-due",
-  t: ReturnType<typeof useTranslations>,
+function formatCountdownValue(
+  parts: Exclude<ReturnType<typeof getUrgentRemainingParts>, { overdue: true }>,
   tCommon: ReturnType<typeof useTranslations>,
 ): string {
-  if (msRemaining <= 0) {
-    return phase === "to-due" ? t("overdue") : t("overdue");
+  const { days, hours, minutes, totalMinutes } = parts;
+  if (days > 0) {
+    if (minutes === 0) {
+      return tCommon("daysHours", { days, hours });
+    }
+    return tCommon("daysHoursMinutes", { days, hours, mins: minutes });
   }
-  const totalMinutes = Math.ceil(msRemaining / 60_000);
   if (totalMinutes < 60) {
-    return t("remaining", { value: tCommon("minutes", { count: totalMinutes }) });
+    return tCommon("minutes", { count: totalMinutes });
   }
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
   if (minutes === 0) {
-    return t("remaining", { value: tCommon("hours", { count: hours }) });
+    return tCommon("hours", { count: hours });
   }
-  return t("remaining", {
-    value: tCommon("hoursMinutes", { hours, mins: minutes }),
-  });
+  return tCommon("hoursMinutes", { hours, mins: minutes });
 }
 
 function reminderCountdown(
@@ -70,17 +71,11 @@ function reminderCountdown(
   t: ReturnType<typeof useTranslations>,
   tCommon: ReturnType<typeof useTranslations>,
 ): string {
-  const startsAt = new Date(item.startsAt).getTime();
-  if (now < startsAt) {
-    return formatCountdown(startsAt - now, "to-start", t, tCommon);
-  }
-  if (item.endsAt) {
-    const endsAt = new Date(item.endsAt).getTime();
-    if (!Number.isNaN(endsAt)) {
-      return formatCountdown(endsAt - now, "to-due", t, tCommon);
-    }
-  }
-  return t("overdue");
+  const deadline = getUrgentDeadlineMs(item.startsAt, item.endsAt);
+  if (deadline == null) return t("overdue");
+  const parts = getUrgentRemainingParts(deadline - now);
+  if (parts.overdue) return t("overdue");
+  return t("remaining", { value: formatCountdownValue(parts, tCommon) });
 }
 
 function useNowTicker(intervalMs = 10_000) {
@@ -361,7 +356,10 @@ function UrgentReminderList({
                             <Clock className="h-2.5 w-2.5 shrink-0" aria-hidden />
                             <span>{item.timeLabel}</span>
                             <span className="font-medium text-white/80">·</span>
-                            <span className="max-w-[3.75rem] truncate font-medium text-white/85">
+                            <span
+                              className="whitespace-nowrap font-medium text-white/85"
+                              title={countdown}
+                            >
                               {countdown}
                             </span>
                           </span>

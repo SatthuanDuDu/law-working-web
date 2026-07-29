@@ -1,0 +1,14 @@
+---
+description: Liquid glass panels app-wide (from Tổng quan trial)
+globs: src/components/ui/card.tsx,src/components/ui/section-panel.tsx,src/lib/liquid-panel.ts,src/app/(dashboard)/**
+alwaysApply: false
+---
+
+# Liquid glass panels
+
+App-wide content panels use `liquidPanelClass` (`src/lib/liquid-panel.ts`) via default `Card` / `SectionPanel`.
+
+- Do **not** apply liquid glass to form controls, dropdown menus, or modal overlays (keep opaque `bg-surface`).
+- Pass `solid` on `Card` when opaque is required (e.g. login card).
+- Sidebar chrome stays solid `bg-primary`; nav items use `.sidebar-nav-liquid` on hover/active only.
+- Respect `prefers-reduced-motion` / `motion-reduce:backdrop-blur-none`.

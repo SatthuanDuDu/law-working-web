@@ -49,10 +49,7 @@ export default async function TasksPage() {
 
   return (
     <>
-      <PageHeaderSlot
-        title={tPages("title")}
-        description={tPages("description")}
-      />
+      <PageHeaderSlot title={tPages("title")} />
       <TaskList
         tasks={tasks}
         currentUserId={user.id}

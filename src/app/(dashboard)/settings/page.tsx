@@ -29,10 +29,7 @@ export default async function SettingsPage() {
 
   return (
     <>
-      <PageHeaderSlot
-        title={tPages("title")}
-        description={tPages("description")}
-      />
+      <PageHeaderSlot title={tPages("title")} />
       <SettingsPageClient user={user} />
     </>
   );

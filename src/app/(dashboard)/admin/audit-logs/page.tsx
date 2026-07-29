@@ -146,10 +146,7 @@ export default async function AdminAuditLogsPage() {
 
   return (
     <>
-      <PageHeaderSlot
-        title={tPages("title")}
-        description={tPages("description")}
-      />
+      <PageHeaderSlot title={tPages("title")} />
       <AuditLogsList logs={listItems} actors={actors} />
     </>
   );

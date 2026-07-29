@@ -41,6 +41,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { cn, formatDate } from "@/lib/utils";
+import { liquidPanelClass } from "@/lib/liquid-panel";
 import {
   appendLocationToFormData,
   type LocationValue,
@@ -957,7 +958,12 @@ export function ChatWorkspace({
   const showThread = Boolean(activeId);
 
   return (
-    <div className="flex h-[min(70dvh,680px)] min-h-[24rem] overflow-hidden rounded-md border border-border bg-surface sm:h-[min(76dvh,760px)]">
+    <div
+      className={cn(
+        liquidPanelClass,
+        "flex h-[min(70dvh,680px)] min-h-[24rem] overflow-hidden rounded-md sm:h-[min(76dvh,760px)]",
+      )}
+    >
       {/* Sidebar */}
       <aside
         className={cn(
@@ -1003,7 +1009,7 @@ export function ChatWorkspace({
               value={sidebarQuery}
               onChange={(e) => setSidebarQuery(e.target.value)}
               placeholder={t("searchUser")}
-              className="h-9 pl-8 text-base sm:text-sm"
+              className="h-9 pl-8"
               autoComplete="off"
             />
             {sidebarQuery ? (
@@ -1380,7 +1386,7 @@ export function ChatWorkspace({
                   }}
                   rows={2}
                   placeholder={t("placeholder")}
-                  className="interactive-field w-full resize-none rounded-md border border-border bg-surface px-3 py-2 text-base text-foreground sm:text-sm"
+                  className="interactive-field w-full resize-none rounded-md border border-border bg-surface px-3 py-2 text-sm leading-normal text-foreground"
                 />
               </div>
 
@@ -1483,7 +1489,6 @@ export function ChatWorkspace({
                 value={groupName}
                 onChange={(e) => setGroupName(e.target.value)}
                 placeholder={t("groupName")}
-                className="text-base sm:text-sm"
               />
               <div className="relative">
                 <Search
@@ -1494,7 +1499,7 @@ export function ChatWorkspace({
                   value={groupQuery}
                   onChange={(e) => setGroupQuery(e.target.value)}
                   placeholder={t("searchStaff")}
-                  className="pl-8 text-base sm:text-sm"
+                  className="pl-8"
                 />
               </div>
               <ul className="max-h-64 space-y-0.5 overflow-y-auto">

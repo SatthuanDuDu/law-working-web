@@ -47,7 +47,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary via-primary-hover to-[#0b3a20] p-4 sm:p-6">
-      <Card className="w-full max-w-md border-border shadow-[var(--shadow-overlay)]">
+      <Card className="w-full max-w-md border-border shadow-[var(--shadow-overlay)]" solid>
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-surface ring-1 ring-border">
             <Image
@@ -75,7 +75,6 @@ export default function LoginPage() {
                 autoComplete="username"
                 placeholder="admin"
                 required
-                className="text-base sm:text-sm"
               />
             </div>
             <div className="space-y-2">
@@ -86,7 +85,6 @@ export default function LoginPage() {
                 type="password"
                 autoComplete="current-password"
                 required
-                className="text-base sm:text-sm"
               />
             </div>
             {error ? <p className="text-sm text-rose-600">{error}</p> : null}

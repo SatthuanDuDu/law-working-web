@@ -4,7 +4,6 @@ import { createContext, useContext, useLayoutEffect, useState } from "react";
 
 export type PageMeta = {
   title: string;
-  description?: string;
 };
 
 type PageMetaContextValue = {
@@ -36,18 +35,12 @@ export function usePageMeta() {
   return ctx;
 }
 
-export function PageHeaderSlot({
-  title,
-  description,
-}: {
-  title: string;
-  description?: string;
-}) {
+export function PageHeaderSlot({ title }: { title: string }) {
   const { setMeta } = usePageMeta();
 
   useLayoutEffect(() => {
-    setMeta({ title, description });
-  }, [title, description, setMeta]);
+    setMeta({ title });
+  }, [title, setMeta]);
 
   return null;
 }

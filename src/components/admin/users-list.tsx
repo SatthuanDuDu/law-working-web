@@ -8,9 +8,10 @@ import { DeleteUserButton } from "@/components/admin/delete-user-button";
 import { EditUserModal } from "@/components/admin/edit-user-modal";
 import { ToggleUserActiveButton } from "@/components/admin/toggle-user-active-button";
 import { ResetPasswordButton } from "@/components/admin/reset-password-button";
-import { Badge, Card, CardContent, CardHeader, CardTitle, Select } from "@/components/ui/card";
+import { Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FilterSelect } from "@/components/ui/filter-select";
 import { ListViewToggle } from "@/components/ui/list-view-toggle";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { useListViewMode } from "@/hooks/use-list-view-mode";
@@ -172,111 +173,102 @@ export function UsersList({
 
   return (
     <>
-      <Card className="rounded-[5px]">
-        <CardHeader className="gap-3 space-y-0 pb-3">
-          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-            <div className="min-w-0">
-              <CardTitle className="text-base sm:text-lg">{tNav("users")}</CardTitle>
-              <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
-                {visibleUsers.length === users.length
-                  ? tUsers("staffCount", { count: users.length })
-                  : tUsers("staffCountFiltered", {
-                      visible: visibleUsers.length,
-                      total: users.length,
-                    })}
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <ListViewToggle mode={mode} onChange={setMode} />
-              <Button
-                type="button"
-                className="shrink-0"
-                onClick={() => setCreateOpen(true)}
-                aria-label={t("createUser")}
-              >
-                <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">{t("createUser")}</span>
-              </Button>
-            </div>
-          </div>
+      <Card className="rounded-md">
+        <CardHeader className="gap-3 space-y-0 border-b border-border/60 p-3.5 pb-3 sm:p-4 sm:pb-3">
+          <CardTitle className="text-sm font-semibold sm:text-base">
+            {tNav("users")}
+          </CardTitle>
 
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="relative min-w-0 sm:col-span-2 lg:col-span-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder={tUsers("searchPlaceholder")}
-                className="h-9 pl-9"
-                aria-label={tUsers("searchLabel")}
+          <div className="flex items-end gap-2">
+            <div className="grid min-w-0 flex-1 grid-cols-2 gap-2 lg:grid-cols-4">
+              <div className="relative col-span-2 min-w-0 lg:col-span-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder={tUsers("searchPlaceholder")}
+                  className="h-10 pl-9"
+                  aria-label={tUsers("searchLabel")}
+                />
+              </div>
+              <FilterSelect
+                value={roleFilter}
+                onChange={(next) => setRoleFilter(next as Role | "all")}
+                className="min-w-0"
+                aria-label={tSettings("role")}
+                options={[
+                  { value: "all", label: tUsers("allRoles") },
+                  ...(Object.keys(roles) as Role[]).map((role) => ({
+                    value: role,
+                    label: roles[role],
+                  })),
+                ]}
+              />
+              <FilterSelect
+                value={statusFilter}
+                onChange={(next) => setStatusFilter(next as StatusFilter)}
+                className="min-w-0"
+                aria-label={tCommon("status")}
+                options={[
+                  { value: "all", label: tUsers("allStatuses") },
+                  { value: "active", label: t("active") },
+                  { value: "inactive", label: t("inactive") },
+                ]}
+              />
+              <FilterSelect
+                value={departmentFilter}
+                onChange={setDepartmentFilter}
+                className="col-span-2 min-w-0 sm:col-span-1"
+                aria-label={tSettings("department")}
+                options={[
+                  { value: "all", label: tUsers("allDepartments") },
+                  { value: "none", label: tUsers("noDepartment") },
+                  ...departmentOptions.map((department) => ({
+                    value: department.id,
+                    label: department.name,
+                  })),
+                ]}
               />
             </div>
-            <Select
-              value={roleFilter}
-              onChange={(event) =>
-                setRoleFilter(event.target.value as Role | "all")
-              }
-              className="h-9"
-              aria-label={tSettings("role")}
+            <Button
+              type="button"
+              size="icon"
+              className="h-10 w-10 shrink-0 rounded-md p-0 [&_svg]:h-4 [&_svg]:w-4"
+              onClick={() => setCreateOpen(true)}
+              aria-label={t("createUser")}
+              title={t("createUser")}
             >
-              <option value="all">{tUsers("allRoles")}</option>
-              {(Object.keys(roles) as Role[]).map((role) => (
-                <option key={role} value={role}>
-                  {roles[role]}
-                </option>
-              ))}
-            </Select>
-            <Select
-              value={statusFilter}
-              onChange={(event) =>
-                setStatusFilter(event.target.value as StatusFilter)
-              }
-              className="h-9"
-              aria-label={tCommon("status")}
-            >
-              <option value="all">{tUsers("allStatuses")}</option>
-              <option value="active">{t("active")}</option>
-              <option value="inactive">{t("inactive")}</option>
-            </Select>
-            <Select
-              value={departmentFilter}
-              onChange={(event) => setDepartmentFilter(event.target.value)}
-              className="h-9"
-              aria-label={tSettings("department")}
-            >
-              <option value="all">{tUsers("allDepartments")}</option>
-              <option value="none">{tUsers("noDepartment")}</option>
-              {departmentOptions.map((department) => (
-                <option key={department.id} value={department.id}>
-                  {department.name}
-                </option>
-              ))}
-            </Select>
+              <Plus />
+            </Button>
           </div>
         </CardHeader>
 
+        <div className="flex justify-end px-3.5 pt-2.5 sm:px-4 sm:pt-3">
+          <ListViewToggle mode={mode} onChange={setMode} size="sm" />
+        </div>
+
         {users.length === 0 ? (
           <CardContent className="p-0">
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground sm:px-6">
+            <p className="px-3.5 py-8 text-center text-sm text-muted-foreground sm:px-4">
               {tUsers("emptyHint")}
             </p>
           </CardContent>
         ) : visibleUsers.length === 0 ? (
           <CardContent className="p-0">
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground sm:px-6">
+            <p className="px-3.5 py-8 text-center text-sm text-muted-foreground sm:px-4">
               {tUsers("noFilterMatch")}
             </p>
           </CardContent>
         ) : mode === "grid" ? (
-          <CardContent className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3 sm:p-6">
+          <CardContent className="grid grid-cols-1 gap-2.5 px-3.5 pb-3.5 pt-2.5 sm:grid-cols-2 sm:gap-3 sm:px-4 sm:pb-4 lg:grid-cols-3 2xl:grid-cols-4">
             {visibleUsers.map((item) => {
               const meta = userMeta(item);
               return (
                 <div
                   key={item.id}
                   className={cn(
-                    "relative flex h-full flex-col gap-3 rounded-md border border-border/80 p-3 pt-3.5",
-                    !item.isActive && "bg-muted/30",
+                    "relative flex h-full min-w-0 flex-col gap-2.5 rounded-md border border-border/40 bg-[color-mix(in_oklab,var(--muted)_6%,var(--surface))] p-3",
+                    !item.isActive && "opacity-80",
                   )}
                 >
                   <div className="absolute top-1.5 right-1.5 z-10">
@@ -327,14 +319,14 @@ export function UsersList({
             })}
           </CardContent>
         ) : (
-          <CardContent className="divide-y divide-border/70 p-0">
+          <CardContent className="divide-y divide-border/60 p-0">
             {visibleUsers.map((item) => {
               const meta = userMeta(item);
               return (
                 <div
                   key={item.id}
                   className={cn(
-                    "px-4 py-3 sm:px-6",
+                    "px-3.5 py-3 sm:px-4",
                     !item.isActive && "bg-muted/30",
                   )}
                 >

@@ -83,6 +83,7 @@ export const TASK_PRIORITY_LABELS = {
 export const NOTIFICATION_TYPE_LABELS = {
   TASK_ASSIGNED: "Giao việc",
   TASK_DUE: "Hạn công việc",
+  PLAN_ASSIGNED: "Giao kế hoạch",
   GENERAL: "Chung",
   MENTION: "Nhắc đến",
   CHAT_MESSAGE: "Tin nhắn",

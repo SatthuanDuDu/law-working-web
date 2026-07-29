@@ -13,7 +13,7 @@ export function nowDatetimeLocalValue(date = new Date()): string {
 const labelClass = "block text-sm font-medium text-foreground";
 
 const inputClass =
-  "interactive-field h-11 min-w-0 max-w-full w-full rounded-[5px] border border-border bg-surface px-3 pr-[4.25rem] text-sm text-foreground";
+  "interactive-field h-11 min-w-0 max-w-full w-full rounded-[5px] border border-border bg-surface px-3 py-0 pr-[4.25rem] text-sm leading-normal text-foreground";
 
 export function DatetimeLocalWithNow({
   id,

@@ -193,9 +193,15 @@ export function TaskForm({
 
   return (
     <>
-      <Button type="button" onClick={() => setOpen(true)} className="shrink-0">
-        <Plus className="h-4 w-4" aria-hidden />
-        {t("addButton")}
+      <Button
+        type="button"
+        size="icon"
+        onClick={() => setOpen(true)}
+        className="h-10 w-10 shrink-0 rounded-md p-0 [&_svg]:h-4 [&_svg]:w-4"
+        aria-label={t("addButton")}
+        title={t("addButton")}
+      >
+        <Plus aria-hidden />
       </Button>
 
       {mounted

@@ -18,6 +18,7 @@ import {
   appendLocationToFormData,
   type LocationValue,
 } from "@/lib/location";
+import { PlanAssigneeMultiSelect } from "@/components/matters/plan-assignee-multi-select";
 
 export type CalendarMatterOption = {
   id: string;
@@ -41,11 +42,13 @@ function CalendarAddPlanForm({
   day,
   matters,
   workTypes,
+  assigneeOptions,
   onClose,
 }: {
   day: Date;
   matters: CalendarMatterOption[];
   workTypes: CalendarWorkTypeOption[];
+  assigneeOptions: { id: string; name: string }[];
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -54,6 +57,7 @@ function CalendarAddPlanForm({
   const tCommon = useTranslations("common");
   const [error, setError] = useState("");
   const [dueTime, setDueTime] = useState(() => defaultDueTime(day));
+  const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [location, setLocation] = useState<LocationValue | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -61,6 +65,12 @@ function CalendarAddPlanForm({
     e.preventDefault();
     const form = e.currentTarget;
     const formData = new FormData(form);
+    if (assigneeIds.length === 0) {
+      setError(tPlan("assigneeRequired"));
+      return;
+    }
+    formData.delete("assigneeIds");
+    for (const id of assigneeIds) formData.append("assigneeIds", id);
     const timeValue = dueTime || "17:00";
     const [hoursRaw, minutesRaw] = timeValue.split(":");
     const hours = Number(hoursRaw);
@@ -86,6 +96,7 @@ function CalendarAddPlanForm({
       }
       onClose();
       form.reset();
+      setAssigneeIds([]);
       setLocation(null);
       router.refresh();
     });
@@ -113,6 +124,13 @@ function CalendarAddPlanForm({
           placeholder={t("planStepPlaceholder")}
         />
       </div>
+      <PlanAssigneeMultiSelect
+        id="calendar-plan-assignee"
+        options={assigneeOptions}
+        selectedIds={assigneeIds}
+        onChange={setAssigneeIds}
+        disabled={isPending}
+      />
       <div className="space-y-1.5">
         <Label htmlFor="calendar-plan-due-time">{t("planDueTime")}</Label>
         <Input
@@ -152,7 +170,15 @@ function CalendarAddPlanForm({
         <Button type="button" variant="outline" onClick={onClose}>
           {tCommon("cancel")}
         </Button>
-        <Button type="submit" disabled={isPending || matters.length === 0}>
+        <Button
+          type="submit"
+          disabled={
+            isPending ||
+            matters.length === 0 ||
+            assigneeOptions.length === 0 ||
+            assigneeIds.length === 0
+          }
+        >
           {isPending ? t("adding") : tPlan("addStep")}
         </Button>
       </div>
@@ -165,12 +191,14 @@ export function CalendarAddPlanDialog({
   day,
   matters,
   workTypes,
+  assigneeOptions,
   onClose,
 }: {
   open: boolean;
   day: Date | null;
   matters: CalendarMatterOption[];
   workTypes: CalendarWorkTypeOption[];
+  assigneeOptions: { id: string; name: string }[];
   onClose: () => void;
 }) {
   const locale = useLocale();
@@ -240,6 +268,7 @@ export function CalendarAddPlanDialog({
           day={day}
           matters={matters}
           workTypes={workTypes}
+          assigneeOptions={assigneeOptions}
           onClose={onClose}
         />
       </div>

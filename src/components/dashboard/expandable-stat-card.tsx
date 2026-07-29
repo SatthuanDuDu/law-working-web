@@ -5,8 +5,11 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/card";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { useLabelMaps } from "@/i18n/use-label-maps";
+import { liquidPanelClass } from "@/lib/liquid-panel";
 import { formatDate, cn } from "@/lib/utils";
+import { listDivideClass, listRowClass } from "@/lib/list-surface";
 import type { TaskPriority, TaskStatus } from "@prisma/client";
 
 const STAT_TONES = {
@@ -31,6 +34,12 @@ function priorityVariant(
   }
 }
 
+export type DashboardPerson = {
+  id: string;
+  name: string;
+  avatarKey?: string | null;
+};
+
 export type DashboardTaskItem = {
   id: string;
   title: string;
@@ -40,10 +49,17 @@ export type DashboardTaskItem = {
   matterId: string | null;
   matterCode: string | null;
   matterTitle: string | null;
+  leadLawyer: DashboardPerson | null;
 };
 
 function taskHref(item: DashboardTaskItem) {
   return item.matterId ? `/matters/${item.matterId}` : "/tasks";
+}
+
+function shortenCode(code: string | null | undefined) {
+  if (!code) return null;
+  if (code.length <= 18) return code;
+  return `${code.slice(0, 8)}…${code.slice(-6)}`;
 }
 
 export function ExpandableStatCard({
@@ -69,70 +85,108 @@ export function ExpandableStatCard({
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="glass-surface group rounded-md border border-[color:var(--glass-border)] p-5 transition-colors duration-200 hover:border-primary/30">
-      <div className="flex items-start justify-between gap-3">
-        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          {label}
-        </span>
-        <div className="flex shrink-0 items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => setOpen((v) => !v)}
-            aria-expanded={open}
-            aria-label={open ? t("collapseCard", { label }) : t("expandCard", { label })}
-            className="interactive-press rounded-md p-1.5 text-muted-foreground hover:bg-primary-muted hover:text-primary hover:[filter:none] active:[filter:none]"
-          >
-            <ChevronDown
-              className={cn(
-                "h-4 w-4 transition-transform duration-200",
-                open && "rotate-180",
-              )}
-            />
-          </button>
+    <div
+      className={cn(
+        liquidPanelClass,
+        "group min-w-0 max-w-full overflow-hidden rounded-md transition-colors duration-200 hover:border-primary/30",
+      )}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-label={open ? t("collapseCard", { label }) : t("expandCard", { label })}
+        className="interactive-press flex w-full min-w-0 max-w-full items-center gap-2 p-3 text-left hover:[filter:none] active:[filter:none] sm:p-4"
+      >
+        <div className="min-w-0 flex-1">
+          <span className="block truncate text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            {label}
+          </span>
+          <div className="mt-1 flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <p className="text-2xl font-bold leading-none tabular-nums text-foreground">
+              {value}
+            </p>
+            {sub ? (
+              <div className="min-w-0 text-xs sm:text-sm">{sub}</div>
+            ) : null}
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 text-muted-foreground transition-transform duration-200",
+              open && "rotate-180",
+            )}
+            aria-hidden
+          />
           <span
             className={cn(
-              "flex h-9 w-9 items-center justify-center rounded-md",
+              "flex h-8 w-8 items-center justify-center rounded-md",
               STAT_TONES[tone],
             )}
           >
             {icon}
           </span>
         </div>
-      </div>
-      <p className="mt-4 text-[1.75rem] font-bold leading-none tabular-nums text-foreground">
-        {value}
-      </p>
-      {sub ? <div className="mt-2 text-sm">{sub}</div> : null}
+      </button>
 
       {open ? (
-        <div className="mt-4 space-y-2 border-t border-border/60 pt-3">
+        <div className="min-w-0 border-t border-border/60 px-1.5 pb-2 pt-0 sm:px-2">
           {items.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{emptyLabel}</p>
+            <p className="px-2.5 py-3 text-sm text-muted-foreground">{emptyLabel}</p>
           ) : (
-            items.map((item) => (
-              <Link
-                key={item.id}
-                href={taskHref(item)}
-                className="interactive-press block rounded-md border border-border/70 bg-surface/50 px-3 py-2.5 hover:border-primary/30 hover:bg-primary-muted/40 hover:[filter:none] active:[filter:none]"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <p className="min-w-0 truncate text-sm font-medium text-foreground">
-                    {item.title}
-                  </p>
-                  <Badge variant={priorityVariant(item.priority)} className="shrink-0">
-                    {labels.taskPriority[item.priority]}
-                  </Badge>
-                </div>
-                <p className="mt-1 truncate text-xs text-muted-foreground">
-                  {labels.taskStatus[item.status]}
-                  {" · "}
-                  {tCalendar("dueAt", {
+            <div className={listDivideClass}>
+              {items.map((item) => {
+                const matterLabel = shortenCode(item.matterCode);
+                const detailParts = [
+                  matterLabel,
+                  labels.taskStatus[item.status],
+                  tCalendar("dueAt", {
                     date: item.dueDate ? formatDate(item.dueDate) : "—",
-                  })}
-                  {item.matterCode ? ` · ${item.matterCode}` : ""}
-                </p>
-              </Link>
-            ))
+                  }),
+                ].filter(Boolean);
+
+                return (
+                  <Link
+                    key={item.id}
+                    href={taskHref(item)}
+                    className={listRowClass}
+                  >
+                    <div className="flex min-w-0 items-start justify-between gap-2">
+                      <p className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+                        {item.title}
+                      </p>
+                      <Badge
+                        variant={priorityVariant(item.priority)}
+                        className="shrink-0"
+                      >
+                        {labels.taskPriority[item.priority]}
+                      </Badge>
+                    </div>
+                    <p className="mt-0.5 min-w-0 truncate text-[11px] text-muted-foreground">
+                      {detailParts.join(" · ")}
+                    </p>
+                    {item.leadLawyer ? (
+                      <div className="mt-1.5 flex min-w-0 items-center gap-2">
+                        <UserAvatar
+                          userId={item.leadLawyer.id}
+                          name={item.leadLawyer.name}
+                          avatarKey={item.leadLawyer.avatarKey}
+                          size="sm"
+                          className="h-6 w-6 text-[10px]"
+                        />
+                        <span className="min-w-0 truncate text-xs text-muted-foreground">
+                          <span className="text-muted-foreground/80">
+                            {tCalendar("leadLawyer")}:{" "}
+                          </span>
+                          {item.leadLawyer.name}
+                        </span>
+                      </div>
+                    ) : null}
+                  </Link>
+                );
+              })}
+            </div>
           )}
         </div>
       ) : null}

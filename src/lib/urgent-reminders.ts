@@ -33,7 +33,13 @@ export async function getUrgentReminders(
         lte: withinTwoHours,
         gte: earliestStart,
       },
-      ...(matterIds ? { matterId: { in: matterIds } } : {}),
+      OR: [
+        { assignees: { some: { userId } } },
+        {
+          assignees: { none: {} },
+          ...(matterIds ? { matterId: { in: matterIds } } : {}),
+        },
+      ],
     },
     select: {
       id: true,

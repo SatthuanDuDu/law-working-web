@@ -4,9 +4,10 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { ExternalLink, Search, X } from "lucide-react";
-import { Badge, Card, CardContent, CardHeader, CardTitle, Select } from "@/components/ui/card";
+import { Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FilterSelect } from "@/components/ui/filter-select";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { useOverlayAnimation } from "@/hooks/use-overlay-animation";
@@ -399,48 +400,45 @@ export function AuditLogsList({
                 aria-label={t("searchLabel")}
               />
             </div>
-            <Select
+            <FilterSelect
               value={userFilter}
-              onChange={(event) => setUserFilter(event.target.value)}
-              className="h-9"
+              onChange={setUserFilter}
               aria-label={t("filterUser")}
-            >
-              <option value="all">{t("allUsers")}</option>
-              <option value="system">{tAdmin("systemUser")}</option>
-              {actors.map((actor) => (
-                <option key={actor.id} value={actor.id}>
-                  {actor.name}
-                </option>
-              ))}
-            </Select>
-            <Select
+              options={[
+                { value: "all", label: t("allUsers") },
+                { value: "system", label: tAdmin("systemUser") },
+                ...actors.map((actor) => ({
+                  value: actor.id,
+                  label: actor.name,
+                })),
+              ]}
+            />
+            <FilterSelect
               value={actionFilter}
-              onChange={(event) =>
-                setActionFilter(event.target.value as AuditAction | "all")
+              onChange={(next) =>
+                setActionFilter(next as AuditAction | "all")
               }
-              className="h-9"
               aria-label={t("filterAction")}
-            >
-              <option value="all">{t("allActions")}</option>
-              {(Object.keys(actionLabels) as AuditAction[]).map((action) => (
-                <option key={action} value={action}>
-                  {actionLabels[action]}
-                </option>
-              ))}
-            </Select>
-            <Select
+              options={[
+                { value: "all", label: t("allActions") },
+                ...(Object.keys(actionLabels) as AuditAction[]).map((action) => ({
+                  value: action,
+                  label: actionLabels[action],
+                })),
+              ]}
+            />
+            <FilterSelect
               value={entityFilter}
-              onChange={(event) => setEntityFilter(event.target.value)}
-              className="h-9"
+              onChange={setEntityFilter}
               aria-label={t("filterEntity")}
-            >
-              <option value="all">{t("allEntities")}</option>
-              {entityTypes.map((type) => (
-                <option key={type} value={type}>
-                  {entityLabel(type)}
-                </option>
-              ))}
-            </Select>
+              options={[
+                { value: "all", label: t("allEntities") },
+                ...entityTypes.map((type) => ({
+                  value: type,
+                  label: entityLabel(type),
+                })),
+              ]}
+            />
             {/* Single time-range filter (start + end inside one picker) */}
             <DateRangeFilter
               dateFrom={dateFrom}

@@ -715,35 +715,60 @@ export function AttachmentPanel({
                       item.isImportant && "attachment-important",
                     )
                   : cn(
-                      "rounded-md border p-3",
-                      item.isImportant
-                        ? "attachment-important border-primary/30"
-                        : "border-border bg-surface/80",
+                      "border-b border-border/60 py-3 last:border-b-0",
+                      item.isImportant && "attachment-important",
                     ),
               )}
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    {item.isImportant ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[11px] font-medium text-white">
-                        <Star className="h-3 w-3 fill-current" />
-                        {t("important")}
-                      </span>
-                    ) : null}
+              <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <div className="flex min-w-0 items-start gap-2">
                     <button
                       type="button"
                       onClick={(e) => {
                         e.currentTarget.blur();
                         setViewerItem(item);
                       }}
+                      title={item.fileName}
                       className={cn(
-                        "interactive-press truncate rounded-md text-left font-medium text-primary hover:underline hover:[filter:none] active:[filter:none]",
+                        "interactive-press min-w-0 flex-1 break-words rounded-md text-left font-medium text-primary hover:underline hover:[filter:none] active:[filter:none] sm:truncate sm:break-normal",
                         compact ? "text-xs" : "text-sm",
                       )}
                     >
                       {item.fileName}
                     </button>
+                    {canMarkImportant ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={isPending}
+                        onClick={() => handleToggleImportant(item)}
+                        className={cn(
+                          "h-8 w-8 shrink-0 px-0 hover:bg-primary-muted hover:text-primary hover:[filter:none] active:[filter:none] sm:hidden",
+                          item.isImportant && "text-primary",
+                        )}
+                        aria-label={
+                          item.isImportant ? t("unmarkImportant") : t("markImportant")
+                        }
+                        title={item.isImportant ? t("unmarkImportant") : t("markImportant")}
+                      >
+                        <Star
+                          className={cn(
+                            "h-4 w-4",
+                            item.isImportant && "fill-current",
+                          )}
+                        />
+                      </Button>
+                    ) : null}
+                  </div>
+
+                  <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                    {item.isImportant ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[11px] font-medium text-white">
+                        <Star className="h-3 w-3 fill-current" />
+                        {t("important")}
+                      </span>
+                    ) : null}
                     {item.labelName ? (
                       <span className="rounded-full bg-primary-muted px-2 py-0.5 text-[11px] font-medium text-primary">
                         {item.labelName}
@@ -785,9 +810,10 @@ export function AttachmentPanel({
                       </span>
                     ) : null}
                   </div>
+
                   {compact ? (
-                    <div className="mt-1 space-y-0.5 text-[11px] text-muted-foreground">
-                      <p>
+                    <div className="space-y-0.5 text-[11px] text-muted-foreground">
+                      <p className="break-words">
                         <span className="font-medium text-muted-foreground">
                           {t("uploadedBy")}:
                         </span>{" "}
@@ -796,7 +822,7 @@ export function AttachmentPanel({
                           ? ` · ${t("commentOrigin")}`
                           : ""}
                       </p>
-                      <p>
+                      <p className="break-words">
                         <span className="font-medium text-muted-foreground">
                           {t("date")}:
                         </span>{" "}
@@ -818,18 +844,22 @@ export function AttachmentPanel({
                         e.currentTarget.blur();
                         setViewerItem(item);
                       }}
-                      className="interactive-press mt-2 w-full space-y-1 rounded-md border-t border-border/80 pt-2 text-left text-xs text-muted-foreground hover:[filter:none] active:[filter:none]"
+                      className="interactive-press w-full min-w-0 space-y-1 rounded-md border-t border-border/80 pt-2 text-left text-xs text-muted-foreground hover:[filter:none] active:[filter:none]"
                     >
-                      <p>
+                      <p className="break-words">
                         <span className="font-medium text-muted-foreground">{t("uploadedBy")}:</span>{" "}
                         {item.uploadedBy.name}
                       </p>
-                      <p>
+                      <p className="break-words">
                         <span className="font-medium text-muted-foreground">{t("source")}:</span>{" "}
                         {item.origin?.label ?? t("defaultSource")}
-                        {item.origin?.matterCode ? ` (${item.origin.matterCode})` : ""}
                       </p>
-                      <p>
+                      {item.origin?.matterCode ? (
+                        <p className="break-all font-mono text-[11px] text-muted-foreground/90">
+                          {item.origin.matterCode}
+                        </p>
+                      ) : null}
+                      <p className="break-words">
                         <span className="font-medium text-muted-foreground">{t("date")}:</span>{" "}
                         {formatDateTime(item.createdAt)}
                         {" · "}
@@ -844,7 +874,8 @@ export function AttachmentPanel({
                     </button>
                   )}
                 </div>
-                <div className="flex shrink-0 flex-wrap justify-end gap-1">
+
+                <div className="flex flex-wrap gap-1 sm:max-w-[12rem] sm:shrink-0 sm:justify-end lg:max-w-none">
                   {canMarkImportant ? (
                     <Button
                       variant="ghost"
@@ -852,7 +883,7 @@ export function AttachmentPanel({
                       disabled={isPending}
                       onClick={() => handleToggleImportant(item)}
                       className={cn(
-                        "hover:bg-primary-muted hover:text-primary hover:[filter:none] active:[filter:none]",
+                        "hidden h-8 w-8 px-0 hover:bg-primary-muted hover:text-primary hover:[filter:none] active:[filter:none] sm:inline-flex",
                         item.isImportant && "text-primary",
                       )}
                       aria-label={
@@ -875,7 +906,7 @@ export function AttachmentPanel({
                       disabled={isPending}
                       onClick={() => setAccessItem(item)}
                       className={cn(
-                        "hover:bg-primary-muted hover:text-primary hover:[filter:none] active:[filter:none]",
+                        "h-8 w-8 px-0 hover:bg-primary-muted hover:text-primary hover:[filter:none] active:[filter:none]",
                         item.accessMode &&
                           item.accessMode !== "ALL_MEMBERS" &&
                           "text-primary",
@@ -894,6 +925,7 @@ export function AttachmentPanel({
                       e.currentTarget.blur();
                       setViewerItem(item);
                     }}
+                    className="h-8 w-8 px-0"
                     aria-label={tCommon("viewFile")}
                   >
                     <Eye className="h-4 w-4" />
@@ -903,7 +935,7 @@ export function AttachmentPanel({
                     size="sm"
                     disabled={isPending}
                     onClick={() => handleDownload(item.id)}
-                    className="hover:bg-primary-muted hover:text-primary hover:[filter:none] active:[filter:none]"
+                    className="h-8 w-8 px-0 hover:bg-primary-muted hover:text-primary hover:[filter:none] active:[filter:none]"
                     aria-label={tCommon("download")}
                   >
                     <Download className="h-4 w-4" />
@@ -914,7 +946,7 @@ export function AttachmentPanel({
                       size="sm"
                       disabled={isPending}
                       onClick={() => openReplacePicker(item.id)}
-                      className="hover:bg-primary-muted hover:text-primary hover:[filter:none] active:[filter:none]"
+                      className="h-8 w-8 px-0 hover:bg-primary-muted hover:text-primary hover:[filter:none] active:[filter:none]"
                       aria-label={t("replace")}
                       title={t("replace")}
                     >
@@ -927,7 +959,7 @@ export function AttachmentPanel({
                       size="sm"
                       disabled={isPending}
                       onClick={() => handleDelete(item)}
-                      className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40 hover:[filter:none] active:[filter:none]"
+                      className="h-8 w-8 px-0 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40 hover:[filter:none] active:[filter:none]"
                       aria-label={t("delete")}
                     >
                       <Trash2 className="h-4 w-4" />

@@ -3,11 +3,17 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { ChevronDown, Clock3 } from "lucide-react";
+import {
+  ChevronDown,
+  ClipboardList,
+  Clock3,
+  ListTodo,
+} from "lucide-react";
 import type { MatterPlanStepStatus } from "@prisma/client";
 import { updateMatterPlanStepAction } from "@/lib/actions";
 import { useLabelMaps } from "@/i18n/use-label-maps";
-import { Badge, Select } from "@/components/ui/card";
+import { Select } from "@/components/ui/card";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 
@@ -24,6 +30,17 @@ export type UpcomingDeadlineItem = {
   dueAt: string;
   dueLabel: string;
   matterCodeShort: string | null;
+  person?: {
+    id: string;
+    name: string;
+    avatarKey?: string | null;
+    role: "leadLawyer" | "assignee";
+  } | null;
+  assignees?: {
+    id: string;
+    name: string;
+    avatarKey?: string | null;
+  }[];
 };
 
 function deadlineTime(item: UpcomingDeadlineItem) {
@@ -32,6 +49,19 @@ function deadlineTime(item: UpcomingDeadlineItem) {
   // Tasks use a date-only input, so their deadline is the end of that local day.
   const [year, month, day] = item.dueAt.slice(0, 10).split("-").map(Number);
   return new Date(year, month - 1, day, 23, 59, 59, 999).getTime();
+}
+
+function priorityAccentClass(variant: UpcomingDeadlineItem["statusVariant"]) {
+  switch (variant) {
+    case "danger":
+      return "border-l-rose-500";
+    case "warning":
+      return "border-l-amber-500";
+    case "info":
+      return "border-l-sky-500";
+    default:
+      return "border-l-border";
+  }
 }
 
 function DeadlineCountdown({ item }: { item: UpcomingDeadlineItem }) {
@@ -65,16 +95,16 @@ function DeadlineCountdown({ item }: { item: UpcomingDeadlineItem }) {
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold tabular-nums",
+        "inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-medium tabular-nums",
         overdue
-          ? "bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300"
+          ? "text-rose-600 dark:text-rose-300"
           : remainingMs <= 24 * 60 * 60 * 1_000
-            ? "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"
-            : "bg-primary-muted text-primary",
+            ? "text-amber-700 dark:text-amber-300"
+            : "text-muted-foreground",
       )}
       aria-label={overdue ? t("countdownOverdue", { value }) : t("countdownLeft", { value })}
     >
-      <Clock3 className="h-3.5 w-3.5" aria-hidden />
+      <Clock3 className="h-3.5 w-3.5 shrink-0" aria-hidden />
       {overdue ? t("countdownOverdue", { value }) : t("countdownLeft", { value })}
     </span>
   );
@@ -88,6 +118,8 @@ export function UpcomingDeadlineList({
   const router = useRouter();
   const t = useTranslations("dashboard");
   const tMatters = useTranslations("matters");
+  const tPlan = useTranslations("plan");
+  const tCalendar = useTranslations("calendar");
   const { planStepStatus } = useLabelMaps();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -116,90 +148,143 @@ export function UpcomingDeadlineList({
   }
 
   return (
-    <div className="space-y-2.5">
+    <div className="min-w-0">
       {error ? (
-        <p className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300">
+        <p className="mb-3 rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
           {error}
         </p>
       ) : null}
-      {items.map((item) => {
-        const showPlanSelect =
-          item.kind === "plan" &&
-          item.canEditPlan &&
-          item.planStepId &&
-          item.planStatus;
+      <ul className="min-w-0 space-y-4">
+        {items.map((item) => {
+          const showPlanSelect =
+            item.kind === "plan" &&
+            item.canEditPlan &&
+            item.planStepId &&
+            item.planStatus;
+          const KindIcon = item.kind === "plan" ? ClipboardList : ListTodo;
+          const kindLabel =
+            item.kind === "plan" ? t("kindPlan") : t("kindTask");
+          const personLabel =
+            item.person?.role === "assignee"
+              ? tPlan("assignee")
+              : tCalendar("leadLawyer");
 
-        return (
-          <div
-            key={item.key}
-            className="rounded-md border border-primary/15 bg-primary-muted/40 px-4 py-3 transition-colors hover:border-primary/30 hover:bg-primary-muted"
-          >
-            <div className="flex items-start justify-between gap-2">
+          return (
+            <li
+              key={item.key}
+              className={cn(
+                "min-w-0 border-l-[3px] py-0.5 pl-3 transition-colors",
+                priorityAccentClass(item.statusVariant),
+              )}
+              title={
+                item.kind === "task"
+                  ? `${kindLabel} · ${item.statusLabel}`
+                  : kindLabel
+              }
+            >
               <Link
                 href={item.href}
-                className="interactive-press min-w-0 flex-1 hover:[filter:none] active:[filter:none]"
+                className="interactive-press block min-w-0 hover:[filter:none] active:[filter:none]"
               >
-                <p className="truncate font-medium text-foreground">
+                <p className="break-words text-sm font-medium leading-snug text-foreground sm:text-[0.9375rem]">
                   {item.title}
                 </p>
               </Link>
-              <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-                {showPlanSelect ? (
-                  <div className="relative shrink-0">
-                  <Select
-                    value={item.planStatus}
-                    disabled={isPending && pendingId === item.planStepId}
-                    onChange={(event) =>
-                      handlePlanStatusChange(
-                        item.planStepId!,
-                        event.target.value as MatterPlanStepStatus,
-                      )
-                    }
-                    className={cn(
-                      "h-8 w-auto min-w-[8.5rem] appearance-none rounded-full border-border bg-surface py-0 pl-2.5 pr-7 text-center text-xs font-medium text-foreground shadow-none",
-                    )}
-                    aria-label={`${tMatters("status")}: ${item.title}`}
+
+              <div className="mt-1.5 flex min-w-0 flex-col gap-1.5">
+                <div className="flex min-w-0 items-start gap-2">
+                  <Link
+                    href={item.href}
+                    className="interactive-press inline-flex min-w-0 flex-1 items-center gap-1.5 text-sm text-muted-foreground hover:[filter:none] active:[filter:none]"
                   >
-                    {planStatuses.map((status) => (
-                      <option key={status} value={status}>
-                        {planStepStatus[status]}
-                      </option>
+                    <KindIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    <span className="sr-only">{kindLabel}</span>
+                    <span className="min-w-0 truncate">
+                      {item.dueLabel}
+                      {item.matterCodeShort ? ` · ${item.matterCodeShort}` : ""}
+                    </span>
+                  </Link>
+                  <DeadlineCountdown item={item} />
+                </div>
+
+                {item.assignees && item.assignees.length > 0 ? (
+                  <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+                    {item.assignees.map((person, index) => (
+                      <div
+                        key={person.id}
+                        className="flex min-w-0 max-w-full items-center gap-2"
+                      >
+                        <UserAvatar
+                          userId={person.id}
+                          name={person.name}
+                          avatarKey={person.avatarKey}
+                          size="sm"
+                          className="h-6 w-6 shrink-0 text-[10px]"
+                        />
+                        <span className="min-w-0 truncate text-xs text-muted-foreground">
+                          {index === 0 ? (
+                            <span className="text-muted-foreground/80">
+                              {tPlan("assignee")}:{" "}
+                            </span>
+                          ) : null}
+                          {person.name}
+                        </span>
+                      </div>
                     ))}
-                  </Select>
-                  <ChevronDown
-                    className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
-                    aria-hidden
-                  />
                   </div>
-                ) : (
-                  <Badge variant={item.statusVariant} className="shrink-0">
+                ) : item.person ? (
+                  <div className="flex min-w-0 items-center gap-2">
+                    <UserAvatar
+                      userId={item.person.id}
+                      name={item.person.name}
+                      avatarKey={item.person.avatarKey}
+                      size="sm"
+                      className="h-6 w-6 text-[10px]"
+                    />
+                    <span className="min-w-0 truncate text-xs text-muted-foreground">
+                      <span className="text-muted-foreground/80">
+                        {personLabel}:{" "}
+                      </span>
+                      {item.person.name}
+                    </span>
+                  </div>
+                ) : null}
+
+                {showPlanSelect ? (
+                  <div className="relative w-fit max-w-full shrink-0">
+                    <Select
+                      value={item.planStatus}
+                      disabled={isPending && pendingId === item.planStepId}
+                      onChange={(event) =>
+                        handlePlanStatusChange(
+                          item.planStepId!,
+                          event.target.value as MatterPlanStepStatus,
+                        )
+                      }
+                      className="h-7 w-auto max-w-full min-w-[7.5rem] appearance-none rounded-md border-border/70 bg-transparent py-0 pl-2 pr-6 text-xs font-medium text-foreground shadow-none"
+                      aria-label={`${tMatters("status")}: ${item.title}`}
+                    >
+                      {planStatuses.map((status) => (
+                        <option key={status} value={status}>
+                          {planStepStatus[status]}
+                        </option>
+                      ))}
+                    </Select>
+                    <ChevronDown
+                      className="pointer-events-none absolute right-1.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+                      aria-hidden
+                    />
+                  </div>
+                ) : item.kind === "plan" ? (
+                  <span className="text-xs text-muted-foreground">
                     {item.statusLabel}
-                  </Badge>
-                )}
-                <DeadlineCountdown item={item} />
+                  </span>
+                ) : null}
               </div>
-            </div>
-            <Link
-              href={item.href}
-              className="interactive-press mt-1.5 flex min-w-0 items-center gap-1.5 hover:[filter:none] active:[filter:none]"
-            >
-              <Badge
-                className={
-                  item.kind === "plan"
-                    ? "bg-primary-muted text-primary"
-                    : "bg-amber-100 text-amber-900 dark:bg-amber-950/50 dark:text-amber-300"
-                }
-              >
-                {item.kind === "plan" ? t("kindPlan") : t("kindTask")}
-              </Badge>
-              <p className="min-w-0 truncate text-sm text-muted-foreground">
-                {item.dueLabel}
-                {item.matterCodeShort ? ` · ${item.matterCodeShort}` : ""}
-              </p>
-            </Link>
-          </div>
-        );
-      })}
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

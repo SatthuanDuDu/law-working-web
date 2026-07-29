@@ -35,10 +35,7 @@ export default async function AdminUsersPage() {
 
   return (
     <>
-      <PageHeaderSlot
-        title={tPages("title")}
-        description={tPages("description")}
-      />
+      <PageHeaderSlot title={tPages("title")} />
       <UsersList
         users={listItems}
         currentUserId={user.id}

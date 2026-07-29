@@ -77,8 +77,9 @@ export function TaskList({
       <div
         key={task.id}
         className={cn(
-          "rounded-lg border border-border p-4",
-          compact && "flex h-full flex-col",
+          compact
+            ? "flex h-full flex-col rounded-md border border-border/40 bg-[color-mix(in_oklab,var(--muted)_6%,var(--surface))] p-4"
+            : "px-1 py-3.5 first:pt-0 last:pb-0",
         )}
       >
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -140,14 +141,23 @@ export function TaskList({
     <>
       {dialog}
       <Card>
-        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0">
-          <CardTitle>{t("listTitle")}</CardTitle>
-          <div className="flex flex-wrap items-center gap-2">
-            {actions}
-            <ListViewToggle mode={mode} onChange={setMode} />
+        <CardHeader className="space-y-0 border-b border-border/60 p-3.5 pb-3 sm:p-4 sm:pb-3">
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle className="text-sm font-semibold sm:text-base">
+              {t("listTitle")}
+            </CardTitle>
+            {actions ? <div className="shrink-0">{actions}</div> : null}
           </div>
         </CardHeader>
-        <CardContent className={cn(isPending && "pointer-events-none opacity-60")}>
+        <CardContent
+          className={cn(
+            "space-y-3 p-3.5 pt-3 sm:p-4 sm:pt-3",
+            isPending && "pointer-events-none opacity-60",
+          )}
+        >
+          <div className="flex justify-end">
+            <ListViewToggle mode={mode} onChange={setMode} size="sm" />
+          </div>
           {tasks.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("empty")}</p>
           ) : mode === "grid" ? (
@@ -155,7 +165,7 @@ export function TaskList({
               {tasks.map((task) => renderTaskCard(task, true))}
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="divide-y divide-border/60">
               {tasks.map((task) => renderTaskCard(task, false))}
             </div>
           )}

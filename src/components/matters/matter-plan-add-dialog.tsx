@@ -19,6 +19,7 @@ import {
   appendLocationToFormData,
   type LocationValue,
 } from "@/lib/location";
+import { PlanAssigneeMultiSelect } from "@/components/matters/plan-assignee-multi-select";
 
 export type PlanStepSummary = {
   id: string;
@@ -31,7 +32,7 @@ export type PlanStepSummary = {
 const fieldLabelClass = "block text-sm font-medium text-foreground";
 
 const outlinedFieldInputClass =
-  "interactive-field h-11 min-w-0 max-w-full w-full rounded-[5px] border border-border bg-surface px-3 text-sm text-foreground";
+  "interactive-field h-11 min-w-0 max-w-full w-full rounded-[5px] border border-border bg-surface px-3 py-0 text-sm leading-normal text-foreground";
 
 const STATUS_PILL: Record<MatterPlanStepStatus, string> = {
   NOT_STARTED: "bg-muted text-foreground",
@@ -64,11 +65,13 @@ function OutlinedField({
 function MatterPlanAddForm({
   matterId,
   workTypes,
+  assigneeOptions,
   existingSteps,
   onClose,
 }: {
   matterId: string;
   workTypes: { id: string; name: string }[];
+  assigneeOptions: { id: string; name: string }[];
   existingSteps: PlanStepSummary[];
   onClose: () => void;
 }) {
@@ -81,6 +84,7 @@ function MatterPlanAddForm({
   const [error, setError] = useState("");
   const [title, setTitle] = useState("");
   const [workTypeId, setWorkTypeId] = useState("");
+  const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [startedAt, setStartedAt] = useState("");
   const [dueAt, setDueAt] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("MEDIUM");
@@ -89,10 +93,15 @@ function MatterPlanAddForm({
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    if (assigneeIds.length === 0) {
+      setError(t("assigneeRequired"));
+      return;
+    }
     const formData = new FormData();
     formData.set("matterId", matterId);
     formData.set("title", title.trim());
     formData.set("workTypeId", workTypeId);
+    for (const id of assigneeIds) formData.append("assigneeIds", id);
     formData.set("startedAt", startedAt);
     formData.set("dueAt", dueAt);
     formData.set("status", "NOT_STARTED");
@@ -210,28 +219,36 @@ function MatterPlanAddForm({
             </div>
           </OutlinedField>
 
-          <OutlinedField label={t("importance")} htmlFor="add-plan-priority">
-            <div className="relative">
-              <Select
-                id="add-plan-priority"
-                value={priority}
-                onChange={(event) =>
-                  setPriority(event.target.value as TaskPriority)
-                }
-                className={cn(outlinedFieldInputClass, "appearance-none pr-10")}
-              >
-                <option value="LOW">{t("importanceLow")}</option>
-                <option value="MEDIUM">{t("importanceMedium")}</option>
-                <option value="HIGH">{t("importanceHigh")}</option>
-                <option value="URGENT">{t("importanceUrgent")}</option>
-              </Select>
-              <ChevronDown
-                className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden
-              />
-            </div>
-          </OutlinedField>
+          <PlanAssigneeMultiSelect
+            id="add-plan-assignee"
+            options={assigneeOptions}
+            selectedIds={assigneeIds}
+            onChange={setAssigneeIds}
+            disabled={isPending}
+          />
         </div>
+
+        <OutlinedField label={t("importance")} htmlFor="add-plan-priority">
+          <div className="relative">
+            <Select
+              id="add-plan-priority"
+              value={priority}
+              onChange={(event) =>
+                setPriority(event.target.value as TaskPriority)
+              }
+              className={cn(outlinedFieldInputClass, "appearance-none pr-10")}
+            >
+              <option value="LOW">{t("importanceLow")}</option>
+              <option value="MEDIUM">{t("importanceMedium")}</option>
+              <option value="HIGH">{t("importanceHigh")}</option>
+              <option value="URGENT">{t("importanceUrgent")}</option>
+            </Select>
+            <ChevronDown
+              className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
+          </div>
+        </OutlinedField>
 
         <div className="grid min-w-0 gap-4 sm:grid-cols-2">
           <DatetimeLocalWithNow
@@ -268,7 +285,7 @@ function MatterPlanAddForm({
           >
             {tCommon("cancel")}
           </Button>
-          <Button type="submit" disabled={isPending || !title.trim()}>
+          <Button type="submit" disabled={isPending || !title.trim() || assigneeIds.length === 0}>
             <Plus className="h-4 w-4" />
             {isPending ? t("adding") : t("addToPlan")}
           </Button>
@@ -282,12 +299,14 @@ export function MatterPlanAddDialog({
   open,
   matterId,
   workTypes,
+  assigneeOptions,
   existingSteps,
   onClose,
 }: {
   open: boolean;
   matterId: string;
   workTypes: { id: string; name: string }[];
+  assigneeOptions: { id: string; name: string }[];
   existingSteps: PlanStepSummary[];
   onClose: () => void;
 }) {
@@ -352,6 +371,7 @@ export function MatterPlanAddDialog({
           key={open ? "open" : "closed"}
           matterId={matterId}
           workTypes={workTypes}
+          assigneeOptions={assigneeOptions}
           existingSteps={existingSteps}
           onClose={onClose}
         />

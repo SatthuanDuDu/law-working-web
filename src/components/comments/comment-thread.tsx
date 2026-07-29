@@ -201,12 +201,7 @@ export function CommentThread({
                 {t("emptyThread")}
               </p>
             ) : (
-              <ul
-                className={cn(
-                  "min-w-0",
-                  compact ? "divide-y divide-border/70" : "space-y-3",
-                )}
-              >
+              <ul className="min-w-0 divide-y divide-border/70">
                 {comments.map((comment) => (
                   <CommentRow
                     key={comment.id}
@@ -417,10 +412,7 @@ function CommentRow({
   return (
     <li
       className={cn(
-        "min-w-0 transition-opacity",
-        compact
-          ? "bg-transparent py-3 first:pt-0"
-          : "rounded-md border border-border bg-surface p-3",
+        "min-w-0 py-3 transition-opacity first:pt-0",
         isPending && "opacity-50",
       )}
     >
@@ -928,10 +920,7 @@ function CommentComposer({
           {pendingFiles.map((file) => (
             <li
               key={file.id}
-              className={cn(
-                "relative max-w-[140px] overflow-hidden rounded-md bg-muted",
-                compact ? "ring-1 ring-border/60" : "border border-border",
-              )}
+              className="relative max-w-[140px] overflow-hidden rounded-md bg-muted ring-1 ring-border/50"
             >
               {file.previewUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element

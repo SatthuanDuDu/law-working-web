@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { liquidPanelClass } from "@/lib/liquid-panel";
 
 export function Label({
   className,
@@ -15,12 +16,17 @@ export function Label({
 
 export function Card({
   className,
+  solid = false,
   ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
+}: React.HTMLAttributes<HTMLDivElement> & {
+  /** Opaque white surface instead of liquid glass (overlays, login, etc.). */
+  solid?: boolean;
+}) {
   return (
     <div
       className={cn(
-        "surface rounded-md border border-border bg-surface",
+        "rounded-md border",
+        solid ? "border-border bg-surface surface" : liquidPanelClass,
         className,
       )}
       {...props}
@@ -94,7 +100,7 @@ export const Select = React.forwardRef<
     <select
       ref={ref}
       className={cn(
-        "flex h-10 w-full cursor-pointer rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50 interactive-field",
+        "flex h-10 w-full cursor-pointer rounded-md border border-border bg-surface px-3 py-0 text-sm leading-normal text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50 interactive-field [text-overflow:ellipsis]",
         className,
       )}
       {...props}

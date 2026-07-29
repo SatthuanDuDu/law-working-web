@@ -38,7 +38,9 @@ import {
   AttachmentPanel,
   type AttachmentItem,
 } from "@/components/attachments/attachment-panel";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { MatterPlanAddDialog } from "@/components/matters/matter-plan-add-dialog";
+import { PlanAssigneeMultiSelect } from "@/components/matters/plan-assignee-multi-select";
 import { LocationPicker } from "@/components/location/location-picker";
 import { LocationChip } from "@/components/location/location-chip";
 import {
@@ -57,6 +59,11 @@ export type MatterPlanStepItem = {
   statusChangedAt: string | null;
   sortOrder: number;
   workType: { id: string; name: string } | null;
+  assignees: {
+    id: string;
+    name: string;
+    avatarKey: string | null;
+  }[];
   locationName: string | null;
   locationAddress: string | null;
   locationPlaceId: string | null;
@@ -121,7 +128,7 @@ function StatusBadge({
 const fieldLabelClass = "block text-sm font-medium text-foreground";
 
 const outlinedFieldInputClass =
-  "interactive-field h-11 min-w-0 max-w-full w-full rounded-[5px] border border-border bg-surface px-3 text-sm text-foreground";
+  "interactive-field h-11 min-w-0 max-w-full w-full rounded-[5px] border border-border bg-surface px-3 py-0 text-sm leading-normal text-foreground";
 
 function toDatetimeLocalValue(iso: string | null): string {
   if (!iso) return "";
@@ -170,6 +177,7 @@ function reorderList(
 type EditDraft = {
   title: string;
   workTypeId: string;
+  assigneeIds: string[];
   startedAt: string;
   dueAt: string;
   priority: TaskPriority;
@@ -180,6 +188,7 @@ export function MatterPlanTimeline({
   matterId,
   steps,
   workTypes,
+  assigneeOptions,
   canEdit,
   canUploadDocuments = false,
   canComment = false,
@@ -192,6 +201,7 @@ export function MatterPlanTimeline({
   matterId: string;
   steps: MatterPlanStepItem[];
   workTypes: { id: string; name: string }[];
+  assigneeOptions: { id: string; name: string }[];
   canEdit: boolean;
   canUploadDocuments?: boolean;
   canComment?: boolean;
@@ -238,6 +248,7 @@ export function MatterPlanTimeline({
     setEditDraft({
       title: step.title,
       workTypeId: step.workType?.id ?? "",
+      assigneeIds: step.assignees.map((user) => user.id),
       startedAt: toDatetimeLocalValue(step.startedAt),
       dueAt: toDatetimeLocalValue(step.dueAt),
       priority: step.priority,
@@ -261,11 +272,16 @@ export function MatterPlanTimeline({
       setEditError(t("titleRequired"));
       return;
     }
+    if (!editDraft.assigneeIds.length) {
+      setEditError(t("assigneeRequired"));
+      return;
+    }
     setEditError("");
     const formData = new FormData();
     formData.set("id", editingId);
     formData.set("title", nextTitle);
     formData.set("workTypeId", editDraft.workTypeId);
+    for (const id of editDraft.assigneeIds) formData.append("assigneeIds", id);
     formData.set("startedAt", editDraft.startedAt);
     formData.set("dueAt", editDraft.dueAt);
     formData.set("priority", editDraft.priority);
@@ -393,6 +409,7 @@ export function MatterPlanTimeline({
         open={addOpen}
         matterId={matterId}
         workTypes={workTypes}
+        assigneeOptions={assigneeOptions}
         existingSteps={existingSummaries}
         onClose={() => setAddOpen(false)}
       />
@@ -473,15 +490,15 @@ export function MatterPlanTimeline({
                         : undefined
                     }
                     className={cn(
-                      "group relative min-w-0 rounded-[5px] border border-border/90 bg-[color-mix(in_oklab,var(--muted)_12%,var(--surface))] p-3 shadow-[var(--shadow-overlay)] transition-[border-color,background-color,box-shadow,transform] duration-150 sm:p-4",
+                      "group relative min-w-0 rounded-md border border-border/50 bg-[color-mix(in_oklab,var(--muted)_8%,var(--surface))] p-3 transition-[border-color,background-color,transform] duration-150 sm:p-4",
                       canEdit &&
                         !editingId &&
                         "cursor-grab active:cursor-grabbing",
                       isDropTarget &&
-                        "z-[1] border-primary bg-primary-muted shadow-[0_0_0_2px_color-mix(in_oklab,var(--primary)_40%,transparent)]",
+                        "z-[1] border-primary bg-primary-muted ring-1 ring-primary/30",
                       isDragging && "border-dashed border-primary/60 bg-primary-muted/50 opacity-70",
                       isEditing &&
-                        "border-primary bg-surface shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_28%,transparent),var(--shadow-overlay)]",
+                        "border-primary/50 bg-surface ring-1 ring-primary/25",
                     )}
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -620,6 +637,28 @@ export function MatterPlanTimeline({
                                 </OutlinedField>
                               </div>
 
+                              <PlanAssigneeMultiSelect
+                                id={`edit-assignee-${step.id}`}
+                                options={[
+                                  ...assigneeOptions,
+                                  ...step.assignees.filter(
+                                    (user) =>
+                                      !assigneeOptions.some(
+                                        (option) => option.id === user.id,
+                                      ),
+                                  ),
+                                ]}
+                                selectedIds={editDraft.assigneeIds}
+                                onChange={(ids) =>
+                                  setEditDraft((current) =>
+                                    current
+                                      ? { ...current, assigneeIds: ids }
+                                      : current,
+                                  )
+                                }
+                                disabled={isUpdatingStep}
+                              />
+
                               <div className="grid min-w-0 gap-4 sm:grid-cols-2">
                                 <DatetimeLocalWithNow
                                   id={`edit-started-${step.id}`}
@@ -675,7 +714,9 @@ export function MatterPlanTimeline({
                                 <Button
                                   type="submit"
                                   disabled={
-                                    isUpdatingStep || !editDraft.title.trim()
+                                    isUpdatingStep ||
+                                    !editDraft.title.trim() ||
+                                    !editDraft.assigneeIds.length
                                   }
                                 >
                                   {isUpdatingStep
@@ -738,6 +779,38 @@ export function MatterPlanTimeline({
                                   </dt>
                                   <dd className="mt-1 break-words text-sm font-medium text-foreground">
                                     {step.workType?.name ?? "—"}
+                                  </dd>
+                                </div>
+                                <div className="min-w-0 sm:col-span-2">
+                                  <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                                    {t("assigneeMeta")}
+                                  </dt>
+                                  <dd className="mt-1">
+                                    {step.assignees.length > 0 ? (
+                                      <ul className="flex min-w-0 flex-wrap gap-x-3 gap-y-1.5">
+                                        {step.assignees.map((user) => (
+                                          <li
+                                            key={user.id}
+                                            className="flex min-w-0 max-w-full items-center gap-2"
+                                          >
+                                            <UserAvatar
+                                              userId={user.id}
+                                              name={user.name}
+                                              avatarKey={user.avatarKey}
+                                              size="sm"
+                                              className="h-6 w-6 shrink-0 text-[10px]"
+                                            />
+                                            <span className="min-w-0 truncate text-sm font-medium text-foreground">
+                                              {user.name}
+                                            </span>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    ) : (
+                                      <span className="text-sm font-medium text-foreground">
+                                        —
+                                      </span>
+                                    )}
                                   </dd>
                                 </div>
                                 <div className="min-w-0">

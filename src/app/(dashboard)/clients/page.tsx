@@ -34,10 +34,7 @@ export default async function ClientsPage() {
 
   return (
     <>
-      <PageHeaderSlot
-        title={tPages("title")}
-        description={tPages("description")}
-      />
+      <PageHeaderSlot title={tPages("title")} />
       <ClientsList
         clients={listItems}
         canManage={isManagerOrAbove(user.role)}

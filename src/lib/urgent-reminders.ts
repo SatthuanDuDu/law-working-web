@@ -13,8 +13,8 @@ function formatStartTime(date: Date): string {
 }
 
 /**
- * Reminders for NOT_STARTED / IN_PROGRESS plans:
- * from 2h before startedAt until dueAt ends.
+ * Reminders for NOT_STARTED / IN_PROGRESS plans only when the
+ * countdown to dueAt (or startedAt if no due) is within 2 hours.
  */
 export async function getUrgentReminders(
   userId: string,
@@ -22,22 +22,39 @@ export async function getUrgentReminders(
 ): Promise<UrgentReminderItem[]> {
   const now = new Date();
   const withinTwoHours = addHours(now, 2);
-  const earliestStart = subHours(now, 24 * 14);
+  const twoHoursAgo = subHours(now, 2);
   const matterIds = await getAccessibleMatterIds(userId, role);
 
   const steps = await prisma.matterPlanStep.findMany({
     where: {
       status: { in: ["NOT_STARTED", "IN_PROGRESS"] },
-      startedAt: {
-        not: null,
-        lte: withinTwoHours,
-        gte: earliestStart,
-      },
-      OR: [
-        { assignees: { some: { userId } } },
+      AND: [
         {
-          assignees: { none: {} },
-          ...(matterIds ? { matterId: { in: matterIds } } : {}),
+          OR: [
+            {
+              dueAt: {
+                gte: now,
+                lte: withinTwoHours,
+              },
+            },
+            {
+              dueAt: null,
+              startedAt: {
+                not: null,
+                gte: twoHoursAgo,
+                lte: withinTwoHours,
+              },
+            },
+          ],
+        },
+        {
+          OR: [
+            { assignees: { some: { userId } } },
+            {
+              assignees: { none: {} },
+              ...(matterIds ? { matterId: { in: matterIds } } : {}),
+            },
+          ],
         },
       ],
     },
@@ -48,30 +65,32 @@ export async function getUrgentReminders(
       dueAt: true,
       matterId: true,
     },
-    orderBy: { startedAt: "asc" },
+    orderBy: [{ dueAt: "asc" }, { startedAt: "asc" }],
     take: 40,
   });
 
   const nowMs = now.getTime();
 
   return steps
-    .filter(
-      (step): step is typeof step & { startedAt: Date } => step.startedAt != null,
-    )
-    .filter((step) =>
-      isUrgentReminderActive(
+    .filter((step) => {
+      const startsAt = step.startedAt ?? step.dueAt;
+      if (!startsAt) return false;
+      return isUrgentReminderActive(
         nowMs,
-        step.startedAt.toISOString(),
+        startsAt.toISOString(),
         step.dueAt?.toISOString() ?? null,
-      ),
-    )
+      );
+    })
     .slice(0, 10)
-    .map((step) => ({
-      id: step.id,
-      title: step.title,
-      href: `/matters/${step.matterId}/plan`,
-      startsAt: step.startedAt.toISOString(),
-      endsAt: step.dueAt?.toISOString() ?? null,
-      timeLabel: formatStartTime(step.startedAt),
-    }));
+    .map((step) => {
+      const startsAt = step.startedAt ?? step.dueAt!;
+      return {
+        id: step.id,
+        title: step.title,
+        href: `/matters/${step.matterId}/plan`,
+        startsAt: startsAt.toISOString(),
+        endsAt: step.dueAt?.toISOString() ?? null,
+        timeLabel: formatStartTime(step.dueAt ?? startsAt),
+      };
+    });
 }

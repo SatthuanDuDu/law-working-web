@@ -42,7 +42,8 @@
     "listView": "Danh sách",
     "gridView": "Khối vuông",
     "expandActions": "Mở thao tác nhanh",
-    "collapseActions": "Thu gọn thao tác nhanh"
+    "collapseActions": "Thu gọn thao tác nhanh",
+    "moveActions": "Kéo tự do; thả ra sẽ neo về cạnh gần hơn"
   },
   "account": {
     "menuLabel": "Quản lý tài khoản",
@@ -587,6 +588,7 @@
     "collaborators": "Cộng tác",
     "taskOverview": "Tổng quan nhiệm vụ",
     "planOverview": "Tổng quan bước kế hoạch",
+    "dragSheet": "Kéo xuống để đóng",
     "kindTask": "Công việc",
     "kindPlan": "Kế hoạch",
     "dueSoon": "Sắp đến hạn",

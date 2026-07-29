@@ -19,7 +19,7 @@ import {
 } from "date-fns";
 import { enUS, vi as viLocale } from "date-fns/locale";
 import { createPortal } from "react-dom";
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject, type UIEvent, type WheelEvent } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject, type UIEvent, type WheelEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Check, Circle, CircleDot, Ban, Clock, Plus, X } from "lucide-react";
@@ -112,12 +112,14 @@ const CALENDAR_CHIP_URGENT =
   "bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600";
 
 /**
- * Mobile ghost-click guard: after opening a chip sheet, ignore day-cell
+ * Mobile ghost-click guard: after opening/dismissing a chip sheet, ignore day-cell
  * "add plan" clicks for a short window (touch → click lands on the cell under the finger).
  */
 let suppressDayAddUntil = 0;
+const DAY_ADD_SUPPRESS_MS = 800;
+const CHIP_SHEET_DISMISS_PX = 96;
 
-function suppressDayAddClick(ms = 500) {
+function suppressDayAddClick(ms = DAY_ADD_SUPPRESS_MS) {
   suppressDayAddUntil = Date.now() + ms;
 }
 
@@ -364,6 +366,8 @@ function useCalendarChipTooltip(
 
   function hidePopup() {
     clearTimers();
+    // Dismiss click-through: backdrop tap synthesizes a click on the day cell underneath.
+    if (coarse) suppressDayAddClick();
     if (coarse) {
       setVisible(false);
       hideTimer.current = setTimeout(() => setOpen(false), 180);
@@ -384,7 +388,9 @@ function useCalendarChipTooltip(
     if (!open || !coarse) return;
     function onKey(event: KeyboardEvent) {
       if (event.key !== "Escape") return;
+      // Inline close to avoid hidePopup identity in effect deps.
       clearTimers();
+      if (coarse) suppressDayAddClick();
       setVisible(false);
       hideTimer.current = setTimeout(() => setOpen(false), 180);
     }
@@ -425,6 +431,138 @@ function useCalendarChipTooltip(
   }, [open, coarse, rootRef]);
 
   return { open, visible, box, tooltipRef, showPopup, hidePopup };
+}
+
+function CalendarChipMobileSheet({
+  visible,
+  urgent,
+  ariaLabel,
+  dragLabel,
+  closeLabel,
+  onDismiss,
+  children,
+  footer,
+}: {
+  visible: boolean;
+  urgent?: boolean;
+  ariaLabel: string;
+  dragLabel: string;
+  closeLabel: string;
+  onDismiss: () => void;
+  children: ReactNode;
+  footer?: ReactNode;
+}) {
+  const sheetDragRef = useRef<{ pointerId: number; startY: number } | null>(
+    null,
+  );
+  const [sheetDragY, setSheetDragY] = useState(0);
+  const [sheetDragging, setSheetDragging] = useState(false);
+
+  const dismissY = Math.max(0, sheetDragY);
+  const backdropOpacity =
+    sheetDragging || dismissY > 0
+      ? Math.max(0.15, 1 - dismissY / (CHIP_SHEET_DISMISS_PX * 1.6))
+      : visible
+        ? 1
+        : 0;
+
+  function endSheetDrag(deltaY: number) {
+    setSheetDragging(false);
+    sheetDragRef.current = null;
+    if (deltaY >= CHIP_SHEET_DISMISS_PX) {
+      onDismiss();
+      setSheetDragY(0);
+      return;
+    }
+    setSheetDragY(0);
+  }
+
+  function onSheetHandlePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.button !== 0) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    sheetDragRef.current = {
+      pointerId: event.pointerId,
+      startY: event.clientY,
+    };
+    setSheetDragging(true);
+    setSheetDragY(0);
+  }
+
+  function onSheetHandlePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    const drag = sheetDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    setSheetDragY(Math.max(0, event.clientY - drag.startY));
+  }
+
+  function onSheetHandlePointerUp(event: ReactPointerEvent<HTMLDivElement>) {
+    const drag = sheetDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    endSheetDrag(event.clientY - drag.startY);
+  }
+
+  function onSheetHandlePointerCancel(event: ReactPointerEvent<HTMLDivElement>) {
+    const drag = sheetDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    endSheetDrag(event.clientY - drag.startY);
+  }
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end justify-center">
+      <button
+        type="button"
+        aria-label={closeLabel}
+        className="absolute inset-0 bg-slate-900/40 transition-opacity duration-200"
+        style={{ opacity: backdropOpacity }}
+        onClick={onDismiss}
+      />
+      <div
+        role="dialog"
+        aria-label={ariaLabel}
+        className={cn(
+          "relative z-[1] max-h-[80dvh] w-full overflow-y-auto rounded-t-lg border border-border bg-surface shadow-[var(--shadow-overlay)] transition-all duration-200",
+          urgent && "border-l-[3px] border-l-red-500",
+          visible && dismissY === 0 && !sheetDragging
+            ? "translate-y-0 opacity-100"
+            : !sheetDragging && dismissY === 0
+              ? "translate-y-4 opacity-0"
+              : "opacity-100",
+        )}
+        style={
+          sheetDragging || dismissY > 0
+            ? {
+                transform: `translateY(${dismissY}px)`,
+                transition: sheetDragging ? "none" : undefined,
+              }
+            : undefined
+        }
+      >
+        <div
+          role="button"
+          aria-label={dragLabel}
+          tabIndex={0}
+          className="flex touch-none flex-col items-center pb-1 pt-2 cursor-grab active:cursor-grabbing"
+          onPointerDown={onSheetHandlePointerDown}
+          onPointerMove={onSheetHandlePointerMove}
+          onPointerUp={onSheetHandlePointerUp}
+          onPointerCancel={onSheetHandlePointerCancel}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") onDismiss();
+            if (event.key === "ArrowDown") {
+              event.preventDefault();
+              onDismiss();
+            }
+          }}
+        >
+          <span
+            className="h-1 w-10 shrink-0 rounded-full bg-border"
+            aria-hidden
+          />
+        </div>
+        {children}
+        {footer}
+      </div>
+    </div>
+  );
 }
 
 function PreviewKindLabel({ children }: { children: ReactNode }) {
@@ -771,27 +909,15 @@ function TaskPreviewChip({ task }: { task: CalendarTask }) {
       </div>
       {open && coarse
         ? createPortal(
-            <div className="fixed inset-0 z-[70] flex items-end justify-center">
-              <button
-                type="button"
-                aria-label={tCommon("close")}
-                className={cn(
-                  "absolute inset-0 bg-slate-900/40 transition-opacity duration-200",
-                  visible ? "opacity-100" : "opacity-0",
-                )}
-                onClick={hidePopup}
-              />
-              <div
-                role="dialog"
-                aria-label={t("taskOverview")}
-                className={cn(
-                  "relative z-[1] max-h-[80dvh] w-full overflow-y-auto rounded-t-lg border border-border bg-surface shadow-[var(--shadow-overlay)] transition-all duration-200",
-                  urgent && "border-l-[3px] border-l-red-500",
-                  visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
-                )}
-              >
-                <TaskPreviewContent task={task} urgent={urgent} />
-                {href ? (
+            <CalendarChipMobileSheet
+              visible={visible}
+              urgent={urgent}
+              ariaLabel={t("taskOverview")}
+              dragLabel={t("dragSheet")}
+              closeLabel={tCommon("close")}
+              onDismiss={hidePopup}
+              footer={
+                href ? (
                   <div className="border-t border-border p-3.5 pt-3">
                     <Link
                       href={href}
@@ -801,9 +927,11 @@ function TaskPreviewChip({ task }: { task: CalendarTask }) {
                       {t("viewMatter")}
                     </Link>
                   </div>
-                ) : null}
-              </div>
-            </div>,
+                ) : null
+              }
+            >
+              <TaskPreviewContent task={task} urgent={urgent} />
+            </CalendarChipMobileSheet>,
             document.body,
           )
         : null}
@@ -891,26 +1019,14 @@ function PlanPreviewChip({ step }: { step: CalendarPlanStep }) {
       </div>
       {open && coarse
         ? createPortal(
-            <div className="fixed inset-0 z-[70] flex items-end justify-center">
-              <button
-                type="button"
-                aria-label={tCommon("close")}
-                className={cn(
-                  "absolute inset-0 bg-slate-900/40 transition-opacity duration-200",
-                  visible ? "opacity-100" : "opacity-0",
-                )}
-                onClick={hidePopup}
-              />
-              <div
-                role="dialog"
-                aria-label={t("planOverview")}
-                className={cn(
-                  "relative z-[1] max-h-[80dvh] w-full overflow-y-auto rounded-t-lg border border-border bg-surface shadow-[var(--shadow-overlay)] transition-all duration-200",
-                  urgent && "border-l-[3px] border-l-red-500",
-                  visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
-                )}
-              >
-                <PlanPreviewContent step={step} urgent={urgent} />
+            <CalendarChipMobileSheet
+              visible={visible}
+              urgent={urgent}
+              ariaLabel={t("planOverview")}
+              dragLabel={t("dragSheet")}
+              closeLabel={tCommon("close")}
+              onDismiss={hidePopup}
+              footer={
                 <div className="border-t border-border p-3.5 pt-3">
                   <Link
                     href={href}
@@ -920,8 +1036,10 @@ function PlanPreviewChip({ step }: { step: CalendarPlanStep }) {
                     {t("viewPlan")}
                   </Link>
                 </div>
-              </div>
-            </div>,
+              }
+            >
+              <PlanPreviewContent step={step} urgent={urgent} />
+            </CalendarChipMobileSheet>,
             document.body,
           )
         : null}
@@ -2064,6 +2182,7 @@ export function CalendarMonth({
                           aria-label={t("addPlan")}
                           onClick={(e) => {
                             e.stopPropagation();
+                            if (isDayAddClickSuppressed()) return;
                             setAddPlanDay(day);
                           }}
                         >

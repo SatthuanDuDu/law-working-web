@@ -42,7 +42,8 @@
     "listView": "List",
     "gridView": "Grid",
     "expandActions": "Open quick actions",
-    "collapseActions": "Collapse quick actions"
+    "collapseActions": "Collapse quick actions",
+    "moveActions": "Drag anywhere; releases snap to the nearer side"
   },
   "account": {
     "menuLabel": "Account menu",
@@ -587,6 +588,7 @@
     "collaborators": "Collaborators",
     "taskOverview": "Task overview",
     "planOverview": "Plan step overview",
+    "dragSheet": "Swipe down to close",
     "kindTask": "Task",
     "kindPlan": "Plan",
     "dueSoon": "Due soon",

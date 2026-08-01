@@ -8,6 +8,8 @@
     "add": "Thêm",
     "close": "Đóng",
     "search": "Tìm kiếm",
+    "selectAll": "Chọn tất cả",
+    "clearSelection": "Bỏ chọn",
     "loading": "Đang tải...",
     "saving": "Đang lưu...",
     "confirm": "Xác nhận",
@@ -41,6 +43,7 @@
     "viewMode": "Chế độ hiển thị",
     "listView": "Danh sách",
     "gridView": "Khối vuông",
+    "tableView": "Bảng",
     "expandActions": "Mở thao tác nhanh",
     "collapseActions": "Thu gọn thao tác nhanh",
     "moveActions": "Kéo tự do; thả ra sẽ neo về cạnh gần hơn"
@@ -337,6 +340,8 @@
     "filterMembers": "Thành viên cộng tác",
     "filterClient": "Khách hàng (công ty)",
     "filterCreatedAt": "Ngày tạo",
+    "searchPlaceholder": "Tìm theo mã, tên vụ việc, khách hàng, luật sư...",
+    "listTruncatedWarning": "Chỉ hiển thị {shown}/{total} vụ việc mới nhất — dùng tìm kiếm hoặc bộ lọc để thu hẹp kết quả.",
     "createModal": {
       "associates": "Cộng sự",
       "removeMember": "Xóa {name}",
@@ -880,11 +885,17 @@
   "tasks": {
     "listTitle": "Danh sách công việc",
     "empty": "Chưa có công việc nào.",
+    "noFilterMatch": "Không có công việc khớp tìm kiếm.",
+    "searchPlaceholder": "Tìm theo tiêu đề, người nhận, vụ việc...",
+    "listTruncatedWarning": "Chỉ hiển thị {shown}/{total} công việc mới nhất — dùng tìm kiếm để thu hẹp kết quả.",
     "assignedTo": "Giao cho: {name}",
     "dueLabel": "Hạn: {date}",
     "overdueSuffix": " (Quá hạn)",
     "confirmStatusTitle": "Xác nhận cập nhật trạng thái",
     "confirmStatusMessage": "Bạn có chắc muốn đổi trạng thái công việc \"{title}\" thành \"{status}\"?",
+    "confirmBulkStatusMessage": "Bạn có chắc muốn đổi trạng thái {count} công việc đã chọn thành \"{status}\"?",
+    "selectedCount": "Đã chọn {count}",
+    "applyBulkStatus": "Áp dụng",
     "updateStatus": "Cập nhật",
     "addButton": "Thêm kế hoạch",
     "formTitle": "Giao việc mới",
@@ -1242,5 +1253,17 @@
         "a": "ADMIN: toàn quyền quản trị. MANAGER: xem rộng, quản lý vụ/khách. LAWYER: làm việc vụ việc, upload tài liệu. SUPPORT: tham gia vụ được gán, comment; không upload tài liệu vụ/kế hoạch."
       }
     }
+  },
+  "commandPalette": {
+    "placeholder": "Tìm vụ việc, khách hàng, công việc...",
+    "openHint": "Tìm kiếm nhanh",
+    "matters": "Vụ việc",
+    "clients": "Khách hàng",
+    "tasks": "Công việc",
+    "noResults": "Không tìm thấy kết quả cho \"{query}\"",
+    "minChars": "Nhập ít nhất 2 ký tự để tìm kiếm",
+    "hintNavigate": "điều hướng",
+    "hintSelect": "mở",
+    "hintClose": "đóng"
   }
 }

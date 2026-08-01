@@ -3,6 +3,7 @@
 import { Sidebar } from "@/components/layout/sidebar";
 import { PageHeader } from "@/components/layout/page-header";
 import { UtilitySpeedDial } from "@/components/layout/utility-speed-dial";
+import { CommandPalette } from "@/components/layout/command-palette";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 import { NotificationToastHost } from "@/components/notifications/notification-toast-host";
 import {
@@ -78,6 +79,7 @@ export function DashboardShell({
           </div>
           <UtilitySpeedDial />
           <NotificationToastHost />
+          <CommandPalette />
         </div>
       </PageMetaProvider>
     </SidebarProvider>

@@ -12,10 +12,12 @@ export default async function TasksPage() {
   const tPages = await getTranslations("pages.tasks");
   const canViewAll = user.role === "ADMIN" || user.role === "MANAGER";
   const matterIds = await getAccessibleMatterIds(user.id, user.role);
+  const taskWhere = canViewAll ? {} : { assigneeId: user.id };
 
-  const [tasks, users, matters] = await Promise.all([
+  const [totalCount, tasks, users, matters] = await Promise.all([
+    prisma.task.count({ where: taskWhere }),
     prisma.task.findMany({
-      where: canViewAll ? {} : { assigneeId: user.id },
+      where: taskWhere,
       select: {
         id: true,
         title: true,
@@ -52,6 +54,7 @@ export default async function TasksPage() {
       <PageHeaderSlot title={tPages("title")} />
       <TaskList
         tasks={tasks}
+        totalCount={totalCount}
         currentUserId={user.id}
         canManage={canViewAll}
         actions={<TaskForm users={users} matters={matters} />}

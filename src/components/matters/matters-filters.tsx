@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowDown, ArrowUp, Check, ChevronDown, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, ChevronDown, Search, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import type { MatterType } from "@prisma/client";
 export type MattersSortBy = "type" | "lawyer" | "member" | "client" | "createdAt";
 
 export type MattersFilterState = {
+  query: string;
   types: MatterType[];
   lawyerIds: string[];
   memberIds: string[];
@@ -24,6 +25,7 @@ export type MattersFilterState = {
 };
 
 export const DEFAULT_MATTERS_FILTERS: MattersFilterState = {
+  query: "",
   types: [],
   lawyerIds: [],
   memberIds: [],
@@ -320,6 +322,7 @@ export function MattersFiltersBar({
   const labels = useLabelMaps();
 
   const hasActiveFilters =
+    Boolean(filters.query) ||
     filters.types.length > 0 ||
     filters.lawyerIds.length > 0 ||
     filters.memberIds.length > 0 ||
@@ -328,7 +331,18 @@ export function MattersFiltersBar({
     Boolean(filters.dateTo);
 
   return (
-    <div className="shrink-0 border-b border-border/60 pb-3">
+    <div className="shrink-0 space-y-2.5 border-b border-border/60 pb-3">
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          type="search"
+          value={filters.query}
+          onChange={(event) => onChange({ ...filters, query: event.target.value })}
+          placeholder={t("searchPlaceholder")}
+          aria-label={t("searchPlaceholder")}
+          className="h-10 pl-9"
+        />
+      </div>
       <div className="flex items-end gap-2 overflow-x-auto pb-0.5">
         <div className="min-w-[8.5rem] flex-1">
           <MultiSelectFilter

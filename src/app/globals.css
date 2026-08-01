@@ -111,7 +111,11 @@ html {
   --vv-offset-top: 0px;
   --vv-offset-left: 0px;
   min-height: 100dvh;
-  overflow-x: hidden;
+  /* clip, not hidden: overflow-x:hidden paired with an unset overflow-y forces
+     the UA to compute overflow-y as auto (CSS Overflow §3), turning html/body
+     into their own scroll containers and breaking position:sticky for every
+     descendant. overflow-x:clip is exempt from that pairing rule. */
+  overflow-x: clip;
   background-color: var(--canvas);
 }
 
@@ -136,7 +140,7 @@ html {
 
 body {
   min-height: 100dvh;
-  overflow-x: hidden;
+  overflow-x: clip;
   /* Reduce rubber-band pull that shifts fixed UI while dragging on mobile. */
   overscroll-behavior-y: none;
   background: var(--body-gradient) fixed;

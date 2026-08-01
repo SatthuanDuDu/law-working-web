@@ -1,12 +1,16 @@
 "use client";
 
-import { useTransition, type ReactNode } from "react";
+import { useMemo, useState, useTransition, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { AlertTriangle, Search, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { updateTaskStatusAction } from "@/lib/actions";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { useListViewMode } from "@/hooks/use-list-view-mode";
 import { useLabelMaps } from "@/i18n/use-label-maps";
 import { Badge, Card, CardContent, CardHeader, CardTitle, Select } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ListViewToggle } from "@/components/ui/list-view-toggle";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -27,20 +31,101 @@ type TaskListItem = {
 
 export function TaskList({
   tasks,
+  totalCount,
   currentUserId,
   canManage,
   actions,
 }: {
   tasks: TaskListItem[];
+  /** True DB count — may exceed tasks.length when the list-limit cap truncated the fetch. */
+  totalCount: number;
   currentUserId: string;
   canManage: boolean;
   actions?: ReactNode;
 }) {
   const t = useTranslations("tasks");
+  const tCommon = useTranslations("common");
   const { taskStatus, taskPriority } = useLabelMaps();
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const { confirm, dialog } = useConfirmDialog();
   const { mode, setMode } = useListViewMode("tasks");
+  const [query, setQuery] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkStatus, setBulkStatus] = useState<TaskStatus>("TODO");
+
+  function canUpdateTask(task: TaskListItem) {
+    return (
+      canManage ||
+      task.assigneeId === currentUserId ||
+      task.createdById === currentUserId
+    );
+  }
+
+  const visibleTasks = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return tasks;
+    return tasks.filter((task) => {
+      const haystack = [
+        task.title,
+        task.description,
+        task.assignee.name,
+        task.matter?.code,
+        task.matter?.title,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(normalized);
+    });
+  }, [tasks, query]);
+
+  const selectableVisibleIds = useMemo(
+    () => visibleTasks.filter(canUpdateTask).map((task) => task.id),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- canUpdateTask is stable per render inputs (canManage/currentUserId)
+    [visibleTasks, canManage, currentUserId],
+  );
+
+  /** Selection intersected with the currently visible rows — search/filter changes drop stale ids without a syncing effect. */
+  const activeSelectedIds = useMemo(() => {
+    const visibleIdSet = new Set(visibleTasks.map((task) => task.id));
+    return new Set([...selectedIds].filter((id) => visibleIdSet.has(id)));
+  }, [selectedIds, visibleTasks]);
+
+  function toggleSelected(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAllVisible() {
+    setSelectedIds((prev) => {
+      const allSelected = selectableVisibleIds.every((id) => prev.has(id));
+      if (allSelected) return new Set();
+      return new Set(selectableVisibleIds);
+    });
+  }
+
+  function applyBulkStatus() {
+    const ids = [...activeSelectedIds];
+    if (ids.length === 0) return;
+    const statusLabel = taskStatus[bulkStatus];
+    confirm({
+      title: t("confirmStatusTitle"),
+      message: t("confirmBulkStatusMessage", { count: ids.length, status: statusLabel }),
+      confirmLabel: t("updateStatus"),
+      onConfirm: () => {
+        startTransition(async () => {
+          await Promise.all(ids.map((id) => updateTaskStatusAction(id, bulkStatus)));
+          setSelectedIds(new Set());
+          router.refresh();
+        });
+      },
+    });
+  }
 
   function handleStatusChange(id: string, status: string, title: string) {
     const statusLabel = taskStatus[status as keyof typeof taskStatus];
@@ -137,10 +222,109 @@ export function TaskList({
     );
   }
 
+  function renderTableRow(task: TaskListItem) {
+    const canUpdate =
+      canManage ||
+      task.assigneeId === currentUserId ||
+      task.createdById === currentUserId;
+    const isOverdue =
+      task.dueDate &&
+      new Date(task.dueDate) < new Date() &&
+      !["DONE", "CANCELLED"].includes(task.status);
+
+    return (
+      <tr key={task.id} className="interactive-row">
+        <td className="w-8 px-3 py-2.5 align-top">
+          {canUpdate ? (
+            <input
+              type="checkbox"
+              checked={activeSelectedIds.has(task.id)}
+              onChange={() => toggleSelected(task.id)}
+              aria-label={task.title}
+              className="h-4 w-4 cursor-pointer rounded border-border accent-primary"
+            />
+          ) : null}
+        </td>
+        <td className="min-w-[14rem] px-3 py-2.5 align-top">
+          <p className="truncate font-medium text-foreground">{task.title}</p>
+          {task.matter ? (
+            <p className="truncate text-[11px] text-primary/80">{task.matter.code}</p>
+          ) : null}
+        </td>
+        <td className="max-w-[9rem] truncate px-3 py-2.5 align-top text-foreground">
+          {task.assignee.name}
+        </td>
+        <td className="px-3 py-2.5 align-top">
+          <Badge variant={priorityVariant[task.priority]}>
+            {taskPriority[task.priority]}
+          </Badge>
+        </td>
+        <td
+          className={cn(
+            "whitespace-nowrap px-3 py-2.5 align-top tabular-nums",
+            isOverdue ? "font-medium text-red-600" : "text-muted-foreground",
+          )}
+        >
+          {task.dueDate ? formatDate(task.dueDate) : "—"}
+        </td>
+        <td className="min-w-[9rem] px-3 py-2.5 align-top">
+          {canUpdate ? (
+            <Select
+              value={task.status}
+              disabled={isPending}
+              onChange={(e) => handleStatusChange(task.id, e.target.value, task.title)}
+              className="h-8 w-full min-w-0 text-xs"
+            >
+              {Object.entries(taskStatus).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </Select>
+          ) : (
+            <Badge variant="info">{taskStatus[task.status]}</Badge>
+          )}
+        </td>
+      </tr>
+    );
+  }
+
+  function renderTableView() {
+    return (
+      <div className="overflow-x-auto rounded-md border border-border/50">
+        <table className="w-full min-w-[760px] border-collapse text-sm">
+          <thead>
+            <tr className="border-b border-border/70 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              <th className="w-8 px-3 py-2.5 font-medium">
+                {selectableVisibleIds.length > 0 ? (
+                  <input
+                    type="checkbox"
+                    checked={selectableVisibleIds.every((id) => activeSelectedIds.has(id))}
+                    onChange={toggleSelectAllVisible}
+                    aria-label={tCommon("selectAll")}
+                    className="h-4 w-4 cursor-pointer rounded border-border accent-primary"
+                  />
+                ) : null}
+              </th>
+              <th className="px-3 py-2.5 font-medium">{t("titleLabel")}</th>
+              <th className="px-3 py-2.5 font-medium">{t("assigneeLabel")}</th>
+              <th className="px-3 py-2.5 font-medium">{t("priorityLabel")}</th>
+              <th className="px-3 py-2.5 font-medium">{t("dueDateLabel")}</th>
+              <th className="px-3 py-2.5 font-medium">{t("statusLabel")}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border/60">
+            {visibleTasks.map((task) => renderTableRow(task))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
   return (
     <>
       {dialog}
-      <Card>
+      <Card solid>
         <CardHeader className="space-y-0 border-b border-border/60 p-3.5 pb-3 sm:p-4 sm:pb-3">
           <div className="flex items-center justify-between gap-3">
             <CardTitle className="text-sm font-semibold sm:text-base">
@@ -155,18 +339,77 @@ export function TaskList({
             isPending && "pointer-events-none opacity-60",
           )}
         >
+          {totalCount > tasks.length ? (
+            <div className="flex items-start gap-2 rounded-md border border-amber-300/60 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>{t("listTruncatedWarning", { shown: tasks.length, total: totalCount })}</p>
+            </div>
+          ) : null}
+          {tasks.length > 0 ? (
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={t("searchPlaceholder")}
+                aria-label={t("searchPlaceholder")}
+                className="h-10 pl-9"
+              />
+            </div>
+          ) : null}
           <div className="flex justify-end">
             <ListViewToggle mode={mode} onChange={setMode} size="sm" />
           </div>
+          {mode === "table" && activeSelectedIds.size > 0 ? (
+            <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary-muted/50 px-3 py-2">
+              <span className="text-sm font-medium text-primary">
+                {t("selectedCount", { count: activeSelectedIds.size })}
+              </span>
+              <Select
+                value={bulkStatus}
+                onChange={(e) => setBulkStatus(e.target.value as TaskStatus)}
+                className="h-8 w-auto min-w-0 text-xs"
+              >
+                {Object.entries(taskStatus).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
+              <Button
+                type="button"
+                size="sm"
+                disabled={isPending}
+                onClick={applyBulkStatus}
+              >
+                {t("applyBulkStatus")}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedIds(new Set())}
+                className="ml-auto"
+              >
+                <X className="h-3.5 w-3.5" />
+                {tCommon("clearSelection")}
+              </Button>
+            </div>
+          ) : null}
           {tasks.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("empty")}</p>
+          ) : visibleTasks.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("noFilterMatch")}</p>
+          ) : mode === "table" ? (
+            renderTableView()
           ) : mode === "grid" ? (
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {tasks.map((task) => renderTaskCard(task, true))}
+              {visibleTasks.map((task) => renderTaskCard(task, true))}
             </div>
           ) : (
             <div className="divide-y divide-border/60">
-              {tasks.map((task) => renderTaskCard(task, false))}
+              {visibleTasks.map((task) => renderTaskCard(task, false))}
             </div>
           )}
         </CardContent>

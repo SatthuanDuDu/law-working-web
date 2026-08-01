@@ -2,7 +2,9 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 
-export type ListViewMode = "list" | "grid";
+export type ListViewMode = "list" | "grid" | "table";
+
+const VALID_MODES: ListViewMode[] = ["list", "grid", "table"];
 
 const EVENT_PREFIX = "nslaw:list-view-change:";
 
@@ -17,7 +19,9 @@ function eventName(scope: string) {
 function readMode(scope: string): ListViewMode {
   try {
     const raw = localStorage.getItem(storageKey(scope));
-    return raw === "grid" ? "grid" : "list";
+    return (VALID_MODES as string[]).includes(raw ?? "")
+      ? (raw as ListViewMode)
+      : "list";
   } catch {
     return "list";
   }

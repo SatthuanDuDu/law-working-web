@@ -8,6 +8,8 @@
     "add": "Add",
     "close": "Close",
     "search": "Search",
+    "selectAll": "Select all",
+    "clearSelection": "Clear selection",
     "loading": "Loading...",
     "saving": "Saving...",
     "confirm": "Confirm",
@@ -41,6 +43,7 @@
     "viewMode": "View mode",
     "listView": "List",
     "gridView": "Grid",
+    "tableView": "Table",
     "expandActions": "Open quick actions",
     "collapseActions": "Collapse quick actions",
     "moveActions": "Drag anywhere; releases snap to the nearer side"
@@ -337,6 +340,8 @@
     "filterMembers": "Collaborators",
     "filterClient": "Client (company)",
     "filterCreatedAt": "Created date",
+    "searchPlaceholder": "Search by code, title, client, lawyer...",
+    "listTruncatedWarning": "Showing the {shown} most recent of {total} matters — use search or filters to narrow the results.",
     "createModal": {
       "associates": "Associates",
       "removeMember": "Remove {name}",
@@ -880,11 +885,17 @@
   "tasks": {
     "listTitle": "Task list",
     "empty": "No tasks yet.",
+    "noFilterMatch": "No tasks match your search.",
+    "searchPlaceholder": "Search by title, assignee, matter...",
+    "listTruncatedWarning": "Showing the {shown} most recent of {total} tasks — use search to narrow the results.",
     "assignedTo": "Assigned to: {name}",
     "dueLabel": "Due: {date}",
     "overdueSuffix": " (Overdue)",
     "confirmStatusTitle": "Confirm status update",
     "confirmStatusMessage": "Are you sure you want to change task \"{title}\" to \"{status}\"?",
+    "confirmBulkStatusMessage": "Are you sure you want to change the status of {count} selected tasks to \"{status}\"?",
+    "selectedCount": "{count} selected",
+    "applyBulkStatus": "Apply",
     "updateStatus": "Update",
     "addButton": "Add plan",
     "formTitle": "New task",
@@ -1242,5 +1253,17 @@
         "a": "ADMIN: full admin. MANAGER: broad view and matter/client management. LAWYER: matter work and document upload. SUPPORT: assigned matters and comments; no matter/plan document upload."
       }
     }
+  },
+  "commandPalette": {
+    "placeholder": "Search matters, clients, tasks...",
+    "openHint": "Quick search",
+    "matters": "Matters",
+    "clients": "Clients",
+    "tasks": "Tasks",
+    "noResults": "No results for \"{query}\"",
+    "minChars": "Type at least 2 characters to search",
+    "hintNavigate": "navigate",
+    "hintSelect": "open",
+    "hintClose": "close"
   }
 }

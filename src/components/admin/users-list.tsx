@@ -244,7 +244,7 @@ export function UsersList({
         </CardHeader>
 
         <div className="flex justify-end px-3.5 pt-2.5 sm:px-4 sm:pt-3">
-          <ListViewToggle mode={mode} onChange={setMode} size="sm" />
+          <ListViewToggle mode={mode} onChange={setMode} size="sm" showTable={false} />
         </div>
 
         {users.length === 0 ? (

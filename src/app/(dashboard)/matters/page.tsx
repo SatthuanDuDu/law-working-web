@@ -14,10 +14,13 @@ export default async function MattersPage() {
   const tPages = await getTranslations("pages.matters");
   const matterIds = await getAccessibleMatterIds(user.id, user.role);
 
-  const [filterOptions, matters] = await Promise.all([
+  const matterWhere = matterIds ? { id: { in: matterIds } } : {};
+
+  const [filterOptions, totalCount, matters] = await Promise.all([
     getMatterFilterOptions(),
+    prisma.matter.count({ where: matterWhere }),
     prisma.matter.findMany({
-      where: matterIds ? { id: { in: matterIds } } : {},
+      where: matterWhere,
       select: {
         id: true,
         code: true,
@@ -73,6 +76,7 @@ export default async function MattersPage() {
       <Suspense fallback={null}>
         <MattersList
           matters={listItems}
+          totalCount={totalCount}
           filterOptions={filterOptions}
           canManage={isManagerOrAbove(user.role)}
         />

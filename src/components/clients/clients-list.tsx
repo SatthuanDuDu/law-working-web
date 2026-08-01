@@ -5,7 +5,16 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { ArrowDown, ArrowUp, Check, ChevronDown, Pencil, Trash2, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Check,
+  ChevronDown,
+  Pencil,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
 import { deleteClientAction } from "@/lib/actions";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { useListViewMode } from "@/hooks/use-list-view-mode";
@@ -16,6 +25,7 @@ import {
 } from "@/components/clients/client-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { ListViewToggle } from "@/components/ui/list-view-toggle";
 import { useLabelMaps } from "@/i18n/use-label-maps";
 import { cn } from "@/lib/utils";
@@ -37,6 +47,7 @@ export type ClientListItem = {
 type ClientsSortBy = "name" | "city" | "businessType" | "matters";
 
 type ClientsFilterState = {
+  query: string;
   names: string[];
   cities: string[];
   businessTypes: ClientBusinessType[];
@@ -45,6 +56,7 @@ type ClientsFilterState = {
 };
 
 const DEFAULT_FILTERS: ClientsFilterState = {
+  query: "",
   names: [],
   cities: [],
   businessTypes: [],
@@ -319,7 +331,23 @@ function applyClientFilters(
   businessTypeLabels: Record<ClientBusinessType, string>,
   locale: string,
 ) {
+  const query = filters.query.trim().toLowerCase();
+
   const filtered = clients.filter((client) => {
+    if (query) {
+      const haystack = [
+        client.code,
+        client.name,
+        client.email,
+        client.phone,
+        client.address,
+        client.city,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      if (!haystack.includes(query)) return false;
+    }
     if (filters.names.length > 0 && !filters.names.includes(client.name)) {
       return false;
     }
@@ -460,6 +488,7 @@ export function ClientsList({
   );
 
   const hasActiveFilters =
+    Boolean(filters.query) ||
     filters.names.length > 0 ||
     filters.cities.length > 0 ||
     filters.businessTypes.length > 0;
@@ -525,7 +554,18 @@ export function ClientsList({
     <>
       {dialog}
       <div className="flex min-h-0 min-w-0 flex-col gap-4">
-        <div className="shrink-0 border-b border-border/60 pb-3">
+        <div className="shrink-0 space-y-2.5 border-b border-border/60 pb-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              value={filters.query}
+              onChange={(event) => setFilters({ ...filters, query: event.target.value })}
+              placeholder={t("searchPlaceholder")}
+              aria-label={t("searchPlaceholder")}
+              className="h-10 pl-9"
+            />
+          </div>
           <div className="flex items-end gap-2">
             <div className="flex min-w-0 flex-1 items-end gap-2 overflow-x-auto pb-0.5">
               <div className="min-w-[9.5rem] flex-1">
@@ -605,18 +645,18 @@ export function ClientsList({
         </div>
 
         <div className="flex justify-end">
-          <ListViewToggle mode={mode} onChange={setMode} size="sm" />
+          <ListViewToggle mode={mode} onChange={setMode} size="sm" showTable={false} />
         </div>
 
         <div className="min-h-0 flex-1 space-y-4">
           {clients.length === 0 ? (
-            <Card>
+            <Card solid>
               <CardContent className="py-10 text-center text-sm text-muted-foreground">
                 {t("emptyHint")}
               </CardContent>
             </Card>
           ) : visibleClients.length === 0 ? (
-            <Card>
+            <Card solid>
               <CardContent className="py-10 text-center text-sm text-muted-foreground">
                 {t("noFilterMatch")}
               </CardContent>
@@ -634,7 +674,7 @@ export function ClientsList({
                   .join(" · ");
 
                 return (
-                  <Card key={client.id} className="rounded-md border-border/50">
+                  <Card key={client.id} solid className="rounded-md border-border/50">
                     <CardContent className="flex h-full flex-col gap-2 p-3 sm:gap-3 sm:p-4">
                       <div className="min-w-0 space-y-1">
                         <div className="flex flex-wrap items-center gap-1.5">
@@ -669,7 +709,7 @@ export function ClientsList({
               })}
             </div>
           ) : (
-            <Card className="rounded-md border-border/50">
+            <Card solid className="rounded-md border-border/50">
               <CardContent className="divide-y divide-border/60 p-0">
                 {visibleClients.map((client) => {
                   const meta = [

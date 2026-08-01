@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { ClipboardList, Pencil, Trash2 } from "lucide-react";
+import { AlertTriangle, ClipboardList, Pencil, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { deleteMatterAction } from "@/lib/actions";
 import { useMatterFormData } from "@/hooks/use-matter-form-data";
@@ -68,7 +68,21 @@ function applyMattersFilters(
   matterTypeLabels: Record<MatterType, string>,
   locale: string,
 ) {
+  const query = filters.query.trim().toLowerCase();
+
   const filtered = matters.filter((matter) => {
+    if (query) {
+      const haystack = [
+        matter.code,
+        matter.title,
+        matter.client.name,
+        matter.leadLawyer.name,
+        ...matter.members.map((member) => member.user.name),
+      ]
+        .join(" ")
+        .toLowerCase();
+      if (!haystack.includes(query)) return false;
+    }
     if (filters.types.length > 0 && !filters.types.includes(matter.type)) {
       return false;
     }
@@ -136,10 +150,13 @@ function applyMattersFilters(
 
 export function MattersList({
   matters,
+  totalCount,
   filterOptions,
   canManage,
 }: {
   matters: MatterListItem[];
+  /** True DB count — may exceed matters.length when the list-limit cap truncated the fetch. */
+  totalCount: number;
   filterOptions: MatterFilterOptions;
   canManage: boolean;
 }) {
@@ -291,7 +308,7 @@ export function MattersList({
 
   function renderListCard(matter: MatterListItem) {
     return (
-      <Card key={matter.id} className="rounded-md border-border/50">
+      <Card key={matter.id} solid className="rounded-md border-border/50">
         <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
@@ -360,7 +377,7 @@ export function MattersList({
 
   function renderGridCard(matter: MatterListItem) {
     return (
-      <Card key={matter.id} className="flex h-full flex-col rounded-md border-border/50">
+      <Card key={matter.id} solid className="flex h-full flex-col rounded-md border-border/50">
         <CardHeader className="space-y-2 pb-2">
           <div className="flex flex-wrap items-start gap-2">
             <CardTitle className="min-w-0 flex-1 text-base leading-snug">
@@ -408,6 +425,96 @@ export function MattersList({
     );
   }
 
+  function renderTableView() {
+    return (
+      <Card solid className="overflow-hidden rounded-md border-border/50 p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[860px] border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-border/70 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                <th className="px-3 py-2.5 font-medium">{t("fieldType")}</th>
+                <th className="px-3 py-2.5 font-medium">{t("title")}</th>
+                <th className="px-3 py-2.5 font-medium">{t("client")}</th>
+                <th className="px-3 py-2.5 font-medium">{t("leadLawyer")}</th>
+                <th className="px-3 py-2.5 font-medium">{t("status")}</th>
+                <th className="px-3 py-2.5 text-right font-medium">
+                  {t("fieldCreatedAt")}
+                </th>
+                {canManage ? (
+                  <th className="px-3 py-2.5 text-right font-medium">
+                    <span className="sr-only">{tCommon("actions")}</span>
+                  </th>
+                ) : null}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/60">
+              {visibleMatters.map((matter) => (
+                <tr key={matter.id} className="interactive-row">
+                  <td className="max-w-[9rem] truncate px-3 py-2.5 align-top text-foreground">
+                    {getMatterTypeDisplay(matter.type, matter.customTypeLabel)}
+                  </td>
+                  <td className="min-w-[14rem] px-3 py-2.5 align-top">
+                    <Link
+                      href={`/matters/${matter.id}`}
+                      className="interactive-link block truncate font-medium text-foreground hover:text-primary"
+                    >
+                      {matter.title}
+                    </Link>
+                    <p className="truncate font-mono text-[11px] text-primary/80">
+                      {matter.code}
+                    </p>
+                  </td>
+                  <td className="max-w-[10rem] truncate px-3 py-2.5 align-top text-foreground">
+                    {matter.client.name}
+                  </td>
+                  <td className="max-w-[9rem] truncate px-3 py-2.5 align-top text-foreground">
+                    {matter.leadLawyer.name}
+                  </td>
+                  <td className="px-3 py-2.5 align-top">
+                    <MatterStatusBadge status={matter.status} />
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-right align-top tabular-nums text-muted-foreground">
+                    {formatDateTime(matter.createdAt)}
+                  </td>
+                  {canManage ? (
+                    <td className="px-3 py-2.5 text-right align-top">
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          disabled={isPending || formDataLoading}
+                          onClick={() => void openEdit(matter)}
+                          aria-label={t("editMatter")}
+                          title={t("editMatter")}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40"
+                          disabled={isPending}
+                          onClick={() => handleDelete(matter)}
+                          aria-label={t("deleteMatter")}
+                          title={t("deleteMatter")}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </td>
+                  ) : null}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <>
       {dialog}
@@ -421,22 +528,36 @@ export function MattersList({
           clients={filterOptions.clients}
         />
 
+        {totalCount > matters.length ? (
+          <div className="flex items-start gap-2 rounded-md border border-amber-300/60 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <p>
+              {t("listTruncatedWarning", {
+                shown: matters.length,
+                total: totalCount,
+              })}
+            </p>
+          </div>
+        ) : null}
+
         <div className="flex justify-end">
           <ListViewToggle mode={mode} onChange={setMode} size="sm" />
         </div>
 
         {matters.length === 0 ? (
-          <Card>
+          <Card solid>
             <CardContent className="py-10 text-center text-sm text-muted-foreground">
               {t("emptyHint")}
             </CardContent>
           </Card>
         ) : visibleMatters.length === 0 ? (
-          <Card>
+          <Card solid>
             <CardContent className="py-10 text-center text-sm text-muted-foreground">
               {t("noFilterMatch")}
             </CardContent>
           </Card>
+        ) : mode === "table" ? (
+          renderTableView()
         ) : mode === "grid" ? (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {visibleMatters.map((matter) => renderGridCard(matter))}

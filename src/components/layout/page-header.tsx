@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
-import { ChevronLeft, ChevronRight, Menu } from "lucide-react";
+import { ChevronLeft, ChevronRight, Menu, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getBreadcrumbs } from "@/lib/navigation";
 import { NotificationPanel } from "@/components/notifications/notification-panel";
 import { CreateMatterButton } from "@/components/matters/create-matter-button";
 import { HEADER_TOOLBAR_BTN } from "@/components/layout/header-toolbar";
+import { OPEN_COMMAND_PALETTE_EVENT } from "@/components/layout/command-palette";
 import { liquidPanelClass } from "@/lib/liquid-panel";
 import { UrgentReminderStack } from "@/components/layout/urgent-reminder-stack";
 import { usePageMeta } from "@/contexts/page-meta-context";
@@ -98,6 +99,17 @@ export function PageHeader() {
           </div>
 
           <div className="relative flex shrink-0 items-center gap-1.5">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className={HEADER_TOOLBAR_BTN}
+              onClick={() => window.dispatchEvent(new Event(OPEN_COMMAND_PALETTE_EVENT))}
+              aria-label={tCommon("search")}
+              title={`${tCommon("search")} (Ctrl/⌘ K)`}
+            >
+              <Search />
+            </Button>
             <CreateMatterButton />
             <NotificationPanel
               unreadCount={unreadCount}

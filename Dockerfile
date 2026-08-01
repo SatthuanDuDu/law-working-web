@@ -28,6 +28,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
+RUN mkdir -p /app/.next/cache && chown -R nextjs:nodejs /app
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000

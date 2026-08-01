@@ -105,6 +105,13 @@ html {
   scrollbar-gutter: stable;
   /* Measured by PageHeader; used by sticky toolbars under the chrome. */
   --page-header-offset: 5.5rem;
+  /* Visual viewport (synced by VisualViewportVars); fallback to dvh/inner. */
+  --vv-width: 100vw;
+  --vv-height: 100dvh;
+  --vv-offset-top: 0px;
+  --vv-offset-left: 0px;
+  min-height: 100dvh;
+  overflow-x: hidden;
   background-color: var(--canvas);
 }
 
@@ -128,11 +135,22 @@ html {
 }
 
 body {
-  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  /* Reduce rubber-band pull that shifts fixed UI while dragging on mobile. */
+  overscroll-behavior-y: none;
   background: var(--body-gradient) fixed;
   background-color: var(--canvas);
   color: var(--foreground);
   font-family: var(--font-open-sans), "Open Sans", Arial, Helvetica, sans-serif;
+}
+
+/* Locked while dragging the utility FAB so the page cannot rubber-band. */
+html.fab-dragging,
+html.fab-dragging body {
+  overflow: hidden;
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
 /* Content surface — solid, high contrast for tables/lists */

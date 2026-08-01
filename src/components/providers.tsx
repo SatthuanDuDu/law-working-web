@@ -4,6 +4,7 @@ import { SessionProvider } from "next-auth/react";
 import { NextIntlClientProvider } from "next-intl";
 import { ThemeProvider } from "next-themes";
 import type { AbstractIntlMessages } from "next-intl";
+import { VisualViewportVars } from "@/hooks/use-visual-viewport-vars";
 
 export function Providers({
   children,
@@ -23,6 +24,7 @@ export function Providers({
           enableSystem
           disableTransitionOnChange
         >
+          <VisualViewportVars />
           {children}
         </ThemeProvider>
       </NextIntlClientProvider>

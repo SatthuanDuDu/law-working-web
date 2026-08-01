@@ -963,9 +963,9 @@ export function ChatWorkspace({
         liquidPanelClass,
         // Fill remaining viewport under the sticky page header (eat main bottom pad).
         "flex min-h-[24rem] overflow-hidden rounded-md",
-        "h-[calc(100dvh-var(--page-header-offset,3.5rem)-0.75rem)] -mb-3",
-        "sm:h-[calc(100dvh-var(--page-header-offset,3.5rem)-1.5rem)] sm:-mb-6",
-        "lg:h-[calc(100dvh-var(--page-header-offset,3.5rem)-2rem)] lg:-mb-8",
+        "h-[calc(var(--vv-height,100dvh)-var(--page-header-offset,3.5rem)-0.75rem)] -mb-3",
+        "sm:h-[calc(var(--vv-height,100dvh)-var(--page-header-offset,3.5rem)-1.5rem)] sm:-mb-6",
+        "lg:h-[calc(var(--vv-height,100dvh)-var(--page-header-offset,3.5rem)-2rem)] lg:-mb-8",
       )}
     >
       {/* Sidebar */}

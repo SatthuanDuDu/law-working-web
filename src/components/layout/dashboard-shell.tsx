@@ -67,12 +67,12 @@ export function DashboardShell({
         <ServerMetaSync meta={serverMeta} />
         <PathnameMetaSync />
         <ServiceWorkerRegister />
-        <div className="flex min-h-screen bg-transparent">
-          <div className="sticky top-0 z-30 hidden h-screen shrink-0 transition-[width] duration-300 ease-in-out lg:block">
+        <div className="flex min-h-dvh bg-transparent">
+          <div className="sticky top-0 z-30 hidden h-dvh shrink-0 transition-[width] duration-300 ease-in-out lg:block">
             <Sidebar user={user} variant="desktop" />
           </div>
           <Sidebar user={user} variant="mobile" />
-          <div className="liquid-glass-canvas flex min-h-screen min-w-0 flex-1 flex-col">
+          <div className="liquid-glass-canvas flex min-h-dvh min-w-0 flex-1 flex-col">
             <PageHeader />
             <main className="min-w-0 flex-1 p-3 sm:p-6 lg:p-8">{children}</main>
           </div>

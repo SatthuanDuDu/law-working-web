@@ -46,7 +46,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary via-primary-hover to-[#0b3a20] p-4 sm:p-6">
+    <div className="flex min-h-dvh items-center justify-center bg-gradient-to-br from-primary via-primary-hover to-[#0b3a20] p-4 sm:p-6">
       <Card className="w-full max-w-md border-border shadow-[var(--shadow-overlay)]" solid>
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-surface ring-1 ring-border">

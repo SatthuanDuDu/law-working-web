@@ -32,41 +32,59 @@ const DRAG_THRESHOLD_PX = 8;
 const EDGE_PAD = 16;
 const POSITION_KEY = "nslaw:utility-speed-dial-position";
 const POSITION_EVENT = "nslaw:utility-speed-dial-position-change";
-const SNAP_MS = 220;
 
 type FabSide = "left" | "right";
 /** Free on-screen position; left is edge-aligned when docked/persisted. */
 type FabPos = { left: number; top: number };
 
+function viewportSize() {
+  const vv = typeof window !== "undefined" ? window.visualViewport : null;
+  return {
+    width: vv?.width ?? window.innerWidth,
+    height: vv?.height ?? window.innerHeight,
+    offsetTop: vv?.offsetTop ?? 0,
+    offsetLeft: vv?.offsetLeft ?? 0,
+  };
+}
+
 function leftForSide(side: FabSide) {
+  const { width, offsetLeft } = viewportSize();
   return side === "left"
-    ? EDGE_PAD
-    : Math.max(EDGE_PAD, window.innerWidth - FAB_SIZE - EDGE_PAD);
+    ? offsetLeft + EDGE_PAD
+    : Math.max(
+        offsetLeft + EDGE_PAD,
+        offsetLeft + width - FAB_SIZE - EDGE_PAD,
+      );
 }
 
 function nearestSide(left: number): FabSide {
-  const distLeft = Math.max(0, left - EDGE_PAD);
+  const { width, offsetLeft } = viewportSize();
+  const distLeft = Math.max(0, left - (offsetLeft + EDGE_PAD));
   const distRight = Math.max(
     0,
-    window.innerWidth - FAB_SIZE - EDGE_PAD - left,
+    offsetLeft + width - FAB_SIZE - EDGE_PAD - left,
   );
   return distLeft <= distRight ? "left" : "right";
 }
 
 function defaultPos(): FabPos {
+  const { height, offsetTop } = viewportSize();
   return {
     left: leftForSide("right"),
-    top: window.innerHeight - FAB_SIZE - EDGE_PAD,
+    top: offsetTop + height - FAB_SIZE - EDGE_PAD,
   };
 }
 
-/** Keep the FAB fully inside the viewport while dragging freely. */
+/** Keep the FAB fully inside the visible viewport while dragging freely. */
 function clampFree(pos: FabPos): FabPos {
-  const maxLeft = Math.max(EDGE_PAD, window.innerWidth - FAB_SIZE - EDGE_PAD);
-  const maxTop = Math.max(EDGE_PAD, window.innerHeight - FAB_SIZE - EDGE_PAD);
+  const { width, height, offsetTop, offsetLeft } = viewportSize();
+  const minLeft = offsetLeft + EDGE_PAD;
+  const minTop = offsetTop + EDGE_PAD;
+  const maxLeft = Math.max(minLeft, offsetLeft + width - FAB_SIZE - EDGE_PAD);
+  const maxTop = Math.max(minTop, offsetTop + height - FAB_SIZE - EDGE_PAD);
   return {
-    left: Math.min(maxLeft, Math.max(EDGE_PAD, pos.left)),
-    top: Math.min(maxTop, Math.max(EDGE_PAD, pos.top)),
+    left: Math.min(maxLeft, Math.max(minLeft, pos.left)),
+    top: Math.min(maxTop, Math.max(minTop, pos.top)),
   };
 }
 
@@ -77,6 +95,14 @@ function snapToNearestEdge(pos: FabPos): FabPos {
     left: leftForSide(nearestSide(free.left)),
     top: free.top,
   };
+}
+
+function lockPageScroll() {
+  document.documentElement.classList.add("fab-dragging");
+}
+
+function unlockPageScroll() {
+  document.documentElement.classList.remove("fab-dragging");
 }
 
 function readStoredPos(): FabPos | null {
@@ -145,11 +171,16 @@ function subscribePos(onStoreChange: () => void) {
   window.addEventListener("storage", onChange);
   window.addEventListener("resize", onChange);
   window.addEventListener("orientationchange", onChange);
+  const vv = window.visualViewport;
+  vv?.addEventListener("resize", onChange);
+  vv?.addEventListener("scroll", onChange);
   return () => {
     window.removeEventListener(POSITION_EVENT, onChange);
     window.removeEventListener("storage", onChange);
     window.removeEventListener("resize", onChange);
     window.removeEventListener("orientationchange", onChange);
+    vv?.removeEventListener("resize", onChange);
+    vv?.removeEventListener("scroll", onChange);
   };
 }
 
@@ -207,6 +238,14 @@ export function UtilitySpeedDial() {
     const timer = window.setTimeout(() => setExpanded(false), AUTO_COLLAPSE_MS);
     return () => window.clearTimeout(timer);
   }, [expanded, dragging]);
+
+  useEffect(() => {
+    if (!dragging) return;
+    lockPageScroll();
+    return () => unlockPageScroll();
+  }, [dragging]);
+
+  useEffect(() => () => unlockPageScroll(), []);
 
   function openHelp() {
     setExpanded(false);
@@ -308,7 +347,8 @@ export function UtilitySpeedDial() {
   const expenseDelayMs = expanded ? 0 : STAGGER_MS;
   const helpDelayMs = expanded ? STAGGER_MS : 0;
 
-  const expandUp = !pos || pos.top >= SLOT_PX * 2 + EDGE_PAD;
+  const expandUp =
+    !pos || pos.top - viewportSize().offsetTop >= SLOT_PX * 2 + EDGE_PAD;
 
   const shellStyle =
     pos == null
@@ -318,9 +358,6 @@ export function UtilitySpeedDial() {
           top: pos.top,
           right: "auto",
           bottom: "auto",
-          transition: dragging
-            ? "none"
-            : `left ${SNAP_MS}ms ${EASE_PUSH}, top ${SNAP_MS}ms ${EASE_PUSH}`,
         } as const);
 
   type ActionItem = {
@@ -377,6 +414,8 @@ export function UtilitySpeedDial() {
           "fixed z-40",
           pos == null &&
             "bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))]",
+          !dragging &&
+            "transition-[left,top] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
           dragging && "cursor-grabbing",
         )}
         style={shellStyle}

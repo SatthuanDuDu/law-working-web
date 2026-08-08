@@ -2,7 +2,14 @@
 
 import { useMemo, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Search, X } from "lucide-react";
+import {
+  endOfDay,
+  endOfWeek,
+  isWithinInterval,
+  startOfDay,
+  startOfWeek,
+} from "date-fns";
+import { AlertTriangle, FileSpreadsheet, Search, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { updateTaskStatusAction } from "@/lib/actions";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
@@ -11,7 +18,9 @@ import { useLabelMaps } from "@/i18n/use-label-maps";
 import { Badge, Card, CardContent, CardHeader, CardTitle, Select } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FilterSelect } from "@/components/ui/filter-select";
 import { ListViewToggle } from "@/components/ui/list-view-toggle";
+import { downloadExcel } from "@/lib/export-excel";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import type { TaskPriority, TaskStatus } from "@prisma/client";
@@ -29,6 +38,83 @@ type TaskListItem = {
   matter: { id: string; code: string; title: string } | null;
 };
 
+type DueFilter = "all" | "overdue" | "today" | "thisWeek" | "none";
+
+type TaskFilterState = {
+  query: string;
+  status: TaskStatus | "";
+  priority: TaskPriority | "";
+  assigneeId: string;
+  due: DueFilter;
+};
+
+const DEFAULT_FILTERS: TaskFilterState = {
+  query: "",
+  status: "",
+  priority: "",
+  assigneeId: "",
+  due: "all",
+};
+
+const TASK_STATUSES: TaskStatus[] = ["TODO", "IN_PROGRESS", "DONE", "CANCELLED"];
+const TASK_PRIORITIES: TaskPriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
+
+function matchesDueFilter(task: TaskListItem, due: DueFilter, now: Date) {
+  if (due === "all") return true;
+  if (due === "none") return !task.dueDate;
+
+  if (!task.dueDate) return false;
+  const dueDate = new Date(task.dueDate);
+
+  if (due === "overdue") {
+    return (
+      dueDate < startOfDay(now) &&
+      !["DONE", "CANCELLED"].includes(task.status)
+    );
+  }
+  if (due === "today") {
+    return isWithinInterval(dueDate, {
+      start: startOfDay(now),
+      end: endOfDay(now),
+    });
+  }
+  if (due === "thisWeek") {
+    return isWithinInterval(dueDate, {
+      start: startOfWeek(now, { weekStartsOn: 1 }),
+      end: endOfWeek(now, { weekStartsOn: 1 }),
+    });
+  }
+  return true;
+}
+
+function applyTaskFilters(tasks: TaskListItem[], filters: TaskFilterState) {
+  const normalized = filters.query.trim().toLowerCase();
+  const now = new Date();
+
+  return tasks.filter((task) => {
+    if (normalized) {
+      const haystack = [
+        task.title,
+        task.description,
+        task.assignee.name,
+        task.matter?.code,
+        task.matter?.title,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      if (!haystack.includes(normalized)) return false;
+    }
+    if (filters.status && task.status !== filters.status) return false;
+    if (filters.priority && task.priority !== filters.priority) return false;
+    if (filters.assigneeId && task.assigneeId !== filters.assigneeId) {
+      return false;
+    }
+    if (!matchesDueFilter(task, filters.due, now)) return false;
+    return true;
+  });
+}
+
 export function TaskList({
   tasks,
   totalCount,
@@ -44,13 +130,15 @@ export function TaskList({
   actions?: ReactNode;
 }) {
   const t = useTranslations("tasks");
+  const tPages = useTranslations("pages.tasks");
   const tCommon = useTranslations("common");
+  const tFilters = useTranslations("filters");
   const { taskStatus, taskPriority } = useLabelMaps();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const { confirm, dialog } = useConfirmDialog();
   const { mode, setMode } = useListViewMode("tasks");
-  const [query, setQuery] = useState("");
+  const [filters, setFilters] = useState<TaskFilterState>(DEFAULT_FILTERS);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState<TaskStatus>("TODO");
 
@@ -62,23 +150,27 @@ export function TaskList({
     );
   }
 
-  const visibleTasks = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    if (!normalized) return tasks;
-    return tasks.filter((task) => {
-      const haystack = [
-        task.title,
-        task.description,
-        task.assignee.name,
-        task.matter?.code,
-        task.matter?.title,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      return haystack.includes(normalized);
-    });
-  }, [tasks, query]);
+  const assigneeOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const task of tasks) {
+      map.set(task.assignee.id, task.assignee.name);
+    }
+    return [...map.entries()]
+      .map(([id, name]) => ({ value: id, label: name }))
+      .sort((a, b) => a.label.localeCompare(b.label, "vi"));
+  }, [tasks]);
+
+  const visibleTasks = useMemo(
+    () => applyTaskFilters(tasks, filters),
+    [tasks, filters],
+  );
+
+  const hasActiveFilters =
+    Boolean(filters.query) ||
+    Boolean(filters.status) ||
+    Boolean(filters.priority) ||
+    Boolean(filters.assigneeId) ||
+    filters.due !== "all";
 
   const selectableVisibleIds = useMemo(
     () => visibleTasks.filter(canUpdateTask).map((task) => task.id),
@@ -139,6 +231,24 @@ export function TaskList({
         });
       },
     });
+  }
+
+  function handleExportExcel() {
+    void downloadExcel(
+      tPages("title"),
+      visibleTasks.map((task) => ({
+        [t("titleLabel")]: task.title,
+        [t("descriptionLabel")]: task.description ?? "",
+        [t("assigneeLabel")]: task.assignee.name,
+        [t("matterLabel")]: task.matter
+          ? `${task.matter.code} — ${task.matter.title}`
+          : "",
+        [t("priorityLabel")]: taskPriority[task.priority],
+        [t("statusLabel")]: taskStatus[task.status],
+        [t("dueDateLabel")]: task.dueDate ? formatDate(task.dueDate) : "",
+      })),
+      "cong-viec",
+    );
   }
 
   const priorityVariant = {
@@ -346,19 +456,135 @@ export function TaskList({
             </div>
           ) : null}
           {tasks.length > 0 ? (
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="search"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder={t("searchPlaceholder")}
-                aria-label={t("searchPlaceholder")}
-                className="h-10 pl-9"
-              />
+            <div className="space-y-2.5 border-b border-border/60 pb-3">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="search"
+                  value={filters.query}
+                  onChange={(event) =>
+                    setFilters({ ...filters, query: event.target.value })
+                  }
+                  placeholder={t("searchPlaceholder")}
+                  aria-label={t("searchPlaceholder")}
+                  className="h-10 pl-9"
+                />
+              </div>
+              <div className="flex items-end gap-2 overflow-x-auto pb-0.5">
+                <div className="min-w-[8rem] flex-1">
+                  <p className="mb-1 truncate text-xs text-muted-foreground">
+                    {t("filterStatus")}
+                  </p>
+                  <FilterSelect
+                    value={filters.status}
+                    onChange={(status) =>
+                      setFilters({
+                        ...filters,
+                        status: status as TaskStatus | "",
+                      })
+                    }
+                    aria-label={t("filterStatus")}
+                    options={[
+                      { value: "", label: tCommon("all") },
+                      ...TASK_STATUSES.map((status) => ({
+                        value: status,
+                        label: taskStatus[status],
+                      })),
+                    ]}
+                  />
+                </div>
+                <div className="min-w-[8rem] flex-1">
+                  <p className="mb-1 truncate text-xs text-muted-foreground">
+                    {t("filterPriority")}
+                  </p>
+                  <FilterSelect
+                    value={filters.priority}
+                    onChange={(priority) =>
+                      setFilters({
+                        ...filters,
+                        priority: priority as TaskPriority | "",
+                      })
+                    }
+                    aria-label={t("filterPriority")}
+                    options={[
+                      { value: "", label: tCommon("all") },
+                      ...TASK_PRIORITIES.map((priority) => ({
+                        value: priority,
+                        label: taskPriority[priority],
+                      })),
+                    ]}
+                  />
+                </div>
+                <div className="min-w-[9rem] flex-1">
+                  <p className="mb-1 truncate text-xs text-muted-foreground">
+                    {t("filterAssignee")}
+                  </p>
+                  <FilterSelect
+                    value={filters.assigneeId}
+                    onChange={(assigneeId) =>
+                      setFilters({ ...filters, assigneeId })
+                    }
+                    aria-label={t("filterAssignee")}
+                    options={[
+                      { value: "", label: tCommon("all") },
+                      ...assigneeOptions,
+                    ]}
+                  />
+                </div>
+                <div className="min-w-[8.5rem] flex-1">
+                  <p className="mb-1 truncate text-xs text-muted-foreground">
+                    {t("filterDue")}
+                  </p>
+                  <FilterSelect
+                    value={filters.due}
+                    onChange={(due) =>
+                      setFilters({ ...filters, due: due as DueFilter })
+                    }
+                    aria-label={t("filterDue")}
+                    options={[
+                      { value: "all", label: t("dueAll") },
+                      { value: "overdue", label: t("dueOverdue") },
+                      { value: "today", label: t("dueToday") },
+                      { value: "thisWeek", label: t("dueThisWeek") },
+                      { value: "none", label: t("dueNone") },
+                    ]}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  tabIndex={hasActiveFilters ? 0 : -1}
+                  aria-hidden={!hasActiveFilters}
+                  aria-disabled={!hasActiveFilters}
+                  aria-label={tFilters("clearFilters")}
+                  className={cn(
+                    "h-10 shrink-0 text-red-600 transition-[opacity,background-color,color] duration-500 ease-out hover:bg-red-50 hover:text-red-700",
+                    hasActiveFilters ? "opacity-100" : "pointer-events-none opacity-0",
+                  )}
+                  onClick={() => {
+                    if (!hasActiveFilters) return;
+                    setFilters(DEFAULT_FILTERS);
+                  }}
+                >
+                  <X className="h-3.5 w-3.5" />
+                  {tFilters("clearFilters")}
+                </Button>
+              </div>
             </div>
           ) : null}
-          <div className="flex justify-end">
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={visibleTasks.length === 0}
+              onClick={handleExportExcel}
+              aria-label={tCommon("exportExcel")}
+            >
+              <FileSpreadsheet className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{tCommon("exportExcel")}</span>
+            </Button>
             <ListViewToggle mode={mode} onChange={setMode} size="sm" />
           </div>
           {mode === "table" && activeSelectedIds.size > 0 ? (

@@ -86,7 +86,7 @@ export default async function MatterReportPage({
     getTranslations("matters.report"),
   ]);
 
-  if (!matter) notFound();
+  if (!matter || matter.deletedAt) notFound();
 
   const { taskStatus, planStepStatus } = labels;
   const isArchived = matter.status === "ARCHIVED";

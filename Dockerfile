@@ -2,6 +2,9 @@ FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
+COPY prisma-cms ./prisma-cms
+# prisma generate (postinstall) needs the env var present even without a live DB
+ENV CMS_DATABASE_URL="postgresql://nslaw_web:unused@localhost:5432/luat_work?schema=cms"
 RUN npm ci
 
 FROM node:22-alpine AS builder
@@ -12,7 +15,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # NEXT_PUBLIC_* is inlined at build time — pass matching key at docker build.
 ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY=""
 ENV NEXT_PUBLIC_VAPID_PUBLIC_KEY=$NEXT_PUBLIC_VAPID_PUBLIC_KEY
-RUN npx prisma generate
+# Dummy URL so prisma generate --schema=prisma-cms succeeds without real DB
+ARG CMS_DATABASE_URL="postgresql://nslaw_web:unused@localhost:5432/luat_work?schema=cms"
+ENV CMS_DATABASE_URL=$CMS_DATABASE_URL
+RUN npm run db:generate
 RUN npm run build
 
 FROM node:22-alpine AS runner
@@ -25,10 +31,13 @@ RUN addgroup --system --gid 1001 nodejs \
 # Own files as nextjs at copy time so image-cache mkdir works at runtime.
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/prisma-cms ./prisma-cms
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# CMS Prisma client (generated under src/generated — may be outside standalone)
+COPY --from=builder --chown=nextjs:nodejs /app/src/generated ./src/generated
 
 USER nextjs
 RUN mkdir -p /app/.next/cache

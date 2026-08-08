@@ -526,37 +526,43 @@ export async function sendChatMessageAction(
           ? `${conversation.name || "Nhóm"} · ${user.name}`
           : `Tin nhắn từ ${user.name}`;
 
-    for (const recipientId of chatRecipients) {
-      const existing = await prisma.notification.findFirst({
+    if (chatRecipients.length > 0) {
+      const existing = await prisma.notification.findMany({
         where: {
-          userId: recipientId,
+          userId: { in: chatRecipients },
           type: "CHAT_MESSAGE",
           link,
           isRead: false,
         },
-        select: { id: true },
+        select: { id: true, userId: true },
       });
-      if (existing) {
-        await prisma.notification.update({
-          where: { id: existing.id },
+      const existingByUser = new Map(existing.map((n) => [n.userId, n.id]));
+      const now = new Date();
+      const toUpdate = existing.map((n) => n.id);
+      const toCreate = chatRecipients.filter((id) => !existingByUser.has(id));
+
+      if (toUpdate.length > 0) {
+        await prisma.notification.updateMany({
+          where: { id: { in: toUpdate } },
           data: {
             title: chatTitle,
             message: preview,
-            createdAt: new Date(),
-          },
-        });
-      } else {
-        await prisma.notification.create({
-          data: {
-            userId: recipientId,
-            type: "CHAT_MESSAGE",
-            title: chatTitle,
-            message: preview,
-            link,
+            createdAt: now,
           },
         });
       }
-      void notifyUsersPush(recipientId, {
+      if (toCreate.length > 0) {
+        await prisma.notification.createMany({
+          data: toCreate.map((userId) => ({
+            userId,
+            type: "CHAT_MESSAGE" as const,
+            title: chatTitle,
+            message: preview,
+            link,
+          })),
+        });
+      }
+      void notifyUsersPush(chatRecipients, {
         title: chatTitle,
         body: preview,
         url: link,
@@ -568,6 +574,5 @@ export async function sendChatMessageAction(
   }
 
   revalidatePath("/chat");
-  revalidatePath("/", "layout");
   return { success: true, messageId: created.id };
 }

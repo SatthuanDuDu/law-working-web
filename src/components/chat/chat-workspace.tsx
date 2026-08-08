@@ -53,6 +53,7 @@ import {
   extractClipboardFiles,
   readImagesFromClipboardApi,
 } from "@/lib/clipboard-files";
+import { CHAT_SSE_REFRESH_EVENT } from "@/contexts/shell-alerts-context";
 
 const MAX_SIZE_BYTES = 25 * 1024 * 1024;
 
@@ -604,7 +605,7 @@ export function ChatWorkspace({
     if (!activeId) return;
 
     let timer: number | undefined;
-    const MESSAGE_POLL_MS = 8_000;
+    const MESSAGE_POLL_MS = 15_000;
 
     const tick = () => {
       if (document.visibilityState !== "visible") return;
@@ -667,6 +668,19 @@ export function ChatWorkspace({
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [refreshConversations]);
+
+  // SSE chat nudge from ShellAlertsProvider (shared EventSource).
+  useEffect(() => {
+    const onSseChat = () => {
+      if (document.visibilityState !== "visible") return;
+      void refreshConversations();
+      if (activeId) {
+        void loadMessages(activeId, { after: lastIdRef.current });
+      }
+    };
+    window.addEventListener(CHAT_SSE_REFRESH_EVENT, onSseChat);
+    return () => window.removeEventListener(CHAT_SSE_REFRESH_EVENT, onSseChat);
+  }, [activeId, loadMessages, refreshConversations]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });

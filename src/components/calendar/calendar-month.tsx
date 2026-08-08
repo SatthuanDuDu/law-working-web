@@ -2011,7 +2011,7 @@ export function CalendarMonth({
           <div
             ref={weekScrollerRef}
             onScroll={handleWeekScroll}
-            className="max-h-[min(70dvh,42rem)] snap-y snap-proximity space-y-3 overflow-y-auto overscroll-contain px-3 py-3 scroll-smooth sm:px-4"
+            className="max-h-[min(70dvh,42rem)] snap-y snap-proximity space-y-3.5 overflow-y-auto overscroll-contain px-3 py-3 scroll-smooth sm:space-y-4 sm:px-4"
           >
             {agendaDays.map((day) => {
               const key = format(day, "yyyy-MM-dd");
@@ -2052,7 +2052,7 @@ export function CalendarMonth({
               return (
                 <div key={key} className="space-y-2">
                   {isMonday ? (
-                    <p className="px-0.5 pt-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <p className="px-0.5 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                       {t("weekRange", {
                         start: format(day, "dd/MM"),
                         end: format(
@@ -2065,15 +2065,39 @@ export function CalendarMonth({
                   <div
                     data-day={key}
                     className={cn(
-                      "snap-start scroll-mt-3 border-b border-border/60 py-3 last:border-b-0",
-                      isToday && "rounded-md bg-primary-muted/30 px-2 ring-1 ring-primary/35",
+                      "group/day snap-start scroll-mt-3 overflow-hidden rounded-md border border-border/70",
+                      "transition-[border-color,box-shadow] duration-200 ease-out",
+                      "hover:border-primary/40 hover:shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_18%,transparent)]",
+                      isToday && "border-primary/45 ring-1 ring-primary/30",
                     )}
                   >
-                    <div className="flex items-center justify-between gap-2">
+                    <div
+                      className={cn(
+                        "flex items-center justify-between gap-2 border-b border-border/60 px-3 py-2",
+                        "transition-colors duration-200 ease-out",
+                        isToday
+                          ? "bg-primary-muted/55"
+                          : "bg-muted/45 group-hover/day:bg-primary-muted/40",
+                      )}
+                    >
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-foreground">
-                          {weekdayLabel}
-                          <span className="ml-2 font-normal text-muted-foreground">
+                        <p className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                          <span
+                            className={cn(
+                              "text-sm font-semibold tracking-tight",
+                              isToday ? "text-primary" : "text-foreground",
+                            )}
+                          >
+                            {weekdayLabel}
+                          </span>
+                          <span
+                            className={cn(
+                              "text-xs tabular-nums",
+                              isToday
+                                ? "font-medium text-primary/85"
+                                : "text-muted-foreground",
+                            )}
+                          >
                             {format(day, "dd/MM/yyyy")}
                           </span>
                         </p>
@@ -2081,36 +2105,56 @@ export function CalendarMonth({
                       <Button
                         type="button"
                         variant="outline"
-                        size="sm"
-                        className="shrink-0"
+                        aria-label={t("addPlan")}
                         onClick={() => setAddPlanDay(day)}
+                        className={cn(
+                          "group/add h-8 shrink-0 gap-0 overflow-hidden rounded-full p-0",
+                          "transition-[padding,gap,border-color,background-color] duration-300 ease-out",
+                          "hover:gap-1.5 hover:border-primary/45 hover:bg-muted hover:pr-3",
+                          "focus-visible:gap-1.5 focus-visible:pr-3",
+                          "motion-reduce:gap-1.5 motion-reduce:pr-3",
+                        )}
                       >
-                        <Plus className="h-3.5 w-3.5" aria-hidden />
-                        {t("addPlan")}
+                        <span className="inline-flex size-8 shrink-0 items-center justify-center">
+                          <Plus className="h-3.5 w-3.5" aria-hidden />
+                        </span>
+                        <span
+                          className={cn(
+                            "inline-block max-w-0 overflow-hidden whitespace-nowrap text-xs font-medium opacity-0",
+                            "transition-[max-width,opacity] duration-300 ease-out",
+                            "group-hover/add:max-w-[9rem] group-hover/add:opacity-100",
+                            "group-focus-visible/add:max-w-[9rem] group-focus-visible/add:opacity-100",
+                            "motion-reduce:max-w-[9rem] motion-reduce:opacity-100",
+                          )}
+                        >
+                          {t("addPlan")}
+                        </span>
                       </Button>
                     </div>
 
-                    {hasItems ? (
-                      <div className="mt-2 min-w-0 divide-y divide-border/50">
-                        {dayActions.map((item) =>
-                          item.kind === "task" ? (
-                            <WeekActionRow
-                              key={`task-${item.task.id}`}
-                              item={{ kind: "task", task: item.task }}
-                            />
-                          ) : (
-                            <WeekActionRow
-                              key={`plan-${item.step.id}`}
-                              item={{ kind: "plan", step: item.step }}
-                            />
-                          ),
-                        )}
-                      </div>
-                    ) : (
-                      <p className="mt-2 text-sm text-muted-foreground">
-                        {t("noEvents")}
-                      </p>
-                    )}
+                    <div className="px-3 py-2.5">
+                      {hasItems ? (
+                        <div className="min-w-0 divide-y divide-border/50">
+                          {dayActions.map((item) =>
+                            item.kind === "task" ? (
+                              <WeekActionRow
+                                key={`task-${item.task.id}`}
+                                item={{ kind: "task", task: item.task }}
+                              />
+                            ) : (
+                              <WeekActionRow
+                                key={`plan-${item.step.id}`}
+                                item={{ kind: "plan", step: item.step }}
+                              />
+                            ),
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          {t("noEvents")}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

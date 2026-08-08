@@ -108,6 +108,7 @@ export default async function WorkloadPage() {
         where: openTaskWhere,
         select: taskSelect,
         orderBy: [{ dueDate: "asc" }, { updatedAt: "desc" }],
+        take: 100,
       }),
       prisma.task.findMany({
         where: {
@@ -116,6 +117,7 @@ export default async function WorkloadPage() {
         },
         select: taskSelect,
         orderBy: [{ dueDate: "asc" }],
+        take: 100,
       }),
     ]);
 

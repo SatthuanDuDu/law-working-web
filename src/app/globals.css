@@ -302,7 +302,17 @@ html.fab-dragging body {
 }
 
 .attachment-important {
-  background-color: color-mix(in oklab, var(--primary) 10%, var(--surface));
+  background-color: color-mix(in oklab, var(--primary) 5%, transparent);
+  border-left: 2px solid color-mix(in oklab, var(--primary) 35%, var(--border));
+  border-radius: var(--radius-md);
+  /* Breathing room between tinted row bg and file content */
+  padding: 1rem 1rem 1rem 1.125rem;
+  margin-block: 0.25rem;
+}
+
+.dark .attachment-important {
+  background-color: color-mix(in oklab, var(--primary) 8%, transparent);
+  border-left-color: color-mix(in oklab, var(--primary) 40%, var(--border));
 }
 
 /* Page title / sticky header chrome — denser glass in light; match cards in dark */

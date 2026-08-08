@@ -46,7 +46,7 @@ export default async function MatterHubPage({
       },
     },
   });
-  if (!matter) notFound();
+  if (!matter || matter.deletedAt) notFound();
 
   const isArchived = matter.status === "ARCHIVED";
   const canEditContent =

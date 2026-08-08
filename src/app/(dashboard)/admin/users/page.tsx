@@ -2,6 +2,7 @@ import { PageHeaderSlot } from "@/components/layout/page-header-slot";
 import { UsersList } from "@/components/admin/users-list";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
+import { getCachedDepartments } from "@/lib/cached-lookups";
 import { getTranslations } from "next-intl/server";
 
 export default async function AdminUsersPage() {
@@ -13,7 +14,7 @@ export default async function AdminUsersPage() {
       include: { department: true },
       orderBy: { createdAt: "desc" },
     }),
-    prisma.department.findMany({ orderBy: { name: "asc" } }),
+    getCachedDepartments(),
   ]);
 
   const listItems = users.map((item) => ({

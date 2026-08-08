@@ -105,72 +105,78 @@ export async function getExpenseStats(range: {
 }): Promise<ExpenseStatsDto> {
   const fromIso = toIsoDate(range.from);
   const toIso = toIsoDate(range.to);
-
-  const rows = await prisma.matterExpense.findMany({
-    where: {
-      createdAt: {
-        gte: range.from,
-        lte: range.to,
-      },
+  const where = {
+    createdAt: {
+      gte: range.from,
+      lte: range.to,
     },
-    select: {
-      type: true,
-      customTypeLabel: true,
-      amountVnd: true,
-      createdAt: true,
-      matterId: true,
-      matter: { select: { code: true, title: true } },
-    },
-    orderBy: { createdAt: "asc" },
-  });
+  };
 
   const ZERO = BigInt(0);
   const PCT_SCALE = BigInt(10000);
-  let total = ZERO;
+
+  const [totals, typeGroups, matterGroups, seriesRows] = await Promise.all([
+    prisma.matterExpense.aggregate({
+      where,
+      _sum: { amountVnd: true },
+      _count: { _all: true },
+    }),
+    prisma.matterExpense.groupBy({
+      by: ["type", "customTypeLabel"],
+      where,
+      _sum: { amountVnd: true },
+      _count: { _all: true },
+    }),
+    prisma.matterExpense.groupBy({
+      by: ["matterId"],
+      where,
+      _sum: { amountVnd: true },
+      _count: { _all: true },
+    }),
+    // Series still needs per-row timestamps; keep payload minimal.
+    prisma.matterExpense.findMany({
+      where,
+      select: { amountVnd: true, createdAt: true },
+      orderBy: { createdAt: "asc" },
+    }),
+  ]);
+
+  const total = totals._sum.amountVnd ?? ZERO;
+  const count = totals._count._all;
+  const avg = count > 0 ? total / BigInt(count) : ZERO;
+
   const typeMap = new Map<
     string,
     { type: ExpenseType; customTypeLabel: string | null; amount: bigint; count: number }
   >();
-  const matterMap = new Map<
-    string,
-    { code: string; title: string; amount: bigint; count: number }
-  >();
 
-  for (const row of rows) {
-    const amount = row.amountVnd;
-    total += amount;
-
+  for (const row of typeGroups) {
+    const amount = row._sum.amountVnd ?? ZERO;
     const key = typeKey(row.type, row.customTypeLabel);
-    const existingType = typeMap.get(key);
-    if (existingType) {
-      existingType.amount += amount;
-      existingType.count += 1;
+    const existing = typeMap.get(key);
+    if (existing) {
+      existing.amount += amount;
+      existing.count += row._count._all;
     } else {
       typeMap.set(key, {
         type: row.type,
         customTypeLabel:
           row.type === "OTHER" ? row.customTypeLabel?.trim() || null : null,
         amount,
-        count: 1,
-      });
-    }
-
-    const existingMatter = matterMap.get(row.matterId);
-    if (existingMatter) {
-      existingMatter.amount += amount;
-      existingMatter.count += 1;
-    } else {
-      matterMap.set(row.matterId, {
-        code: row.matter.code,
-        title: row.matter.title,
-        amount,
-        count: 1,
+        count: row._count._all,
       });
     }
   }
 
-  const count = rows.length;
-  const avg = count > 0 ? total / BigInt(count) : ZERO;
+  const matterIds = matterGroups.map((row) => row.matterId);
+  const matters =
+    matterIds.length > 0
+      ? await prisma.matter.findMany({
+          where: { id: { in: matterIds } },
+          select: { id: true, code: true, title: true },
+        })
+      : [];
+  const matterMeta = new Map(matters.map((matter) => [matter.id, matter]));
 
   const byType = [...typeMap.entries()]
     .map(([key, value]) => ({
@@ -188,15 +194,19 @@ export async function getExpenseStats(range: {
       return b.count - a.count;
     });
 
-  const byMatter = [...matterMap.entries()]
-    .map(([matterId, value]) => ({
-      matterId,
-      code: value.code,
-      title: value.title,
-      amountVnd: value.amount.toString(),
-      count: value.count,
-      pct: total > ZERO ? Number((value.amount * PCT_SCALE) / total) / 100 : 0,
-    }))
+  const byMatter = matterGroups
+    .map((row) => {
+      const meta = matterMeta.get(row.matterId);
+      const amount = row._sum.amountVnd ?? ZERO;
+      return {
+        matterId: row.matterId,
+        code: meta?.code ?? row.matterId,
+        title: meta?.title ?? "",
+        amountVnd: amount.toString(),
+        count: row._count._all,
+        pct: total > ZERO ? Number((amount * PCT_SCALE) / total) / 100 : 0,
+      };
+    })
     .sort((a, b) => {
       const diff = BigInt(b.amountVnd) - BigInt(a.amountVnd);
       if (diff > ZERO) return 1;
@@ -214,7 +224,7 @@ export async function getExpenseStats(range: {
     for (const day of eachDayOfInterval({ start: range.from, end: range.to })) {
       seriesMap.set(toIsoDate(day), { amount: ZERO, count: 0 });
     }
-    for (const row of rows) {
+    for (const row of seriesRows) {
       const key = toIsoDate(row.createdAt);
       const slot = seriesMap.get(key) ?? { amount: ZERO, count: 0 };
       slot.amount += row.amountVnd;
@@ -222,7 +232,7 @@ export async function getExpenseStats(range: {
       seriesMap.set(key, slot);
     }
   } else {
-    for (const row of rows) {
+    for (const row of seriesRows) {
       const weekStart = startOfWeek(row.createdAt, { weekStartsOn: 1 });
       const weekEnd = endOfWeek(row.createdAt, { weekStartsOn: 1 });
       const key = `${toIsoDate(weekStart)}_${toIsoDate(weekEnd)}`;
@@ -248,7 +258,7 @@ export async function getExpenseStats(range: {
       totalVnd: total.toString(),
       count,
       avgVnd: avg.toString(),
-      mattersTouched: matterMap.size,
+      mattersTouched: matterGroups.length,
       topType: top?.type ?? null,
       topTypeCustomLabel: top?.customTypeLabel ?? null,
       topTypePct: top?.pct ?? 0,

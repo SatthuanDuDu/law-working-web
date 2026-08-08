@@ -10,6 +10,7 @@ import { isAdmin, isManagerOrAbove, canManageMatterDocuments } from "@/lib/permi
 import { buildAttachmentOrigin } from "@/lib/attachment-origin";
 import { attachVersionCounts } from "@/lib/attachment-versions";
 import { getMatterFormData } from "@/lib/matter-form-data";
+import { getCachedWorkTypes } from "@/lib/cached-lookups";
 import {
   filterVisibleAttachments,
   getAccessSummaries,
@@ -71,11 +72,7 @@ export default async function MatterPlanPage({
         },
       },
     }),
-    prisma.workType.findMany({
-      where: { isActive: true },
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-    }),
+    getCachedWorkTypes(),
     prisma.user.findMany({
       where: { isActive: true },
       select: { id: true, name: true },
@@ -83,7 +80,7 @@ export default async function MatterPlanPage({
     }),
   ]);
 
-  if (!matter) notFound();
+  if (!matter || matter.deletedAt) notFound();
 
   const isArchived = matter.status === "ARCHIVED";
   const canEditContent =

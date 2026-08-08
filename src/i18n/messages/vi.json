@@ -14,6 +14,8 @@
     "saving": "Đang lưu...",
     "confirm": "Xác nhận",
     "cannotDelete": "Không thể xóa",
+    "undo": "Hoàn tác",
+    "deletedWithUndo": "Đã xóa. Bạn có thể hoàn tác trong vài giây.",
     "back": "Quay lại",
     "actions": "Thao tác",
     "status": "Trạng thái",
@@ -32,6 +34,7 @@
     "breadcrumb": "Đường dẫn",
     "viewFile": "Xem file",
     "download": "Tải xuống",
+    "exportExcel": "Xuất Excel",
     "unassigned": "Chưa gán",
     "total": "tổng cộng",
     "minutes": "{count} phút",
@@ -83,6 +86,8 @@
     "attachmentLabels": "Nhãn tài liệu",
     "departments": "Phòng ban",
     "auditLogs": "Nhật ký hệ thống",
+    "website": "Website NSLAW",
+    "websiteTraffic": "Lượt truy cập web",
     "matterDetail": "Chi tiết vụ việc",
     "plan": "Lên kế hoạch",
     "report": "Báo cáo"
@@ -153,9 +158,25 @@
       "title": "Nhãn tài liệu",
       "description": "Cấu hình nhãn phân loại tài liệu đính kèm"
     },
+    "website": {
+      "title": "Website NSLAW",
+      "description": "Quản lý nội dung và lượt truy cập trang công khai"
+    },
+    "websiteTraffic": {
+      "title": "Lượt truy cập web",
+      "description": "Thống kê xem trang theo ngày"
+    },
     "matterDetail": {
       "title": "Chi tiết vụ việc",
       "description": "Thông tin và tài liệu vụ việc"
+    },
+    "website": {
+      "title": "Website NSLAW",
+      "description": "Quản lý nội dung website công khai"
+    },
+    "websiteTraffic": {
+      "title": "Lượt truy cập web",
+      "description": "Thống kê lượt xem trang công khai"
     },
     "fallback": {
       "title": "NSLAW Work Manager"
@@ -218,6 +239,7 @@
       "TASK_ASSIGNED": "Giao việc",
       "TASK_DUE": "Hạn công việc",
       "PLAN_ASSIGNED": "Giao kế hoạch",
+      "PLAN_DUE": "Hạn bước kế hoạch",
       "GENERAL": "Chung",
       "MENTION": "Nhắc đến",
       "CHAT_MESSAGE": "Tin nhắn"
@@ -319,8 +341,9 @@
     "reportTab": "Báo cáo",
     "overview": "Tổng quan",
     "deleteTitle": "Xóa vụ việc",
-    "deleteConfirm": "Bạn có chắc muốn xóa vụ việc \"{title}\" ({code})? Hành động này không hoàn tác.",
+    "deleteConfirm": "Bạn có chắc muốn xóa vụ việc \"{title}\" ({code})? Có thể hoàn tác ngay sau khi xóa.",
     "deleteConfirmLabel": "Xóa vụ việc",
+    "deletedToast": "Đã xóa vụ việc \"{title}\"",
     "editMatter": "Sửa vụ việc",
     "deleteMatter": "Xóa vụ việc",
     "setupPlan": "Kế hoạch",
@@ -335,6 +358,7 @@
     "fieldCreatedAt": "Tạo lúc",
     "fieldDescription": "Mô tả",
     "taskCount": "{count} task",
+    "fieldTaskCount": "Số task",
     "filterType": "Loại hình",
     "filterLeadLawyer": "Luật sư phụ trách",
     "filterMembers": "Thành viên cộng tác",
@@ -342,6 +366,11 @@
     "filterCreatedAt": "Ngày tạo",
     "searchPlaceholder": "Tìm theo mã, tên vụ việc, khách hàng, luật sư...",
     "listTruncatedWarning": "Chỉ hiển thị {shown}/{total} vụ việc mới nhất — dùng tìm kiếm hoặc bộ lọc để thu hẹp kết quả.",
+    "selectedCount": "Đã chọn {count}",
+    "applyBulkStatus": "Áp dụng",
+    "confirmBulkStatusTitle": "Xác nhận cập nhật trạng thái",
+    "confirmBulkStatusMessage": "Bạn có chắc muốn đổi trạng thái {count} vụ việc đã chọn thành \"{status}\"?",
+    "updateStatus": "Cập nhật",
     "createModal": {
       "associates": "Cộng sự",
       "removeMember": "Xóa {name}",
@@ -534,8 +563,9 @@
     "noClients": "Chưa có khách hàng",
     "searchPlaceholder": "Tìm khách hàng...",
     "deleteTitle": "Xóa khách hàng",
-    "deleteConfirm": "Bạn có chắc muốn xóa khách hàng \"{name}\"? Hành động này không hoàn tác.",
+    "deleteConfirm": "Bạn có chắc muốn xóa khách hàng \"{name}\"? Có thể hoàn tác ngay sau khi xóa.",
     "deleteConfirmLabel": "Xóa khách hàng",
+    "deletedToast": "Đã xóa khách hàng \"{name}\"",
     "newClient": "Khách hàng mới",
     "formTitle": "Khách hàng mới",
     "formSubtitle": "Điền thông tin để thêm khách hàng vào hệ thống.",
@@ -562,7 +592,12 @@
     "viewRelatedMatters": "Xem {count} vụ việc liên quan",
     "noRelatedMatters": "Chưa có vụ việc liên quan",
     "mattersMetricLabel": "Vụ việc",
-    "closeFormAria": "Đóng form khách hàng mới"
+    "closeFormAria": "Đóng form khách hàng mới",
+    "selectedCount": "Đã chọn {count}",
+    "bulkDelete": "Xóa đã chọn",
+    "confirmBulkDeleteTitle": "Xóa khách hàng đã chọn",
+    "confirmBulkDeleteMessage": "Bạn có chắc muốn xóa {count} khách hàng đã chọn? Chỉ xóa được khách hàng không còn vụ việc. Hành động này không hoàn tác.",
+    "bulkDeletePartial": "Đã xóa {deleted} khách hàng. Bỏ qua {skipped} khách hàng còn vụ việc liên quan."
   },
   "calendar": {
     "title": "Lịch & hạn",
@@ -885,9 +920,18 @@
   "tasks": {
     "listTitle": "Danh sách công việc",
     "empty": "Chưa có công việc nào.",
-    "noFilterMatch": "Không có công việc khớp tìm kiếm.",
+    "noFilterMatch": "Không có công việc khớp bộ lọc hiện tại.",
     "searchPlaceholder": "Tìm theo tiêu đề, người nhận, vụ việc...",
-    "listTruncatedWarning": "Chỉ hiển thị {shown}/{total} công việc mới nhất — dùng tìm kiếm để thu hẹp kết quả.",
+    "listTruncatedWarning": "Chỉ hiển thị {shown}/{total} công việc mới nhất — dùng tìm kiếm hoặc bộ lọc để thu hẹp kết quả.",
+    "filterStatus": "Trạng thái",
+    "filterPriority": "Ưu tiên",
+    "filterAssignee": "Người nhận",
+    "filterDue": "Hạn",
+    "dueAll": "Tất cả",
+    "dueOverdue": "Quá hạn",
+    "dueToday": "Hôm nay",
+    "dueThisWeek": "Tuần này",
+    "dueNone": "Không có hạn",
     "assignedTo": "Giao cho: {name}",
     "dueLabel": "Hạn: {date}",
     "overdueSuffix": " (Quá hạn)",
@@ -941,6 +985,9 @@
     "title": "Tài liệu",
     "attachedTitle": "Tài liệu đính kèm",
     "upload": "Tải lên",
+    "dragDropHint": "Kéo thả tệp vào đây",
+    "uploading": "Đang tải lên…",
+    "uploadPercent": "{pct}%",
     "empty": "Chưa có tài liệu",
     "delete": "Xóa tài liệu",
     "important": "Quan trọng",
@@ -1101,6 +1148,10 @@
     "colAmount": "Số tiền",
     "colCount": "Số khoản",
     "colPct": "% tổng",
+    "colCode": "Mã",
+    "colTitle": "Tiêu đề",
+    "sheetByType": "Theo loại",
+    "sheetByMatter": "Theo vụ việc",
     "empty": "Không có chi phí trong kỳ đã chọn."
   },
   "chat": {
@@ -1264,6 +1315,15 @@
     "minChars": "Nhập ít nhất 2 ký tự để tìm kiếm",
     "hintNavigate": "điều hướng",
     "hintSelect": "mở",
-    "hintClose": "đóng"
+    "hintClose": "đóng",
+    "actions": {
+      "section": "Thao tác nhanh",
+      "newMatter": "Tạo vụ việc mới",
+      "newClient": "Tạo khách hàng",
+      "newTask": "Tạo nhiệm vụ",
+      "openChat": "Mở Trò chuyện",
+      "openCalendar": "Mở Lịch",
+      "openDashboard": "Mở Tổng quan"
+    }
   }
 }

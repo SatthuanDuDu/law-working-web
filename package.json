@@ -7,7 +7,7 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "db:generate": "prisma generate",
+    "db:generate": "prisma generate && prisma generate --schema=prisma-cms/schema.prisma",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
@@ -15,7 +15,7 @@
     "db:admin": "tsx scripts/create-admin.ts",
     "jobs:deadlines": "tsx src/lib/jobs/generate-deadline-notifications.ts",
     "docker:deps": "docker compose up -d db minio minio-init",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate && prisma generate --schema=prisma-cms/schema.prisma"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

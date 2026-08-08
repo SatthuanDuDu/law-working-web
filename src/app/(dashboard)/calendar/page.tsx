@@ -4,8 +4,11 @@ import { CalendarMonth } from "@/components/calendar/calendar-month";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
 import { getAccessibleMatterIds } from "@/lib/access";
+import { getCachedWorkTypes } from "@/lib/cached-lookups";
 import { isManagerOrAbove } from "@/lib/permissions";
 import { getTranslations } from "next-intl/server";
+
+const CALENDAR_TAKE = 2000;
 
 export default async function CalendarPage({
   searchParams,
@@ -19,8 +22,9 @@ export default async function CalendarPage({
   const scope = canViewAll && params.scope === "all" ? "all" : "mine";
 
   const now = new Date();
-  const rangeStart = startOfMonth(subMonths(now, 3));
-  const rangeEnd = endOfMonth(addMonths(now, 12));
+  // Current month ±2 keeps navigation useful without loading ~15 months unbounded.
+  const rangeStart = startOfMonth(subMonths(now, 2));
+  const rangeEnd = endOfMonth(addMonths(now, 2));
   const accessibleMatterIds = await getAccessibleMatterIds(user.id, user.role);
 
   const [tasks, planSteps, matters, workTypes, assigneeUsers] = await Promise.all([
@@ -53,10 +57,12 @@ export default async function CalendarPage({
         },
       },
       orderBy: { dueDate: "asc" },
+      take: CALENDAR_TAKE,
     }),
     prisma.matterPlanStep.findMany({
       where: {
         dueAt: { gte: rangeStart, lte: rangeEnd },
+        matter: { deletedAt: null },
         ...(scope === "mine"
           ? { assignees: { some: { userId: user.id } } }
           : accessibleMatterIds
@@ -70,25 +76,24 @@ export default async function CalendarPage({
         priority: true,
         dueAt: true,
         assignees: {
-          include: { user: { select: { name: true } } },
+          select: { user: { select: { name: true } } },
         },
         matter: { select: { id: true, code: true, title: true } },
       },
       orderBy: { dueAt: "asc" },
+      take: CALENDAR_TAKE,
     }),
     prisma.matter.findMany({
       where: {
+        deletedAt: null,
         status: { in: ["NEW", "IN_PROGRESS", "ON_HOLD"] },
         ...(accessibleMatterIds ? { id: { in: accessibleMatterIds } } : {}),
       },
       select: { id: true, code: true, title: true },
       orderBy: { updatedAt: "desc" },
+      take: 500,
     }),
-    prisma.workType.findMany({
-      where: { isActive: true },
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-    }),
+    getCachedWorkTypes(),
     prisma.user.findMany({
       where: { isActive: true },
       select: { id: true, name: true },

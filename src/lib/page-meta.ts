@@ -12,6 +12,7 @@ const PAGE_KEYS: Record<string, string> = {
   "/tasks": "tasks",
   "/calendar": "calendar",
   "/settings": "settings",
+  "/chat": "chat",
   "/workload": "workload",
   "/expenses": "expenses",
   "/admin/users": "users",
@@ -19,6 +20,8 @@ const PAGE_KEYS: Record<string, string> = {
   "/admin/departments": "departments",
   "/admin/audit-logs": "auditLogs",
   "/admin/attachment-labels": "attachmentLabels",
+  "/website": "website",
+  "/website/traffic": "websiteTraffic",
 };
 
 export function getPageMeta(pathname: string, tPages?: PagesT): PageMeta {
@@ -64,8 +67,8 @@ export async function resolveServerPageMeta(
   const match = pathname.match(/^\/matters\/([^/]+)(?:\/(plan|report))?\/?$/);
   if (match) {
     const [, id, section] = match;
-    const matter = await prisma.matter.findUnique({
-      where: { id },
+    const matter = await prisma.matter.findFirst({
+      where: { id, deletedAt: null },
       select: {
         title: true,
         code: true,

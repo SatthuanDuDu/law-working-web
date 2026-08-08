@@ -158,7 +158,10 @@ export default async function DashboardPage() {
   const soonEnd = endOfDay(addDays(now, 3));
 
   const matterIds = await getAccessibleMatterIds(user.id, user.role);
-  const matterWhere = matterIds ? { id: { in: matterIds } } : {};
+  const matterWhere = {
+    deletedAt: null,
+    ...(matterIds ? { id: { in: matterIds } } : {}),
+  };
   const openTaskWhere: Prisma.TaskWhereInput = {
     assigneeId: user.id,
     status: { in: ["TODO", "IN_PROGRESS"] satisfies TaskStatus[] },
@@ -201,6 +204,7 @@ export default async function DashboardPage() {
         client: { select: { name: true } },
         leadLawyer: { select: { id: true, name: true, avatarKey: true } },
         planSteps: {
+          where: { status: { not: "DONE" } },
           orderBy: { sortOrder: "asc" },
           select: {
             id: true,
@@ -209,7 +213,7 @@ export default async function DashboardPage() {
             dueAt: true,
             sortOrder: true,
             assignees: {
-              include: {
+              select: {
                 user: { select: { id: true, name: true, avatarKey: true } },
               },
             },
@@ -221,7 +225,14 @@ export default async function DashboardPage() {
     }),
     prisma.matter.findMany({
       where: matterWhere,
-      include: { client: true, leadLawyer: true },
+      select: {
+        id: true,
+        code: true,
+        title: true,
+        status: true,
+        client: { select: { name: true } },
+        leadLawyer: { select: { id: true, name: true } },
+      },
       orderBy: { updatedAt: "desc" },
       take: 5,
     }),
@@ -244,6 +255,7 @@ export default async function DashboardPage() {
       where: {
         dueAt: { gte: todayStart, lte: soonEnd },
         status: { not: "DONE" },
+        matter: { deletedAt: null },
         ...(matterIds ? { matterId: { in: matterIds } } : {}),
       },
       include: {
@@ -256,7 +268,7 @@ export default async function DashboardPage() {
           },
         },
         assignees: {
-          include: {
+          select: {
             user: { select: { id: true, name: true, avatarKey: true } },
           },
         },
@@ -313,8 +325,7 @@ export default async function DashboardPage() {
     })),
   }));
   const openPlanStepsTotal = openMatterItems.reduce(
-    (sum, matter) =>
-      sum + matter.planSteps.filter((step) => step.status !== "DONE").length,
+    (sum, matter) => sum + matter.planSteps.length,
     0,
   );
 

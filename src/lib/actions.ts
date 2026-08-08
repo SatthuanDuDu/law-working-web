@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { requireAuth, requireRole } from "@/lib/session";
@@ -37,6 +37,11 @@ import {
   isValidUsername,
   normalizeUsername,
 } from "@/lib/username";
+import {
+  ATTACHMENT_LABELS_TAG,
+  DEPARTMENTS_TAG,
+  WORK_TYPES_TAG,
+} from "@/lib/cached-lookups";
 
 function revalidateClients() {
   revalidatePath("/clients");
@@ -228,12 +233,12 @@ export async function deleteClientAction(clientId: string) {
     return { error: await actionError("noPermissionThisClient") };
   }
 
-  const client = await prisma.client.findUnique({
-    where: { id: clientId },
+  const client = await prisma.client.findFirst({
+    where: { id: clientId, deletedAt: null },
     select: {
       id: true,
       name: true,
-      _count: { select: { matters: true } },
+      _count: { select: { matters: { where: { deletedAt: null } } } },
     },
   });
   if (!client) return { error: await actionError("clientNotFound") };
@@ -245,7 +250,10 @@ export async function deleteClientAction(clientId: string) {
   }
 
   try {
-    await prisma.client.delete({ where: { id: clientId } });
+    await prisma.client.update({
+      where: { id: clientId },
+      data: { deletedAt: new Date() },
+    });
 
     await createAuditLog({
       userId: user.id,
@@ -259,6 +267,113 @@ export async function deleteClientAction(clientId: string) {
     return { success: true };
   } catch (error) {
     console.error("deleteClientAction failed:", error);
+    return { error: await actionError("cannotDeleteClient") };
+  }
+}
+
+export async function restoreClientAction(clientId: string) {
+  const user = await requireAuth();
+  if (!isManagerOrAbove(user.role)) {
+    return { error: await actionError("noPermissionDeleteClient") };
+  }
+
+  const client = await prisma.client.findFirst({
+    where: { id: clientId, deletedAt: { not: null } },
+    select: { id: true, name: true },
+  });
+  if (!client) return { error: await actionError("clientNotFound") };
+
+  try {
+    await prisma.client.update({
+      where: { id: clientId },
+      data: { deletedAt: null },
+    });
+
+    await createAuditLog({
+      userId: user.id,
+      action: "UPDATE",
+      entityType: "Client",
+      entityId: clientId,
+      details: `Hoàn tác xóa — ${client.name}`,
+    });
+
+    revalidateClients();
+    return { success: true };
+  } catch (error) {
+    console.error("restoreClientAction failed:", error);
+    return { error: await actionError("cannotDeleteClient") };
+  }
+}
+
+export async function bulkDeleteClientsAction(ids: string[]) {
+  const user = await requireAuth();
+  if (!isManagerOrAbove(user.role)) {
+    return { error: await actionError("noPermissionDeleteClient") };
+  }
+
+  const uniqueIds = [...new Set(ids.filter(Boolean))];
+  if (uniqueIds.length === 0) {
+    return { error: await actionError("invalidData") };
+  }
+
+  const accessibleIds = await getAccessibleClientIds(user.id, user.role);
+  const targetIds =
+    accessibleIds == null
+      ? uniqueIds
+      : uniqueIds.filter((id) => accessibleIds.includes(id));
+
+  if (targetIds.length === 0) {
+    return { error: await actionError("noPermissionThisClient") };
+  }
+
+  const clients = await prisma.client.findMany({
+    where: { id: { in: targetIds }, deletedAt: null },
+    select: {
+      id: true,
+      name: true,
+      _count: { select: { matters: { where: { deletedAt: null } } } },
+    },
+  });
+
+  const deletable = clients.filter((client) => client._count.matters === 0);
+  const skipped = clients.filter((client) => client._count.matters > 0);
+
+  if (deletable.length === 0) {
+    return {
+      error:
+        skipped.length > 0
+          ? `Không thể xóa: tất cả ${skipped.length} khách hàng đã chọn vẫn còn vụ việc liên quan.`
+          : await actionError("clientNotFound"),
+    };
+  }
+
+  try {
+    const deletableIds = deletable.map((client) => client.id);
+    await prisma.client.updateMany({
+      where: { id: { in: deletableIds } },
+      data: { deletedAt: new Date() },
+    });
+
+    await createAuditLog({
+      userId: user.id,
+      action: "DELETE",
+      entityType: "Client",
+      entityId: deletableIds[0]!,
+      details: `Bulk delete ${deletable.length} clients: ${deletable
+        .map((client) => client.name)
+        .join(", ")}${
+        skipped.length > 0 ? ` (skipped ${skipped.length} with matters)` : ""
+      }`,
+    });
+
+    revalidateClients();
+    return {
+      success: true,
+      deleted: deletable.length,
+      skipped: skipped.length,
+    };
+  } catch (error) {
+    console.error("bulkDeleteClientsAction failed:", error);
     return { error: await actionError("cannotDeleteClient") };
   }
 }
@@ -613,19 +728,16 @@ export async function deleteMatterAction(matterId: string) {
     return { error: await actionError("onlyManagerDeleteMatter") };
   }
 
-  const matter = await prisma.matter.findUnique({
-    where: { id: matterId },
+  const matter = await prisma.matter.findFirst({
+    where: { id: matterId, deletedAt: null },
     select: { id: true, code: true, title: true },
   });
   if (!matter) return { error: await actionError("matterNotFound") };
 
   try {
-    await prisma.$transaction(async (tx) => {
-      await tx.task.updateMany({
-        where: { matterId },
-        data: { matterId: null },
-      });
-      await tx.matter.delete({ where: { id: matterId } });
+    await prisma.matter.update({
+      where: { id: matterId },
+      data: { deletedAt: new Date() },
     });
 
     await createAuditLog({
@@ -644,9 +756,43 @@ export async function deleteMatterAction(matterId: string) {
   }
 }
 
+export async function restoreMatterAction(matterId: string) {
+  const user = await requireAuth();
+  if (!isManagerOrAbove(user.role)) {
+    return { error: await actionError("onlyManagerDeleteMatter") };
+  }
+
+  const matter = await prisma.matter.findFirst({
+    where: { id: matterId, deletedAt: { not: null } },
+    select: { id: true, code: true, title: true },
+  });
+  if (!matter) return { error: await actionError("matterNotFound") };
+
+  try {
+    await prisma.matter.update({
+      where: { id: matterId },
+      data: { deletedAt: null },
+    });
+
+    await createAuditLog({
+      userId: user.id,
+      action: "UPDATE",
+      entityType: "Matter",
+      entityId: matterId,
+      details: `Hoàn tác xóa — ${matter.code} — ${matter.title}`,
+    });
+
+    revalidateMatters();
+    return { success: true };
+  } catch (error) {
+    console.error("restoreMatterAction failed:", error);
+    return { error: await actionError("cannotDeleteMatter") };
+  }
+}
+
 async function assertCanEditMatterPlan(userId: string, role: Parameters<typeof isManagerOrAbove>[0], matterId: string) {
-  const matter = await prisma.matter.findUnique({
-    where: { id: matterId },
+  const matter = await prisma.matter.findFirst({
+    where: { id: matterId, deletedAt: null },
     include: { members: { select: { userId: true } } },
   });
   if (!matter) return { error: await actionError("matterNotFound"), matter: null };
@@ -1127,7 +1273,7 @@ export async function createMatterPlanStepAction(formData: FormData) {
     revalidatePath(`/matters/${parsed.data.matterId}`);
     revalidatePath(`/matters/${parsed.data.matterId}/plan`);
     revalidatePath("/calendar");
-    revalidatePath("/", "layout");
+    revalidatePath("/dashboard");
     return { success: true, stepId: step.id };
   } catch (error) {
     console.error("createMatterPlanStepAction failed:", error);
@@ -1289,8 +1435,6 @@ export async function updateMatterPlanStepAction(formData: FormData) {
   revalidatePath("/calendar");
   revalidatePath(`/matters/${step.matterId}`);
   revalidatePath(`/matters/${step.matterId}/plan`);
-  // Layout (urgent reminders in header) refreshes via path revalidation
-  revalidatePath("/", "layout");
   return { success: true };
 }
 
@@ -1435,6 +1579,126 @@ export async function updateMatterStatusAction(matterId: string, status: string)
   });
 
   return { success: true };
+}
+
+export async function bulkUpdateMatterStatusAction(
+  ids: string[],
+  status: string,
+) {
+  const user = await requireAuth();
+  const allowed = ["NEW", "IN_PROGRESS", "ON_HOLD", "CLOSED", "ARCHIVED"] as const;
+  if (!allowed.includes(status as (typeof allowed)[number])) {
+    return { error: "Trạng thái không hợp lệ" };
+  }
+
+  const uniqueIds = [...new Set(ids.filter(Boolean))];
+  if (uniqueIds.length === 0) {
+    return { error: await actionError("invalidData") };
+  }
+
+  const nextStatus = status as (typeof allowed)[number];
+  const accessibleIds = await getAccessibleMatterIds(user.id, user.role);
+  const targetIds =
+    accessibleIds == null
+      ? uniqueIds
+      : uniqueIds.filter((id) => accessibleIds.includes(id));
+
+  if (targetIds.length === 0) {
+    return { error: "Không có quyền cập nhật vụ việc đã chọn" };
+  }
+
+  const matters = await prisma.matter.findMany({
+    where: { id: { in: targetIds }, deletedAt: null },
+    select: { id: true, code: true, title: true, status: true },
+  });
+
+  const updatable = matters.filter((matter) => {
+    const leavingArchive =
+      matter.status === "ARCHIVED" && nextStatus !== "ARCHIVED";
+    const enteringArchive =
+      nextStatus === "ARCHIVED" && matter.status !== "ARCHIVED";
+    if ((enteringArchive || leavingArchive) && !isAdmin(user.role)) {
+      return false;
+    }
+    if (matter.status === "ARCHIVED" && !isAdmin(user.role)) {
+      return false;
+    }
+    return true;
+  });
+
+  if (updatable.length === 0) {
+    return {
+      error: isAdmin(user.role)
+        ? "Không có vụ việc nào để cập nhật"
+        : "Chỉ quản trị viên mới được lưu trữ / tái kích hoạt, hoặc vụ việc đã lưu trữ không thể đổi trạng thái",
+    };
+  }
+
+  const updatableIds = updatable.map((matter) => matter.id);
+  const startingProgress = updatable.filter(
+    (matter) => matter.status === "NEW" && nextStatus === "IN_PROGRESS",
+  );
+
+  await prisma.matter.updateMany({
+    where: { id: { in: updatableIds } },
+    data: { status: nextStatus },
+  });
+
+  if (startingProgress.length > 0) {
+    const admins = await prisma.user.findMany({
+      where: { role: "ADMIN", isActive: true },
+      select: { id: true },
+    });
+
+    if (admins.length > 0) {
+      const sample = startingProgress
+        .slice(0, 3)
+        .map((matter) => `${matter.code} - ${matter.title}`)
+        .join("; ");
+      const title = "Vụ việc bắt đầu xử lý";
+      const message =
+        startingProgress.length === 1
+          ? `${user.name} đã bắt đầu xử lý vụ việc ${sample}`
+          : `${user.name} đã bắt đầu xử lý ${startingProgress.length} vụ việc (${sample}${
+              startingProgress.length > 3 ? "…" : ""
+            })`;
+      const link =
+        startingProgress.length === 1
+          ? `/matters/${startingProgress[0]!.id}`
+          : "/matters";
+      await prisma.notification.createMany({
+        data: admins.map((admin) => ({
+          userId: admin.id,
+          type: "GENERAL",
+          title,
+          message,
+          link,
+        })),
+      });
+      void notifyUsersPush(
+        admins.map((admin) => admin.id),
+        { title, body: message, url: link, tag: `matter-start-bulk-${Date.now()}` },
+      );
+    }
+  }
+
+  revalidateMatters();
+
+  const codeSample = updatable
+    .slice(0, 8)
+    .map((matter) => matter.code)
+    .join(", ");
+  await createAuditLog({
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "Matter",
+    entityId: updatableIds[0]!,
+    details: `Bulk status → ${nextStatus}: ${updatable.length} matters (${codeSample}${
+      updatable.length > 8 ? "…" : ""
+    })`,
+  });
+
+  return { success: true, updated: updatable.length };
 }
 
 export async function createTaskAction(formData: FormData) {
@@ -1870,6 +2134,7 @@ export async function createWorkTypeAction(formData: FormData) {
   });
 
   revalidatePath("/admin/work-types");
+  revalidateTag(WORK_TYPES_TAG, "max");
   return { success: true };
 }
 
@@ -1912,6 +2177,7 @@ export async function updateWorkTypeAction(workTypeId: string, formData: FormDat
     });
 
     revalidatePath("/admin/work-types");
+    revalidateTag(WORK_TYPES_TAG, "max");
     return { success: true };
   } catch (error) {
     console.error("updateWorkTypeAction failed:", error);
@@ -1946,6 +2212,7 @@ export async function setWorkTypeActiveAction(workTypeId: string, isActive: bool
     });
 
     revalidatePath("/admin/work-types");
+    revalidateTag(WORK_TYPES_TAG, "max");
     return { success: true };
   } catch (error) {
     console.error("setWorkTypeActiveAction failed:", error);
@@ -1978,6 +2245,7 @@ export async function deleteWorkTypeAction(workTypeId: string) {
     });
 
     revalidatePath("/admin/work-types");
+    revalidateTag(WORK_TYPES_TAG, "max");
     return { success: true };
   } catch (error) {
     console.error("deleteWorkTypeAction failed:", error);
@@ -2006,6 +2274,7 @@ export async function createAttachmentLabelAction(formData: FormData) {
   });
 
   revalidatePath("/admin/attachment-labels");
+  revalidateTag(ATTACHMENT_LABELS_TAG, "max");
   return { success: true };
 }
 
@@ -2029,6 +2298,7 @@ export async function createDepartmentAction(formData: FormData) {
   });
 
   revalidatePath("/admin/departments");
+  revalidateTag(DEPARTMENTS_TAG, "max");
   return { success: true };
 }
 
@@ -2068,6 +2338,7 @@ export async function updateDepartmentAction(departmentId: string, formData: For
 
     revalidatePath("/admin/departments");
     revalidatePath("/admin/users");
+    revalidateTag(DEPARTMENTS_TAG, "max");
     return { success: true };
   } catch (error) {
     console.error("updateDepartmentAction failed:", error);
@@ -2101,6 +2372,7 @@ export async function deleteDepartmentAction(departmentId: string) {
 
     revalidatePath("/admin/departments");
     revalidatePath("/admin/users");
+    revalidateTag(DEPARTMENTS_TAG, "max");
     return { success: true };
   } catch (error) {
     console.error("deleteDepartmentAction failed:", error);
@@ -2120,6 +2392,7 @@ export async function getOpenMattersForExpenseAction() {
 
   const matters = await prisma.matter.findMany({
     where: {
+      deletedAt: null,
       status: { in: [...OPEN_MATTER_STATUSES] },
       ...(accessibleIds ? { id: { in: accessibleIds } } : {}),
     },

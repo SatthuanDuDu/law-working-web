@@ -22,6 +22,7 @@ export type MatterFilterOptions = Pick<MatterFormData, "clients" | "lawyers" | "
 export async function getMatterFilterOptions(): Promise<MatterFilterOptions> {
   const [clients, lawyers, members] = await Promise.all([
     prisma.client.findMany({
+      where: { deletedAt: null },
       select: {
         id: true,
         code: true,
@@ -50,6 +51,7 @@ export async function getMatterFilterOptions(): Promise<MatterFilterOptions> {
 export async function getMatterFormData(user: SessionUser): Promise<MatterFormData> {
   const [clients, lawyers, members, todayMatterCount] = await Promise.all([
     prisma.client.findMany({
+      where: { deletedAt: null },
       select: {
         id: true,
         code: true,

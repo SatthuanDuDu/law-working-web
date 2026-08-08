@@ -47,6 +47,7 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+/src/generated/cms-client
 .env*
 !.env.example
 .vps-credentials.txt

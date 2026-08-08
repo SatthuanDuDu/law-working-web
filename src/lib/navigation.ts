@@ -11,6 +11,7 @@ const ROUTE_NAV_KEYS: Record<string, string> = {
   "/tasks": "tasks",
   "/calendar": "calendar",
   "/settings": "settings",
+  "/chat": "chat",
   "/workload": "workload",
   "/expenses": "expenses",
   "/admin/users": "users",
@@ -18,6 +19,8 @@ const ROUTE_NAV_KEYS: Record<string, string> = {
   "/admin/attachment-labels": "attachmentLabels",
   "/admin/departments": "departments",
   "/admin/audit-logs": "auditLogs",
+  "/website": "website",
+  "/website/traffic": "websiteTraffic",
 };
 
 type NavT = (key: string) => string;

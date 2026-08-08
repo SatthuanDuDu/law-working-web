@@ -13,14 +13,18 @@ import {
   startOfYear,
   subMonths,
 } from "date-fns";
+import { FileSpreadsheet } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { Button } from "@/components/ui/button";
 import { ExpenseKpiStrip } from "@/components/expenses/expense-kpi-strip";
 import { ExpenseStatsTables } from "@/components/expenses/expense-stats-tables";
+import { useLabelMaps } from "@/i18n/use-label-maps";
+import { downloadExcelSheets } from "@/lib/export-excel";
 import type { ExpenseStatsDto } from "@/lib/expense-stats";
 import { liquidPanelClass } from "@/lib/liquid-panel";
 import { cn } from "@/lib/utils";
+import type { ExpenseType } from "@prisma/client";
 
 const ExpenseCharts = dynamic(
   () =>
@@ -37,8 +41,26 @@ function toIso(date: Date) {
   return format(date, "yyyy-MM-dd");
 }
 
+function formatVnd(amount: string) {
+  const digits = amount.replace(/\D/g, "");
+  if (!digits) return "0";
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
+function typeLabel(
+  type: ExpenseType,
+  customLabel: string | null,
+  expenseType: Record<ExpenseType, string>,
+) {
+  if (type === "OTHER" && customLabel) return customLabel;
+  return expenseType[type] ?? type;
+}
+
 export function ExpenseStatsView({ stats }: { stats: ExpenseStatsDto }) {
   const t = useTranslations("expenses");
+  const tPages = useTranslations("pages.expenses");
+  const tCommon = useTranslations("common");
+  const { expenseType } = useLabelMaps();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
@@ -84,6 +106,34 @@ export function ExpenseStatsView({ stats }: { stats: ExpenseStatsDto }) {
     });
   }
 
+  function handleExportExcel() {
+    const sheets = [
+      {
+        name: t("sheetByType"),
+        rows: stats.byType.map((row) => ({
+          [t("colType")]: typeLabel(row.type, row.customTypeLabel, expenseType),
+          [t("colAmount")]: formatVnd(row.amountVnd),
+          [t("colCount")]: row.count,
+          [t("colPct")]: row.pct,
+        })),
+      },
+      {
+        name: t("sheetByMatter"),
+        rows: stats.byMatter.map((row) => ({
+          [t("colCode")]: row.code,
+          [t("colTitle")]: row.title,
+          [t("colAmount")]: formatVnd(row.amountVnd),
+          [t("colCount")]: row.count,
+          [t("colPct")]: row.pct,
+        })),
+      },
+    ].filter((sheet) => sheet.rows.length > 0);
+    if (sheets.length === 0) return;
+    void downloadExcelSheets(`chi-phi-${stats.from}_${stats.to}`, sheets);
+  }
+
+  const canExport = stats.byType.length > 0 || stats.byMatter.length > 0;
+
   return (
     <div className="space-y-4">
       <div
@@ -107,7 +157,7 @@ export function ExpenseStatsView({ stats }: { stats: ExpenseStatsDto }) {
                 />
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {presets.map((preset) => {
                 const active =
                   preset.from === stats.from && preset.to === stats.to;
@@ -125,6 +175,19 @@ export function ExpenseStatsView({ stats }: { stats: ExpenseStatsDto }) {
                   </Button>
                 );
               })}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="interactive-press"
+                disabled={!canExport}
+                onClick={handleExportExcel}
+                aria-label={tCommon("exportExcel")}
+                title={tPages("title")}
+              >
+                <FileSpreadsheet className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{tCommon("exportExcel")}</span>
+              </Button>
             </div>
           </div>
         </div>

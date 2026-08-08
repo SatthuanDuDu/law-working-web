@@ -43,7 +43,10 @@ export default async function TasksPage() {
       orderBy: { name: "asc" },
     }),
     prisma.matter.findMany({
-      where: matterIds ? { id: { in: matterIds } } : {},
+      where: {
+        deletedAt: null,
+        ...(matterIds ? { id: { in: matterIds } } : {}),
+      },
       select: { id: true, code: true, title: true },
       orderBy: { code: "asc" },
     }),

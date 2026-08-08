@@ -11,6 +11,7 @@ import {
   usePageMeta,
   type PageMeta,
 } from "@/contexts/page-meta-context";
+import { ShellAlertsProvider } from "@/contexts/shell-alerts-context";
 import { SidebarProvider } from "@/contexts/sidebar-context";
 import { getPageMeta } from "@/lib/page-meta";
 import type { SessionUser } from "@/lib/permissions";
@@ -65,22 +66,24 @@ export function DashboardShell({
   return (
     <SidebarProvider>
       <PageMetaProvider initialMeta={initialMeta}>
-        <ServerMetaSync meta={serverMeta} />
-        <PathnameMetaSync />
-        <ServiceWorkerRegister />
-        <div className="flex min-h-dvh bg-transparent">
-          <div className="sticky top-0 z-30 hidden h-dvh shrink-0 transition-[width] duration-300 ease-in-out lg:block">
-            <Sidebar user={user} variant="desktop" />
+        <ShellAlertsProvider>
+          <ServerMetaSync meta={serverMeta} />
+          <PathnameMetaSync />
+          <ServiceWorkerRegister />
+          <div className="flex min-h-dvh bg-transparent">
+            <div className="sticky top-0 z-30 hidden h-dvh shrink-0 transition-[width] duration-300 ease-in-out lg:block">
+              <Sidebar user={user} variant="desktop" />
+            </div>
+            <Sidebar user={user} variant="mobile" />
+            <div className="liquid-glass-canvas flex min-h-dvh min-w-0 flex-1 flex-col">
+              <PageHeader />
+              <main className="min-w-0 flex-1 p-3 sm:p-6 lg:p-8">{children}</main>
+            </div>
+            <UtilitySpeedDial />
+            <NotificationToastHost />
+            <CommandPalette />
           </div>
-          <Sidebar user={user} variant="mobile" />
-          <div className="liquid-glass-canvas flex min-h-dvh min-w-0 flex-1 flex-col">
-            <PageHeader />
-            <main className="min-w-0 flex-1 p-3 sm:p-6 lg:p-8">{children}</main>
-          </div>
-          <UtilitySpeedDial />
-          <NotificationToastHost />
-          <CommandPalette />
-        </div>
+        </ShellAlertsProvider>
       </PageMetaProvider>
     </SidebarProvider>
   );

@@ -3,19 +3,21 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { AlertTriangle, ClipboardList, Pencil, Trash2 } from "lucide-react";
+import { AlertTriangle, ClipboardList, FileSpreadsheet, Pencil, Trash2, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { deleteMatterAction } from "@/lib/actions";
+import { bulkUpdateMatterStatusAction, deleteMatterAction, restoreMatterAction } from "@/lib/actions";
 import { useMatterFormData } from "@/hooks/use-matter-form-data";
 import { useListViewMode } from "@/hooks/use-list-view-mode";
 import type { MatterFilterOptions } from "@/lib/matter-form-data";
 import { getMatterTypeDisplay } from "@/lib/matter-code";
+import { downloadExcel } from "@/lib/export-excel";
 import { cn, formatDateTime } from "@/lib/utils";
 import { useLabelMaps } from "@/i18n/use-label-maps";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, Select } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ListViewToggle } from "@/components/ui/list-view-toggle";
+import { UndoToast } from "@/components/ui/undo-toast";
 import { MatterStatusBadge } from "@/components/matters/matter-status-control";
 import {
   DEFAULT_MATTERS_FILTERS,
@@ -28,6 +30,12 @@ import {
 } from "@/components/matters/create-matter-modal";
 import type { MatterStatus, MatterType } from "@prisma/client";
 
+const BULK_STATUSES: MatterStatus[] = [
+  "NEW",
+  "IN_PROGRESS",
+  "ON_HOLD",
+  "CLOSED",
+];
 export type MatterListItem = {
   id: string;
   code: string;
@@ -165,6 +173,7 @@ export function MattersList({
   const searchParams = useSearchParams();
   const locale = useLocale();
   const t = useTranslations("matters");
+  const tPages = useTranslations("pages.matters");
   const tCommon = useTranslations("common");
   const labels = useLabelMaps();
   const { confirm, dialog } = useConfirmDialog();
@@ -173,6 +182,13 @@ export function MattersList({
   const [editMatter, setEditMatter] = useState<MatterEditInitial | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const { mode, setMode } = useListViewMode("matters");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkStatus, setBulkStatus] = useState<MatterStatus>("IN_PROGRESS");
+  const [undoToast, setUndoToast] = useState<{
+    key: string;
+    matterId: string;
+    title: string;
+  } | null>(null);
 
   const clientIdFromUrl = searchParams.get("clientId");
   const [filters, setFilters] = useState<MattersFilterState>(DEFAULT_MATTERS_FILTERS);
@@ -214,6 +230,82 @@ export function MattersList({
     [matters, effectiveFilters, labels.matterType, locale],
   );
 
+  const selectableVisibleIds = useMemo(
+    () => visibleMatters.map((matter) => matter.id),
+    [visibleMatters],
+  );
+
+  const activeSelectedIds = useMemo(() => {
+    const visibleIdSet = new Set(visibleMatters.map((matter) => matter.id));
+    return new Set([...selectedIds].filter((id) => visibleIdSet.has(id)));
+  }, [selectedIds, visibleMatters]);
+
+  function toggleSelected(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAllVisible() {
+    setSelectedIds((prev) => {
+      const allSelected = selectableVisibleIds.every((id) => prev.has(id));
+      if (allSelected) return new Set();
+      return new Set(selectableVisibleIds);
+    });
+  }
+
+  function applyBulkStatus() {
+    const ids = [...activeSelectedIds];
+    if (ids.length === 0) return;
+    const statusLabel = labels.matterStatus[bulkStatus];
+    confirm({
+      title: t("confirmBulkStatusTitle"),
+      message: t("confirmBulkStatusMessage", {
+        count: ids.length,
+        status: statusLabel,
+      }),
+      confirmLabel: t("updateStatus"),
+      onConfirm: () => {
+        startTransition(async () => {
+          const result = await bulkUpdateMatterStatusAction(ids, bulkStatus);
+          if (result.error) {
+            confirm({
+              title: t("confirmBulkStatusTitle"),
+              message: result.error,
+              confirmLabel: tCommon("close"),
+              onConfirm: () => undefined,
+            });
+            return;
+          }
+          setSelectedIds(new Set());
+          router.refresh();
+        });
+      },
+    });
+  }
+
+  function handleExportExcel() {
+    void downloadExcel(
+      tPages("title"),
+      visibleMatters.map((matter) => ({
+        [t("code")]: matter.code,
+        [t("title")]: matter.title,
+        [t("client")]: matter.client.name,
+        [t("leadLawyer")]: matter.leadLawyer.name,
+        [t("members")]:
+          matter.members.map((member) => member.user.name).join(", ") || "—",
+        [t("fieldType")]: getMatterTypeDisplay(matter.type, matter.customTypeLabel),
+        [t("status")]: labels.matterStatus[matter.status],
+        [t("fieldCreatedAt")]: formatDateTime(matter.createdAt),
+        [t("fieldTaskCount")]: matter._count.tasks,
+      })),
+      "vu-viec",
+    );
+  }
+
   async function openEdit(matter: MatterListItem) {
     setEditMatter({
       id: matter.id,
@@ -253,6 +345,11 @@ export function MattersList({
             });
             return;
           }
+          setUndoToast({
+            key: `${matter.id}-${Date.now()}`,
+            matterId: matter.id,
+            title: matter.title,
+          });
           router.refresh();
         });
       },
@@ -312,6 +409,13 @@ export function MattersList({
         <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="checkbox"
+                checked={activeSelectedIds.has(matter.id)}
+                onChange={() => toggleSelected(matter.id)}
+                aria-label={matter.title}
+                className="h-4 w-4 shrink-0 cursor-pointer rounded border-border accent-primary"
+              />
               <CardTitle className="min-w-0 text-lg leading-snug">
                 <Link
                   href={`/matters/${matter.id}`}
@@ -380,6 +484,13 @@ export function MattersList({
       <Card key={matter.id} solid className="flex h-full flex-col rounded-md border-border/50">
         <CardHeader className="space-y-2 pb-2">
           <div className="flex flex-wrap items-start gap-2">
+            <input
+              type="checkbox"
+              checked={activeSelectedIds.has(matter.id)}
+              onChange={() => toggleSelected(matter.id)}
+              aria-label={matter.title}
+              className="mt-1 h-4 w-4 shrink-0 cursor-pointer rounded border-border accent-primary"
+            />
             <CardTitle className="min-w-0 flex-1 text-base leading-snug">
               <Link
                 href={`/matters/${matter.id}`}
@@ -432,6 +543,19 @@ export function MattersList({
           <table className="w-full min-w-[860px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-border/70 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                <th className="w-8 px-3 py-2.5 font-medium">
+                  {selectableVisibleIds.length > 0 ? (
+                    <input
+                      type="checkbox"
+                      checked={selectableVisibleIds.every((id) =>
+                        activeSelectedIds.has(id),
+                      )}
+                      onChange={toggleSelectAllVisible}
+                      aria-label={tCommon("selectAll")}
+                      className="h-4 w-4 cursor-pointer rounded border-border accent-primary"
+                    />
+                  ) : null}
+                </th>
                 <th className="px-3 py-2.5 font-medium">{t("fieldType")}</th>
                 <th className="px-3 py-2.5 font-medium">{t("title")}</th>
                 <th className="px-3 py-2.5 font-medium">{t("client")}</th>
@@ -450,6 +574,15 @@ export function MattersList({
             <tbody className="divide-y divide-border/60">
               {visibleMatters.map((matter) => (
                 <tr key={matter.id} className="interactive-row">
+                  <td className="w-8 px-3 py-2.5 align-top">
+                    <input
+                      type="checkbox"
+                      checked={activeSelectedIds.has(matter.id)}
+                      onChange={() => toggleSelected(matter.id)}
+                      aria-label={matter.title}
+                      className="h-4 w-4 cursor-pointer rounded border-border accent-primary"
+                    />
+                  </td>
                   <td className="max-w-[9rem] truncate px-3 py-2.5 align-top text-foreground">
                     {getMatterTypeDisplay(matter.type, matter.customTypeLabel)}
                   </td>
@@ -540,9 +673,57 @@ export function MattersList({
           </div>
         ) : null}
 
-        <div className="flex justify-end">
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={visibleMatters.length === 0}
+            onClick={handleExportExcel}
+            aria-label={tCommon("exportExcel")}
+          >
+            <FileSpreadsheet className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{tCommon("exportExcel")}</span>
+          </Button>
           <ListViewToggle mode={mode} onChange={setMode} size="sm" />
         </div>
+
+        {activeSelectedIds.size > 0 ? (
+          <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary-muted/50 px-3 py-2 backdrop-blur-sm">
+            <span className="text-sm font-medium text-primary">
+              {t("selectedCount", { count: activeSelectedIds.size })}
+            </span>
+            <Select
+              value={bulkStatus}
+              onChange={(e) => setBulkStatus(e.target.value as MatterStatus)}
+              className="h-8 w-auto min-w-0 text-xs"
+            >
+              {BULK_STATUSES.map((status) => (
+                <option key={status} value={status}>
+                  {labels.matterStatus[status]}
+                </option>
+              ))}
+            </Select>
+            <Button
+              type="button"
+              size="sm"
+              disabled={isPending}
+              onClick={applyBulkStatus}
+            >
+              {t("applyBulkStatus")}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedIds(new Set())}
+              className="ml-auto"
+            >
+              <X className="h-3.5 w-3.5" />
+              {tCommon("clearSelection")}
+            </Button>
+          </div>
+        ) : null}
 
         {matters.length === 0 ? (
           <Card solid>
@@ -578,6 +759,27 @@ export function MattersList({
             setEditOpen(false);
             setEditMatter(null);
           }}
+        />
+      ) : null}
+      {undoToast ? (
+        <UndoToast
+          toastKey={undoToast.key}
+          message={t("deletedToast", { title: undoToast.title })}
+          undoLabel={tCommon("undo")}
+          onUndo={async () => {
+            const result = await restoreMatterAction(undoToast.matterId);
+            if (result.error) {
+              confirm({
+                title: tCommon("cannotDelete"),
+                message: result.error,
+                confirmLabel: tCommon("close"),
+                onConfirm: () => undefined,
+              });
+              return;
+            }
+            router.refresh();
+          }}
+          onDismiss={() => setUndoToast(null)}
         />
       ) : null}
     </>

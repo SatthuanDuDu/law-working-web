@@ -116,9 +116,23 @@ export function AttachmentPanel({
     Record<string, AttachmentVersionItem[]>
   >({});
   const replaceInputRef = useRef<HTMLInputElement>(null);
+  const dropInputRef = useRef<HTMLInputElement>(null);
   const [replaceTargetId, setReplaceTargetId] = useState<string | null>(null);
+  const [dragActive, setDragActive] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{
+    pct: number;
+    current: number;
+    total: number;
+    fileName: string;
+  } | null>(null);
   const [isPending, startTransition] = useTransition();
   const { confirm, dialog } = useConfirmDialog();
+
+  function queuePendingFiles(files: File[]) {
+    if (files.length === 0) return;
+    setError("");
+    setPendingFiles(files);
+  }
 
   // Folders apply to any matter attachment (hub, report, plan step). Compact
   // only hides the folder filter bar — upload dialog still offers folder pick.
@@ -213,57 +227,86 @@ export function AttachmentPanel({
   ) {
     startTransition(async () => {
       setError("");
+      setUploadProgress({
+        pct: 0,
+        current: 1,
+        total: files.length,
+        fileName: files[0]?.name ?? "",
+      });
       let failed = 0;
-      for (const file of files) {
-        const prepare = await fetch("/api/attachments", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+      try {
+        for (let index = 0; index < files.length; index++) {
+          const file = files[index]!;
+          setUploadProgress({
+            pct: Math.round((index / files.length) * 100),
+            current: index + 1,
+            total: files.length,
             fileName: file.name,
-            mimeType: file.type || "application/octet-stream",
-            sizeBytes: file.size,
-            matterId,
-            taskId,
-            clientId,
-            matterPlanStepId,
-            labelId,
-            customLabel,
-            folderId: foldersEnabled ? folderId : null,
-          }),
-        });
-
-        const prepared = await prepare.json().catch(() => ({}));
-        if (!prepare.ok) {
-          failed += 1;
-          setError(prepared.error || t("uploadSessionFailed"));
-          continue;
-        }
-
-        const { putAttachmentBytes } = await import("@/lib/browser-upload");
-        const uploaded = await putAttachmentBytes({
-          attachmentId: prepared.attachment.id,
-          uploadUrl: prepared.uploadUrl,
-          file,
-          mimeType: file.type || "application/octet-stream",
-        });
-
-        if (!uploaded.ok) {
-          await fetch(`/api/attachments/${prepared.attachment.id}`, {
-            method: "DELETE",
           });
-          failed += 1;
-          setError(
-            uploaded.corsLikely ? t("uploadCorsFailed") : t("uploadFailed"),
-          );
-        }
-      }
 
-      await refreshAttachments();
-      await refreshFolders();
-      if (failed > 0 && failed === files.length) {
-        // error already set
-      } else if (failed > 0) {
-        setError(t("uploadPartialFailed", { failed, total: files.length }));
+          const prepare = await fetch("/api/attachments", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              fileName: file.name,
+              mimeType: file.type || "application/octet-stream",
+              sizeBytes: file.size,
+              matterId,
+              taskId,
+              clientId,
+              matterPlanStepId,
+              labelId,
+              customLabel,
+              folderId: foldersEnabled ? folderId : null,
+            }),
+          });
+
+          const prepared = await prepare.json().catch(() => ({}));
+          if (!prepare.ok) {
+            failed += 1;
+            setError(prepared.error || t("uploadSessionFailed"));
+            continue;
+          }
+
+          const { putAttachmentBytes } = await import("@/lib/browser-upload");
+          const uploaded = await putAttachmentBytes({
+            attachmentId: prepared.attachment.id,
+            uploadUrl: prepared.uploadUrl,
+            file,
+            mimeType: file.type || "application/octet-stream",
+            onProgress: (filePct) => {
+              const overall = Math.round(
+                ((index + filePct / 100) / files.length) * 100,
+              );
+              setUploadProgress({
+                pct: overall,
+                current: index + 1,
+                total: files.length,
+                fileName: file.name,
+              });
+            },
+          });
+
+          if (!uploaded.ok) {
+            await fetch(`/api/attachments/${prepared.attachment.id}`, {
+              method: "DELETE",
+            });
+            failed += 1;
+            setError(
+              uploaded.corsLikely ? t("uploadCorsFailed") : t("uploadFailed"),
+            );
+          }
+        }
+
+        await refreshAttachments();
+        await refreshFolders();
+        if (failed > 0 && failed === files.length) {
+          // error already set
+        } else if (failed > 0) {
+          setError(t("uploadPartialFailed", { failed, total: files.length }));
+        }
+      } finally {
+        setUploadProgress(null);
       }
     });
   }
@@ -392,55 +435,73 @@ export function AttachmentPanel({
 
     startTransition(async () => {
       setError("");
-      const prepare = await fetch(`/api/attachments/${targetId}/replace`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fileName: file.name,
+      setUploadProgress({
+        pct: 0,
+        current: 1,
+        total: 1,
+        fileName: file.name,
+      });
+      try {
+        const prepare = await fetch(`/api/attachments/${targetId}/replace`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fileName: file.name,
+            mimeType: file.type || "application/octet-stream",
+            sizeBytes: file.size,
+          }),
+        });
+        const prepared = await prepare.json().catch(() => ({}));
+        if (!prepare.ok) {
+          setError(prepared.error || t("replaceFailed"));
+          return;
+        }
+
+        const { putAttachmentBytes } = await import("@/lib/browser-upload");
+        const uploaded = await putAttachmentBytes({
+          attachmentId: prepared.attachment.id,
+          uploadUrl: prepared.uploadUrl,
+          file,
           mimeType: file.type || "application/octet-stream",
-          sizeBytes: file.size,
-        }),
-      });
-      const prepared = await prepare.json().catch(() => ({}));
-      if (!prepare.ok) {
-        setError(prepared.error || t("replaceFailed"));
-        return;
-      }
-
-      const { putAttachmentBytes } = await import("@/lib/browser-upload");
-      const uploaded = await putAttachmentBytes({
-        attachmentId: prepared.attachment.id,
-        uploadUrl: prepared.uploadUrl,
-        file,
-        mimeType: file.type || "application/octet-stream",
-      });
-
-      if (!uploaded.ok) {
-        await fetch(`/api/attachments/${prepared.attachment.id}`, {
-          method: "DELETE",
+          onProgress: (pct) => {
+            setUploadProgress({
+              pct,
+              current: 1,
+              total: 1,
+              fileName: file.name,
+            });
+          },
         });
-        setError(
-          uploaded.corsLikely ? t("uploadCorsFailed") : t("replaceFailed"),
+
+        if (!uploaded.ok) {
+          await fetch(`/api/attachments/${prepared.attachment.id}`, {
+            method: "DELETE",
+          });
+          setError(
+            uploaded.corsLikely ? t("uploadCorsFailed") : t("replaceFailed"),
+          );
+          return;
+        }
+
+        const committed = await fetch(
+          `/api/attachments/${prepared.attachment.id}/commit-version`,
+          { method: "POST" },
         );
-        return;
-      }
+        if (!committed.ok) {
+          await fetch(`/api/attachments/${prepared.attachment.id}`, {
+            method: "DELETE",
+          });
+          const data = await committed.json().catch(() => ({}));
+          setError(data.error || t("replaceFailed"));
+          return;
+        }
 
-      const committed = await fetch(
-        `/api/attachments/${prepared.attachment.id}/commit-version`,
-        { method: "POST" },
-      );
-      if (!committed.ok) {
-        await fetch(`/api/attachments/${prepared.attachment.id}`, {
-          method: "DELETE",
-        });
-        const data = await committed.json().catch(() => ({}));
-        setError(data.error || t("replaceFailed"));
-        return;
+        setExpandedVersionsId(null);
+        await refreshAttachments();
+        await refreshFolders();
+      } finally {
+        setUploadProgress(null);
       }
-
-      setExpandedVersionsId(null);
-      await refreshAttachments();
-      await refreshFolders();
     });
   }
 
@@ -545,11 +606,7 @@ export function AttachmentPanel({
         multiple
         disabled={isPending}
         onChange={(e) => {
-          const files = Array.from(e.target.files ?? []);
-          if (files.length > 0) {
-            setError("");
-            setPendingFiles(files);
-          }
+          queuePendingFiles(Array.from(e.target.files ?? []));
           e.target.value = "";
         }}
       />
@@ -563,6 +620,102 @@ export function AttachmentPanel({
         {t("upload")}
       </span>
     </label>
+  ) : null;
+
+  const dropZone = canUpload ? (
+    <div
+      role="button"
+      tabIndex={isPending ? -1 : 0}
+      aria-label={t("dragDropHint")}
+      onClick={() => {
+        if (isPending) return;
+        dropInputRef.current?.click();
+      }}
+      onDragEnter={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (isPending) return;
+        setDragActive(true);
+      }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (isPending) return;
+        setDragActive(true);
+      }}
+      onDragLeave={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+        setDragActive(false);
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragActive(false);
+        if (isPending) return;
+        queuePendingFiles(Array.from(e.dataTransfer.files ?? []));
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          if (!isPending) dropInputRef.current?.click();
+        }
+      }}
+      className={cn(
+        "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed px-3 text-center transition-colors",
+        compact ? "py-3" : "py-5",
+        dragActive
+          ? "border-primary bg-primary-muted text-primary"
+          : "border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:bg-primary-muted/40",
+        isPending && "pointer-events-none cursor-default opacity-60",
+      )}
+    >
+      <input
+        ref={dropInputRef}
+        type="file"
+        className="hidden"
+        multiple
+        disabled={isPending}
+        onChange={(e) => {
+          queuePendingFiles(Array.from(e.target.files ?? []));
+          e.target.value = "";
+        }}
+      />
+      <FileUp className={cn(compact ? "h-4 w-4" : "h-5 w-5")} />
+      <p className={cn("font-medium", compact ? "text-xs" : "text-sm")}>
+        {t("dragDropHint")}
+      </p>
+    </div>
+  ) : null;
+
+  const progressBar = uploadProgress ? (
+    <div className="space-y-1.5" aria-live="polite">
+      <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+        <span className="min-w-0 truncate">
+          {t("uploading")}
+          {uploadProgress.fileName ? ` · ${uploadProgress.fileName}` : ""}
+          {uploadProgress.total > 1
+            ? ` (${uploadProgress.current}/${uploadProgress.total})`
+            : ""}
+        </span>
+        <span className="shrink-0 tabular-nums">
+          {t("uploadPercent", { pct: uploadProgress.pct })}
+        </span>
+      </div>
+      <div
+        className="h-2 overflow-hidden rounded-full bg-muted"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={uploadProgress.pct}
+      >
+        <div
+          className="h-full rounded-full bg-primary transition-[width] duration-150 ease-out"
+          style={{ width: `${uploadProgress.pct}%` }}
+        />
+      </div>
+    </div>
   ) : null;
 
   const folderBar = showFolderBar ? (
@@ -711,12 +864,16 @@ export function AttachmentPanel({
                 "min-w-0",
                 compact
                   ? cn(
-                      "border-b border-border/60 py-2.5 last:border-b-0",
-                      item.isImportant && "attachment-important",
+                      "border-b border-border/60 last:border-b-0",
+                      item.isImportant
+                        ? "attachment-important"
+                        : "py-2.5",
                     )
                   : cn(
-                      "border-b border-border/60 py-3 last:border-b-0",
-                      item.isImportant && "attachment-important",
+                      "border-b border-border/60 last:border-b-0",
+                      item.isImportant
+                        ? "attachment-important"
+                        : "py-3",
                     ),
               )}
             >
@@ -764,8 +921,8 @@ export function AttachmentPanel({
 
                   <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                     {item.isImportant ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[11px] font-medium text-white">
-                        <Star className="h-3 w-3 fill-current" />
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-muted px-3 py-1.5 text-[11px] font-medium leading-none text-primary">
+                        <Star className="h-3 w-3 shrink-0 fill-current" aria-hidden />
                         {t("important")}
                       </span>
                     ) : null}
@@ -1122,6 +1279,8 @@ export function AttachmentPanel({
             </p>
             {uploadControl}
           </div>
+          {dropZone}
+          {progressBar}
           {list}
         </div>
       </>
@@ -1143,6 +1302,8 @@ export function AttachmentPanel({
           {uploadControl}
         </CardHeader>
         <CardContent className="space-y-4">
+          {dropZone}
+          {progressBar}
           {folderBar}
           {list}
         </CardContent>

@@ -28,6 +28,7 @@ export async function getUrgentReminders(
   const steps = await prisma.matterPlanStep.findMany({
     where: {
       status: { in: ["NOT_STARTED", "IN_PROGRESS"] },
+      matter: { deletedAt: null },
       AND: [
         {
           OR: [

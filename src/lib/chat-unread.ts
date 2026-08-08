@@ -3,26 +3,18 @@ import { prisma } from "@/lib/prisma";
 /**
  * Count chat messages from others that the user has not read yet
  * (after ConversationMember.lastReadAt, across all memberships).
+ * Single SQL aggregation — avoids N+1 per membership.
  */
 export async function getUnreadChatCount(userId: string) {
-  const memberships = await prisma.conversationMember.findMany({
-    where: { userId },
-    select: { conversationId: true, lastReadAt: true },
-  });
+  const rows = await prisma.$queryRaw<[{ count: bigint }]>`
+    SELECT COUNT(*)::bigint AS count
+    FROM "ChatMessage" m
+    INNER JOIN "ConversationMember" cm
+      ON cm."conversationId" = m."conversationId"
+     AND cm."userId" = ${userId}
+    WHERE m."senderId" <> ${userId}
+      AND (cm."lastReadAt" IS NULL OR m."createdAt" > cm."lastReadAt")
+  `;
 
-  if (memberships.length === 0) return 0;
-
-  const counts = await Promise.all(
-    memberships.map((m) =>
-      prisma.chatMessage.count({
-        where: {
-          conversationId: m.conversationId,
-          senderId: { not: userId },
-          ...(m.lastReadAt ? { createdAt: { gt: m.lastReadAt } } : {}),
-        },
-      }),
-    ),
-  );
-
-  return counts.reduce((sum, n) => sum + n, 0);
+  return Number(rows[0]?.count ?? 0);
 }

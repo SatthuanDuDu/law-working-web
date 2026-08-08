@@ -54,6 +54,7 @@ export async function getLabelMaps() {
       TASK_ASSIGNED: t("notificationType.TASK_ASSIGNED"),
       TASK_DUE: t("notificationType.TASK_DUE"),
       PLAN_ASSIGNED: t("notificationType.PLAN_ASSIGNED"),
+      PLAN_DUE: t("notificationType.PLAN_DUE"),
       GENERAL: t("notificationType.GENERAL"),
       MENTION: t("notificationType.MENTION"),
       CHAT_MESSAGE: t("notificationType.CHAT_MESSAGE"),

@@ -31,6 +31,8 @@ import {
   Monitor,
   Moon,
   Sun,
+  Globe,
+  BarChart3,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
@@ -62,6 +64,8 @@ const iconMap = {
   Gauge,
   Wallet,
   MessageCircle,
+  Globe,
+  BarChart3,
 };
 
 function SidebarTooltip({

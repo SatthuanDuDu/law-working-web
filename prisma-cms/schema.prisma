@@ -1,0 +1,438 @@
+// Mirror of homepage-nslaw cms schema for the workspace CMS UI.
+// Migrations remain owned by homepage-nslaw; this project only generates a client.
+// DATABASE: use CMS_DATABASE_URL with ?schema=cms
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/cms-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("CMS_DATABASE_URL")
+}
+
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum InquiryStatus {
+  NEW
+  IN_PROGRESS
+  CONTACTED
+  CLOSED
+  SPAM
+}
+
+// ---------------------------------------------------------------------------
+// Site-wide settings and homepage copy (single row, id = "default")
+// ---------------------------------------------------------------------------
+
+model SiteSettings {
+  id                String   @id @default("default")
+  phone             String?
+  hotline           String?
+  email             String?
+  zaloNumber        String?
+  facebookUrl       String?
+  youtubeUrl        String?
+  linkedinUrl       String?
+  taxCode           String?
+  licenseNumber     String?
+  licenseIssuer     String?
+  logoKey           String?
+  ogImageKey        String?
+  heroImageKey      String?
+  aboutImageKey     String?
+  ctaImageKey       String?
+  googleMapsEmbed   String?
+  clientCount       Int      @default(0)
+  reviewScore       String?
+  reviewCount       Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  translations SiteSettingsTranslation[]
+}
+
+model SiteSettingsTranslation {
+  id                String       @id @default(cuid())
+  settingsId        String
+  settings          SiteSettings @relation(fields: [settingsId], references: [id], onDelete: Cascade)
+  locale            String
+  firmName          String
+  firmShortName     String
+  tagline           String
+  heroEyebrow       String
+  heroTitle         String
+  heroSubtitle      String
+  heroPrimaryCta    String
+  heroSecondaryCta  String
+  trustedLabel      String
+  aboutEyebrow      String
+  aboutTitle        String
+  aboutBody         String
+  ctaEyebrow        String
+  ctaTitle          String
+  ctaBody           String
+  ctaButton         String
+  footerAbout       String
+  seoTitle          String
+  seoDescription    String
+
+  @@unique([settingsId, locale])
+}
+
+// ---------------------------------------------------------------------------
+// Practice areas
+// ---------------------------------------------------------------------------
+
+model PracticeArea {
+  id        String        @id @default(cuid())
+  key       String        @unique
+  icon      String        @default("scale")
+  coverKey  String?
+  order     Int           @default(0)
+  featured  Boolean       @default(false)
+  status    ContentStatus @default(PUBLISHED)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  translations PracticeAreaTranslation[]
+  lawyers      LawyerPracticeArea[]
+  inquiries    ContactInquiry[]
+
+  @@index([status, order])
+}
+
+model PracticeAreaTranslation {
+  id             String       @id @default(cuid())
+  practiceAreaId String
+  practiceArea   PracticeArea @relation(fields: [practiceAreaId], references: [id], onDelete: Cascade)
+  locale         String
+  slug           String
+  name           String
+  summary        String
+  body           String
+  highlights     String[]
+  seoTitle       String?
+  seoDescription String?
+
+  @@unique([practiceAreaId, locale])
+  @@unique([locale, slug])
+}
+
+// ---------------------------------------------------------------------------
+// Lawyers
+// ---------------------------------------------------------------------------
+
+model Lawyer {
+  id        String        @id @default(cuid())
+  key       String        @unique
+  name      String
+  photoKey  String?
+  email     String?
+  phone     String?
+  linkedin  String?
+  order     Int           @default(0)
+  featured  Boolean       @default(false)
+  status    ContentStatus @default(PUBLISHED)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  translations  LawyerTranslation[]
+  practiceAreas LawyerPracticeArea[]
+  posts         Post[]
+
+  @@index([status, order])
+}
+
+model LawyerTranslation {
+  id             String   @id @default(cuid())
+  lawyerId       String
+  lawyer         Lawyer   @relation(fields: [lawyerId], references: [id], onDelete: Cascade)
+  locale         String
+  slug           String
+  title          String
+  shortBio       String
+  bio            String
+  education      String[]
+  languages      String[]
+  seoTitle       String?
+  seoDescription String?
+
+  @@unique([lawyerId, locale])
+  @@unique([locale, slug])
+}
+
+model LawyerPracticeArea {
+  lawyerId       String
+  practiceAreaId String
+  lawyer         Lawyer       @relation(fields: [lawyerId], references: [id], onDelete: Cascade)
+  practiceArea   PracticeArea @relation(fields: [practiceAreaId], references: [id], onDelete: Cascade)
+
+  @@id([lawyerId, practiceAreaId])
+}
+
+// ---------------------------------------------------------------------------
+// News & insights
+// ---------------------------------------------------------------------------
+
+model PostCategory {
+  id    String @id @default(cuid())
+  key   String @unique
+  order Int    @default(0)
+
+  translations PostCategoryTranslation[]
+  posts        Post[]
+}
+
+model PostCategoryTranslation {
+  id         String       @id @default(cuid())
+  categoryId String
+  category   PostCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  locale     String
+  slug       String
+  name       String
+
+  @@unique([categoryId, locale])
+  @@unique([locale, slug])
+}
+
+model Post {
+  id          String        @id @default(cuid())
+  key         String        @unique
+  coverKey    String?
+  categoryId  String?
+  category    PostCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  authorId    String?
+  author      Lawyer?       @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  featured    Boolean       @default(false)
+  status      ContentStatus @default(PUBLISHED)
+  publishedAt DateTime      @default(now())
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  translations PostTranslation[]
+
+  @@index([status, publishedAt])
+}
+
+model PostTranslation {
+  id             String  @id @default(cuid())
+  postId         String
+  post           Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  locale         String
+  slug           String
+  title          String
+  excerpt        String
+  body           String
+  seoTitle       String?
+  seoDescription String?
+
+  @@unique([postId, locale])
+  @@unique([locale, slug])
+}
+
+// ---------------------------------------------------------------------------
+// Homepage supporting content
+// ---------------------------------------------------------------------------
+
+model ProcessStep {
+  id    String @id @default(cuid())
+  key   String @unique
+  order Int    @default(0)
+
+  translations ProcessStepTranslation[]
+}
+
+model ProcessStepTranslation {
+  id          String      @id @default(cuid())
+  stepId      String
+  step        ProcessStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  locale      String
+  title       String
+  description String
+
+  @@unique([stepId, locale])
+}
+
+model StatItem {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+  order Int    @default(0)
+
+  translations StatItemTranslation[]
+}
+
+model StatItemTranslation {
+  id      String   @id @default(cuid())
+  statId  String
+  stat    StatItem @relation(fields: [statId], references: [id], onDelete: Cascade)
+  locale  String
+  label   String
+
+  @@unique([statId, locale])
+}
+
+model Testimonial {
+  id         String        @id @default(cuid())
+  key        String        @unique
+  authorName String
+  avatarKey  String?
+  rating     Int           @default(5)
+  order      Int           @default(0)
+  status     ContentStatus @default(PUBLISHED)
+
+  translations TestimonialTranslation[]
+}
+
+model TestimonialTranslation {
+  id            String      @id @default(cuid())
+  testimonialId String
+  testimonial   Testimonial @relation(fields: [testimonialId], references: [id], onDelete: Cascade)
+  locale        String
+  authorRole    String
+  quote         String
+
+  @@unique([testimonialId, locale])
+}
+
+model Office {
+  id        String  @id @default(cuid())
+  key       String  @unique
+  phone     String?
+  email     String?
+  mapUrl    String?
+  isPrimary Boolean @default(false)
+  order     Int     @default(0)
+
+  translations OfficeTranslation[]
+}
+
+model OfficeTranslation {
+  id           String @id @default(cuid())
+  officeId     String
+  office       Office @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  locale       String
+  name         String
+  addressLine  String
+  workingHours String
+
+  @@unique([officeId, locale])
+}
+
+// ---------------------------------------------------------------------------
+// Standalone pages (about, terms, privacy)
+// ---------------------------------------------------------------------------
+
+model Page {
+  id        String        @id @default(cuid())
+  key       String        @unique
+  status    ContentStatus @default(PUBLISHED)
+  updatedAt DateTime      @updatedAt
+
+  translations PageTranslation[]
+}
+
+model PageTranslation {
+  id             String  @id @default(cuid())
+  pageId         String
+  page           Page    @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  locale         String
+  title          String
+  intro          String
+  body           String  @default("")
+  eyebrow        String  @default("")
+  seoTitle       String?
+  seoDescription String?
+
+  @@unique([pageId, locale])
+}
+
+// ---------------------------------------------------------------------------
+// Editable section chrome (headers, nav/footer labels) — structure stays in code
+// ---------------------------------------------------------------------------
+
+model SectionCopy {
+  id    String @id @default(cuid())
+  key   String @unique
+  group String
+  label String
+  order Int    @default(0)
+
+  translations SectionCopyTranslation[]
+}
+
+model SectionCopyTranslation {
+  id          String      @id @default(cuid())
+  copyId      String
+  copy        SectionCopy @relation(fields: [copyId], references: [id], onDelete: Cascade)
+  locale      String
+  eyebrow     String      @default("")
+  title       String      @default("")
+  description String      @default("")
+  ctaLabel    String      @default("")
+
+  @@unique([copyId, locale])
+}
+
+// ---------------------------------------------------------------------------
+// Media library and consultation requests
+// ---------------------------------------------------------------------------
+
+model Media {
+  id         String   @id @default(cuid())
+  storageKey String   @unique
+  fileName   String
+  mimeType   String
+  size       Int
+  width      Int?
+  height     Int?
+  alt        String?
+  folder     String?
+  // References public."User".id — intentionally not a foreign key, the public
+  // site never writes to the internal schema.
+  uploadedBy String?
+  createdAt  DateTime @default(now())
+}
+
+model ContactInquiry {
+  id             String        @id @default(cuid())
+  fullName       String
+  email          String
+  phone          String
+  subject        String?
+  message        String
+  practiceAreaId String?
+  practiceArea   PracticeArea? @relation(fields: [practiceAreaId], references: [id], onDelete: SetNull)
+  locale         String        @default("vi")
+  status         InquiryStatus @default(NEW)
+  internalNote   String?
+  // References public."User".id, resolved with a read-only query when needed.
+  handledBy      String?
+  handledAt      DateTime?
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([status, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Public site traffic (aggregated daily — no PII)
+// ---------------------------------------------------------------------------
+
+model PageViewDaily {
+  id     String   @id @default(cuid())
+  day    DateTime @db.Date
+  path   String
+  locale String
+  views  Int      @default(0)
+
+  @@unique([day, path, locale])
+  @@index([day])
+}

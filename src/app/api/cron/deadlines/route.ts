@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { addDays, endOfDay, startOfDay } from "date-fns";
 import { prisma } from "@/lib/prisma";
-import { notifyUsersPush } from "@/lib/web-push";
+import { generateDeadlineReminders } from "@/lib/deadline-reminders";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,47 +21,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const now = new Date();
-  const windowEnd = endOfDay(addDays(now, 3));
+  const result = await generateDeadlineReminders(prisma);
+  const created = result.taskReminders + result.planReminders;
 
-  const dueTasks = await prisma.task.findMany({
-    where: {
-      dueDate: { lte: windowEnd },
-      status: { in: ["TODO", "IN_PROGRESS"] },
-      reminderSentAt: null,
-    },
-  });
-
-  let created = 0;
-
-  for (const task of dueTasks) {
-    const due = task.dueDate!;
-    const overdue = due < startOfDay(now);
-    const title = overdue ? "Task đã quá hạn" : "Task sắp đến hạn";
-    const message = overdue
-      ? `"${task.title}" đã quá hạn.`
-      : `"${task.title}" sẽ đến hạn trong vài ngày tới.`;
-    await prisma.notification.create({
-      data: {
-        userId: task.assigneeId,
-        type: "TASK_DUE",
-        title,
-        message,
-        link: "/tasks",
-      },
-    });
-    await prisma.task.update({
-      where: { id: task.id },
-      data: { reminderSentAt: now },
-    });
-    void notifyUsersPush(task.assigneeId, {
-      title,
-      body: message,
-      url: "/tasks",
-      tag: `task-due-${task.id}`,
-    });
-    created += 1;
-  }
-
-  return NextResponse.json({ ok: true, created });
+  return NextResponse.json({ ok: true, created, ...result });
 }

@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NSLAW Work Manager — Hướng dẫn sử dụng</title>
+<style>
+  :root {
+    --primary: #14532d;
+    --primary-soft: #e7f0ea;
+    --accent: #9a7b16;
+    --accent-muted: #f6edcf;
+    --ink: #1c2420;
+    --muted: #5b6660;
+    --line: #d9e2dc;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { font-size: 10.5px; }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: var(--ink);
+    line-height: 1.4;
+  }
+
+  @page {
+    size: A4;
+    margin: 12mm 12mm 14mm 12mm;
+  }
+
+  h1, h2, h3, h4 { color: var(--primary); line-height: 1.2; }
+  h2 { font-size: 1.35rem; margin: 0 0 .2rem; }
+  h3 { font-size: 1.05rem; margin: .7rem 0 .15rem; border-left: 3px solid var(--accent); padding-left: .45rem; }
+  h4 { font-size: .95rem; margin: .55rem 0 .1rem; color: var(--accent); }
+  p { margin: .2rem 0; }
+  ul, ol { margin: .2rem 0 .3rem; padding-left: 1.15rem; }
+  li { margin: .08rem 0; }
+  strong { color: var(--primary); }
+  code {
+    background: var(--primary-soft);
+    color: var(--primary);
+    padding: .02rem .25rem;
+    border-radius: 3px;
+    font-size: .9em;
+  }
+
+  .no-break { break-inside: avoid; page-break-inside: avoid; }
+
+  /* ---------- Cover (compact, still own page) ---------- */
+  .cover {
+    min-height: 250mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    background:
+      radial-gradient(120% 90% at 50% 0%, var(--primary-soft) 0%, #ffffff 55%);
+    page-break-after: always;
+  }
+  .cover img { width: 80px; height: 80px; object-fit: contain; margin-bottom: 1rem; }
+  .cover .kicker {
+    letter-spacing: .28em;
+    text-transform: uppercase;
+    font-size: .78rem;
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .cover h1 {
+    font-size: 2.4rem;
+    margin: .4rem 0 .3rem;
+    color: var(--primary);
+  }
+  .cover .sub { font-size: 1.05rem; color: var(--muted); max-width: 58ch; }
+  .cover .meta {
+    margin-top: 1.8rem;
+    font-size: .82rem;
+    color: var(--muted);
+    border-top: 1px solid var(--line);
+    padding-top: .7rem;
+  }
+  .cover .meta b { color: var(--primary); }
+
+  /* ---------- Blocks ---------- */
+  .lead {
+    background: var(--primary-soft);
+    border-radius: 6px;
+    padding: .45rem .7rem;
+    margin: .35rem 0 .5rem;
+    font-size: .98rem;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .4rem;
+    margin: .35rem 0;
+  }
+  .card {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: .4rem .55rem;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .card .t { font-weight: 700; color: var(--primary); display: block; margin-bottom: .08rem; }
+
+  .steps { counter-reset: step; list-style: none; padding-left: 0; }
+  .steps li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 1.7rem;
+    margin: .18rem 0;
+  }
+  .steps li::before {
+    content: counter(step);
+    position: absolute;
+    left: 0; top: .05rem;
+    width: 1.15rem; height: 1.15rem;
+    background: var(--primary);
+    color: #fff;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .7rem; font-weight: 700;
+  }
+
+  .note {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-muted);
+    padding: .35rem .6rem;
+    border-radius: 0 5px 5px 0;
+    margin: .35rem 0;
+    font-size: .92rem;
+  }
+  .note b { color: #6b5410; }
+
+  table { width: 100%; border-collapse: collapse; margin: .35rem 0; font-size: .9rem; }
+  th, td { border: 1px solid var(--line); padding: .28rem .45rem; text-align: left; vertical-align: top; }
+  th { background: var(--primary); color: #fff; font-weight: 600; }
+  tr:nth-child(even) td { background: #f6f9f7; }
+
+  .pill {
+    display: inline-block;
+    background: var(--accent-muted);
+    color: #6b5410;
+    border-radius: 999px;
+    padding: .02rem .4rem;
+    font-size: .75rem;
+    font-weight: 600;
+    margin-left: .25rem;
+  }
+
+  /* ---------- TOC (2 columns, compact) ---------- */
+  .toc ol {
+    columns: 2;
+    column-gap: 1.2rem;
+    counter-reset: toc;
+    list-style: none;
+    padding-left: 0;
+    margin: .3rem 0 .6rem;
+  }
+  .toc li {
+    counter-increment: toc;
+    padding: .12rem 0;
+    border-bottom: 1px dashed var(--line);
+    font-size: .92rem;
+    break-inside: avoid;
+  }
+  .toc li::before { content: counter(toc) ". "; color: var(--accent); font-weight: 700; }
+
+  .section {
+    margin: .85rem 0 0;
+    break-inside: auto;
+  }
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    gap: .45rem;
+    border-bottom: 1.5px solid var(--primary);
+    padding-bottom: .2rem;
+    margin: 0 0 .25rem;
+  }
+  .section-head .num {
+    font-size: .95rem;
+    font-weight: 800;
+    color: #fff;
+    background: var(--primary);
+    border-radius: 4px;
+    padding: .05rem .4rem;
+  }
+
+  .footer-brand {
+    margin-top: 1rem;
+    padding-top: .5rem;
+    border-top: 1px solid var(--line);
+    font-size: .78rem;
+    color: var(--muted);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<!-- ===================== COVER ===================== -->
+<section class="cover">
+  <img src="../public/logo-nslaw.png" alt="NSLAW" />
+  <div class="kicker">NSLAW Work Manager</div>
+  <h1>Hướng dẫn sử dụng</h1>
+  <div class="sub">Hệ thống quản lý công việc nội bộ dành cho công ty luật — vụ việc, kế hoạch, tài liệu, giao việc, lịch hạn và trao đổi nội bộ trong một nơi.</div>
+  <div class="meta">
+    Tài liệu dành cho người dùng &nbsp;•&nbsp; Phiên bản <b>1.0</b> &nbsp;•&nbsp; Cập nhật <b>07/2026</b><br />
+    Truy cập hệ thống tại: <b>nslaw.webme.io.vn</b>
+  </div>
+</section>
+
+<!-- ===================== TOC ===================== -->
+<section>
+  <h2>Mục lục</h2>
+  <div class="toc">
+    <ol>
+      <li>Giới thiệu chung</li>
+      <li>Đăng nhập &amp; giao diện tổng quan</li>
+      <li>Vai trò &amp; phân quyền</li>
+      <li>Dashboard — Tổng quan công việc</li>
+      <li>Vụ việc — Tạo và quản lý hồ sơ</li>
+      <li>Kế hoạch vụ việc</li>
+      <li>Tài liệu &amp; phân quyền file</li>
+      <li>Bình luận &amp; phối hợp</li>
+      <li>Giao việc (Tasks)</li>
+      <li>Lịch &amp; hạn</li>
+      <li>Khách hàng</li>
+      <li>Trò chuyện nội bộ (Chat)</li>
+      <li>Chi phí vụ việc</li>
+      <li>Workload &amp; Báo cáo</li>
+      <li>Thông báo, Web Push &amp; cài đặt ứng dụng (PWA)</li>
+      <li>Khu vực quản trị</li>
+      <li>Quy trình mẫu từ A đến Z</li>
+      <li>Câu hỏi thường gặp (FAQ)</li>
+      <li>Mẹo dùng trên máy tính &amp; điện thoại</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ===================== 1 ===================== -->
+<section class="section">
+  <div class="section-head"><span class="num">1</span><h2>Giới thiệu chung</h2></div>
+  <p class="lead">NSLAW Work Manager là hệ thống <strong>quản lý vận hành nội bộ</strong> cho công ty luật: tập trung vụ việc, kế hoạch xử lý, tài liệu, giao việc, lịch hạn và trao đổi của cả nhóm về một chỗ — thay cho việc rải trên nhiều file và nhóm chat.</p>
+
+  <h3>Hệ thống giúp gì?</h3>
+  <ul>
+    <li><strong>Không thất lạc hồ sơ:</strong> tài liệu gắn theo từng vụ việc, có phân quyền và lịch sử phiên bản.</li>
+    <li><strong>Không quên hạn:</strong> mọi bước kế hoạch và công việc đều có hạn, hiện trên lịch và nhắc qua thông báo.</li>
+    <li><strong>Rõ ai làm gì:</strong> luật sư phụ trách, cộng sự, người được giao việc đều được ghi rõ.</li>
+    <li><strong>Trao đổi đúng ngữ cảnh:</strong> bình luận gắn thẳng vào vụ việc / bước kế hoạch, tách khỏi chat công ty.</li>
+  </ul>
+
+  <div class="note"><b>Lưu ý phạm vi:</b> Hệ thống tập trung vào <strong>vận hành nội bộ</strong>. Các bảng tính tài chính chuyên sâu, hóa đơn điện tử hay tính phí theo giờ (billing) không nằm trong phạm vi hiện tại — phần đó vẫn dùng công cụ chuyên biệt.</div>
+
+  <h3>Dùng được trên thiết bị nào?</h3>
+  <p>Chạy trực tiếp trên trình duyệt của <strong>máy tính và điện thoại</strong>, giao diện tự co giãn. Có thể <strong>cài như một ứng dụng</strong> (PWA) để mở nhanh và nhận thông báo đẩy — xem mục 15.</p>
+</section>
+
+<!-- ===================== 2 ===================== -->
+<section class="section">
+  <div class="section-head"><span class="num">2</span><h2>Đăng nhập &amp; giao diện tổng quan</h2></div>
+
+  <h3>Đăng nhập</h3>
+  <ol class="steps">
+    <li>Mở trình duyệt và truy cập địa chỉ hệ thống (ví dụ <code>nslaw.webme.io.vn</code>).</li>
+    <li>Nhập <strong>Tên người dùng</strong> và <strong>Mật khẩu</strong> được cấp.</li>
+    <li>Bấm <strong>Đăng nhập</strong>. Nếu quên mật khẩu, liên hệ Quản trị viên để đặt lại.</li>
+  </ol>
+
+  <h3>Bố cục màn hình</h3>
+  <div class="grid">
+    <div class="card"><span class="t">Menu điều hướng</span>Bên trái (máy tính) hoặc trong nút menu (điện thoại): Dashboard, Vụ việc, Khách hàng, Trò chuyện, Lịch &amp; hạn… Mục hiển thị tùy theo vai trò.</div>
+    <div class="card"><span class="t">Thanh trên cùng</span>Chứa tên trang, thông báo (chuông) và tài khoản của bạn.</div>
+    <div class="card"><span class="t">Nút $ góc dưới phải</span>Ghi nhận nhanh một khoản chi phí cho vụ việc đang mở.</div>
+    <div class="card"><span class="t">Nút Hướng dẫn</span>Gợi ý thao tác theo từng trang và các câu hỏi thường gặp ngay trong ứng dụng.</div>
+  </div>
+
+  <div class="note">Nếu <b>không thấy</b> một chức năng, rất có thể do <b>vai trò</b> của bạn chưa được cấp quyền cho mục đó (xem mục 3).</div>
+</section>
+
+<!-- ===================== 3 ===================== -->
+<section class="section">
+  <div class="section-head"><span class="num">3</span><h2>Vai trò &amp; phân quyền</h2></div>
+  <p>Hệ thống có 4 vai trò. Quyền nhìn thấy và thao tác khác nhau theo vai trò:</p>
+
+  <table>
+    <thead><tr><th style="width:22%">Vai trò</th><th>Quyền chính</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Quản trị viên</strong> (Admin)</td><td>Toàn quyền quản trị: nhân viên, phòng ban, loại công việc, nhãn tài liệu, nhật ký hệ thống; đánh dấu tài liệu quan trọng; mở lại vụ đã lưu trữ.</td></tr>
+      <tr><td><strong>Quản lý</strong> (Manager)</td><td>Xem toàn bộ vụ việc/khách hàng; tạo và quản lý vụ; xem Workload và Chi phí; lịch “tất cả”.</td></tr>
+      <tr><td><strong>Luật sư</strong> (Lawyer)</td><td>Làm việc trên các vụ được tham gia; lên kế hoạch; tải/thay tài liệu. Là luật sư chính thì quản lý được cộng sự và quyền xem từng file.</td></tr>
+      <tr><td><strong>Nhân viên hỗ trợ</strong> (Support)</td><td>Tham gia vụ được gán; bình luận và đính kèm file trong bình luận. <strong>Không</strong> tải tài liệu vụ việc/kế hoạch.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note"><b>Phạm vi nhìn thấy vụ việc:</b> Admin/Quản lý thấy tất cả; Luật sư/Hỗ trợ chỉ thấy vụ mình là luật sư chính hoặc cộng sự.</div>
+</section>
+
+<!-- ===================== 4 ===================== -->
+<section class="section">
+  <div class="section-head"><span class="num">4</span><h2>Dashboard — Tổng quan công việc</h2></div>
+  <p class="lead">Màn hình đầu tiên sau khi đăng nhập, tóm tắt việc cần chú ý hôm nay.</p>
+  <ul>
+    <li>Việc cần làm hôm nay và các <strong>hạn sắp tới</strong>.</li>
+    <li>Cơ cấu <strong>trạng thái vụ việc</strong> (Mới / Đang xử lý / Tạm dừng / Đóng).</li>
+    <li>Lối tắt: vào <strong>Vụ việc</strong> để mở hồ sơ, vào <strong>Lịch</strong> để xem hạn kế hoạch và công việc.</li>
+  </ul>
+  <div class="note">Dùng nút <b>$</b> góc dưới phải ngay tại Dashboard để ghi nhanh chi phí phát sinh cho vụ đang xử lý.</div>
+</section>
+
+<!-- ===================== 5 ===================== -->
+<section class="section">
+  <div class="section-head"><span class="num">5</span><h2>Vụ việc — Tạo và quản lý hồ sơ</h2></div>
+  <p class="lead">“Vụ việc” là hồ sơ trung tâm: mọi kế hoạch, tài liệu, bình luận, chi phí đều gắn vào đây.</p>
+
+  <h3>Tạo vụ việc mới</h3>
+  <ol class="steps">
+    <li>Vào menu <strong>Vụ việc</strong> → bấm <strong>Tạo vụ việc</strong> (nếu bạn có quyền — thường là Admin/Quản lý).</li>
+    <li>Điền <strong>tiêu đề</strong>, chọn <strong>khách hàng</strong>, <strong>loại vụ</strong> (Dân sự, Hình sự, Doanh nghiệp, Lao động, Hôn nhân gia đình, Khác).</li>
+    <li>Chọn <strong>luật sư phụ trách</strong> và <strong>cộng sự</strong> tham gia.</li>
+    <li>Lưu lại — hệ thống tạo <strong>mã vụ việc</strong> và mở trang tổng quan (hub) của vụ.</li>
+  </ol>
+
+  <h3>Trang tổng quan vụ việc (Hub)</h3>
+  <div class="grid">
+    <div class="card"><span class="t">Thẻ Thông tin vụ việc</span>Trạng thái, khách hàng, luật sư chính và cộng sự.</div>
+    <div class="card"><span class="t">Chỉnh nhân sự</span>Luật sư chính (hoặc Admin/Quản lý) thêm/bớt cộng sự và đặt quyền xem từng file. Luật sư chính luôn giữ quyền truy cập vụ.</div>
+    <div class="card"><span class="t">Khối Tài liệu</span>Tải và quản lý tài liệu vụ việc (xem mục 7).</div>
+    <div class="card"><span class="t">Trạng thái vụ</span>Mới → Đang xử lý → Tạm dừng → Đóng → Lưu trữ. Vụ đã lưu trữ ở chế độ chỉ đọc (Admin mở lại được).</div>
+  </div>
+
+  <h4>Ai chỉnh được cộng sự?</h4>
+  <p>Luật sư chính của vụ, hoặc Admin/Quản lý: mở thẻ <strong>Thông tin vụ việc → Chỉnh nhân sự</strong>.</p>
+</section>
+
+<!-- ===================== 6 ===================== -->
+<section class="section">
+  <div class="section-head"><span class="num">6</span><h2>Kế hoạch vụ việc</h2></div>
+  <p class="lead">Dựng lộ trình thực hiện vụ việc theo từng bước, có thời hạn và trạng thái riêng.</p>
+
+  <h3>Cách dùng</h3>
+  <ol class="steps">
+    <li>Trong hub vụ việc, mở tab <strong>Lên kế hoạch</strong>.</li>
+    <li>Thêm <strong>bước</strong>: chọn loại công việc, đặt <strong>thời hạn</strong>, <strong>độ ưu tiên</strong> và <strong>trạng thái</strong>.</li>
+    <li><strong>Kéo thả</strong> các bước để sắp lại thứ tự thực hiện.</li>
+    <li>Mỗi bước có <strong>tài liệu riêng</strong> và <strong>bình luận</strong> cho nhóm; có thể gắn địa điểm nếu cần.</li>
+  </ol>
+
+  <table>
+    <thead><tr><th>Trạng thái bước</th><th>Ý nghĩa</th></tr></thead>
+    <tbody>
+      <tr><td>Chưa thực hiện</td><td>Bước chưa bắt đầu.</td></tr>
+      <tr><td>Đang thực hiện</td><td>Đang triển khai.</td></tr>
+      <tr><td>Hoàn thành</td><td>Đã xong.</td></tr>
+      <tr><td>Bị chặn</td><td>Đang vướng, cần xử lý phụ thuộc.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note"><b>Hỗ trợ (Support)</b> vẫn <b>bình luận</b> được ở từng bước; chỉ <b>Luật sư trở lên</b> mới tải tài liệu cho bước.</div>
+</section>
+
+<!-- ===================== 7 ===================== -->
+<section class="section">
+  <div class="section-head"><span class="num">7</span><h2>Tài liệu &amp; phân quyền file</h2></div>
+  <p class="lead">Tài liệu được gắn theo vụ việc / bước kế hoạch, lưu an toàn và kiểm soát ai được xem.</p>
+
+  <h3>Tải &amp; quản lý tài liệu</h3>
+  <ul>
+    <li><strong>Ai được tải/sửa:</strong> Admin, Quản lý và Luật sư (có quyền vào vụ). Hỗ trợ và vai trò khác vẫn xem được (nếu không bị cấm) và đính kèm file trong bình luận.</li>
+    <li><strong>Sắp xếp:</strong> theo thư mục của vụ, gắn nhãn phân loại; Admin có thể đánh dấu tài liệu <strong>quan trọng</strong>.</li>
+    <li><strong>Phiên bản:</strong> khi thay file, hệ thống giữ <strong>lịch sử phiên bản</strong> để xem lại/khôi phục.</li>
+  </ul>
+
+  <h3>Giới hạn ai được xem một file</h3>
+  <ol class="steps">
+    <li>Luật sư chính (hoặc Admin/Quản lý) bấm biểu tượng <strong>khóa</strong> trên file.</li>
+    <li>Chọn một trong ba chế độ:
+      <ul>
+        <li><strong>Tất cả thành viên</strong> — mọi người trong vụ đều xem được.</li>
+        <li><strong>Chỉ người được chọn</strong> — danh sách cho phép.</li>
+        <li><strong>Cấm người được chọn</strong> — danh sách bị chặn.</li>
+      </ul>
+    </li>
+  </ol>
+  <div class="note"><b>Lưu ý:</b> Luật sư chính <b>luôn</b> xem được file. File đính kèm trong bình luận không dùng cơ chế phân quyền này.</div>
+</section>
+
+<!-- ===================== 8 ===================== -->
+<section class="section">
+  <div class="section-head"><span class="num">8</span><h2>Bình luận &amp; phối hợp</h2></div>
+  <p class="lead">Trao đổi gắn thẳng vào ngữ cảnh vụ việc, giúp mọi người theo dõi mà không lạc thông tin.</p>
+  <ul>
+    <li>Bình luận được ở: <strong>trang tổng quan vụ, báo cáo, và từng bước kế hoạch</strong>.</li>
+    <li>Mọi thành viên có quyền vào vụ đều comment được — <strong>kể cả Hỗ trợ</strong>.</li>
+    <li>Có thể <strong>@nhắc tên</strong> đồng nghiệp và <strong>đính kèm file</strong> trong bình luận.</li>
+  </ul>
+  <div class="note">Bình luận trong vụ việc <b>khác</b> với Trò chuyện (Chat) công ty ở mục 12: bình luận luôn gắn với một vụ/bước cụ thể.</div>
+</section>
+
+<!-- ===================== 9 ===================== -->
+<section class="section">
+  <div class="section-head"><span class="num">9</span><h2>Giao việc (Tasks)</h2></div>
+  <p class="lead">Tạo và theo dõi công việc nội bộ, có người nhận và hạn hoàn thành.</p>
+  <ol class="steps">
+    <li>Tạo công việc, gán <strong>người nhận</strong> và <strong>hạn</strong>.</li>
+    <li>Gắn công việc với một <strong>vụ việc</strong> khi cần (không bắt buộc).</li>
+    <li>Theo dõi trạng thái: <strong>Chưa làm → Đang làm → Hoàn thành</strong> (hoặc Đã hủy).</li>
+  </ol>
+  <table>
+    <thead><tr><th>Độ ưu tiên</th><th>Khi dùng</th></tr></thead>
+    <tbody>
+      <tr><td>Thấp / Vừa</td><td>Việc thường ngày, không gấp.</td></tr>
+      <tr><td>Cao / Khẩn cấp</td><td>Cần xử lý sớm, ưu tiên trước.</td></tr>
+    </tbody>
+  </table>
+  <div class="note">Hạn công việc cũng hiển thị trên trang <b>Lịch &amp; hạn</b> để dễ ưu tiên.</div>
+</section>
+
+<!-- ===================== 10 ===================== -->
+<section class="section">
+  <div class="section-head"><span class="num">10</span><h2>Lịch &amp; hạn</h2></div>
+  <p class="lead">Xem toàn bộ hạn kế hoạch và công việc theo tháng.</p>
+  <ul>
+    <li>Hiển thị <strong>hạn của bước kế hoạch</strong> và <strong>hạn công việc</strong> trong một lịch.</li>
+    <li>Bấm vào ngày/hạn để mở nhanh chi tiết liên quan.</li>
+    <li>Quản lý/Admin có thể xem lịch của <strong>tất cả</strong>; các vai trò khác xem việc của mình.</li>
+  </ul>
+  <div class="note">Hệ thống có nhắc hạn tự động (thông báo trong app, và Web Push nếu bật) cho các mốc sắp đến hạn và quá hạn.</div>
+</section>
+
+<!-- ===================== 11 ===================== -->
+<section class="section">
+  <div class="section-head"><span class="num">11</span><h2>Khách hàng</h2></div>
+  <p class="lead">Hồ sơ khách hàng là dữ liệu nền, dùng khi tạo vụ việc.</p>
+  <ul>
+    <li>Lưu: mã, tên, liên hệ, địa chỉ, tỉnh/thành, <strong>loại hình</strong> (TNHH, Cổ phần, DN tư nhân, Hợp danh, Cá nhân, Khác), ghi chú.</li>
+    <li>Một khách hàng có thể gắn với <strong>nhiều vụ việc</strong>.</li>
+    <li><strong>Admin/Quản lý</strong> mới được sửa/xóa khách hàng.</li>
+  </ul>
+</section>
+
+<!-- ===================== 12 ===================== -->
+<section class="section">
+  <div class="section-head"><span class="num">12</span><h2>Trò chuyện nội bộ (Chat)</h2></div>
+  <p class="lead">Nhắn tin nhanh giữa nhân viên, tách biệt với bình luận theo vụ việc.</p>
+  <ol class="steps">
+    <li>Vào <strong>Trò chuyện</strong>, chọn một hội thoại (1–1, nhóm) hoặc kênh <strong>@all</strong> toàn công ty.</li>
+    <li>Gửi tin nhắn, <strong>đính kèm file</strong>, <strong>@nhắc tên</strong> đồng nghiệp, gắn địa điểm nếu cần.</li>
+    <li>Theo dõi <strong>badge số tin chưa đọc</strong> ngay trên menu Chat.</li>
+  </ol>
+</section>
+
+<!-- ===================== 13 ===================== -->
+<section class="section">
+  <div class="section-head"><span class="num">13</span><h2>Chi phí vụ việc</h2></div>
+  <p class="lead">Ghi nhận chi phí phát sinh theo vụ và xem thống kê.</p>
+  <ol class="steps">
+    <li>Bấm nút <strong>$</strong> góc dưới phải (ở bất kỳ trang nào).</li>
+    <li>Chọn <strong>vụ việc đang mở</strong>, <strong>loại chi phí</strong> (án phí, công chứng, đi lại, dịch thuật, tài liệu, giám định, khác) và <strong>số tiền</strong> (VND).</li>
+    <li>Xem tổng hợp tại trang <strong>Chi phí</strong>: theo loại, theo vụ và theo xu hướng thời gian.</li>
+  </ol>
+  <div class="note">Không thêm được chi phí cho vụ <b>đã đóng hoặc đã lưu trữ</b>. Trang thống kê Chi phí dành cho <b>Quản lý/Admin</b>.</div>
+</section>
+
+<!-- ===================== 14 ===================== -->
+<section class="section">
+  <div class="section-head"><span class="num">14</span><h2>Workload &amp; Báo cáo</h2></div>
+
+  <h3>Workload <span class="pill">Quản lý / Admin</span></h3>
+  <p>Phân bổ công việc theo <strong>nhân viên</strong> và <strong>phòng ban</strong>: khối lượng việc đang mở, việc quá hạn — kèm biểu đồ để cân đối nguồn lực.</p>
+
+  <h3>Báo cáo vụ việc</h3>
+  <ul>
+    <li>Tổng hợp <strong>tiến độ kế hoạch, hoạt động, công việc và tài liệu</strong> của một vụ.</li>
+    <li>Có thể xem và bình luận ngay trong báo cáo; file bị giới hạn quyền sẽ không hiện với người bị chặn.</li>
+    <li>(Tùy cấu hình) tạo <strong>tóm tắt vụ việc bằng AI</strong> để nắm nhanh bối cảnh.</li>
+  </ul>
+</section>
+
+<!-- ===================== 15 ===================== -->
+<section class="section">
+  <div class="section-head"><span class="num">15</span><h2>Thông báo, Web Push &amp; cài đặt ứng dụng (PWA)</h2></div>
+
+  <h3>Thông báo trong ứng dụng</h3>
+  <p>Biểu tượng <strong>chuông</strong> trên thanh trên cùng hiển thị: giao việc, hạn công việc, được @nhắc tên, tin nhắn và thông báo chung.</p>
+
+  <h3>Bật thông báo đẩy (Web Push)</h3>
+  <ol class="steps">
+    <li>Vào <strong>Cài đặt</strong> → phần thông báo đẩy.</li>
+    <li>Bật và <strong>cho phép</strong> quyền thông báo trên trình duyệt/thiết bị.</li>
+    <li>Có thể gửi <strong>thông báo thử</strong> để kiểm tra thiết bị nhận được.</li>
+  </ol>
+
+  <h3>Cài như ứng dụng (PWA)</h3>
+  <ul>
+    <li><strong>Điện thoại:</strong> mở trong trình duyệt → “Thêm vào màn hình chính”.</li>
+    <li><strong>Máy tính:</strong> bấm biểu tượng cài đặt trên thanh địa chỉ trình duyệt.</li>
+    <li>Mở nhanh như app, hoạt động tốt trên cả điện thoại và máy tính.</li>
+  </ul>
+</section>
+
+<!-- ===================== 16 ===================== -->
+<section class="section">
+  <div class="section-head"><span class="num">16</span><h2>Khu vực quản trị</h2></div>
+  <p class="lead">Dành cho Admin (và một số mục cho Quản lý). Cấu hình dữ liệu nền của hệ thống.</p>
+  <table>
+    <thead><tr><th style="width:28%">Mục</th><th>Chức năng</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Nhân viên</strong></td><td>Tạo tài khoản, đặt vai trò/phòng ban, kích hoạt/khóa, đặt lại mật khẩu khi nhân viên quên.</td></tr>
+      <tr><td><strong>Loại công việc</strong></td><td>Danh mục loại công việc dùng trong kế hoạch vụ việc.</td></tr>
+      <tr><td><strong>Nhãn tài liệu</strong></td><td>Nhãn phân loại tài liệu đính kèm.</td></tr>
+      <tr><td><strong>Phòng ban</strong></td><td>Cấu hình phòng ban nội bộ (phục vụ Workload, phân công).</td></tr>
+      <tr><td><strong>Nhật ký hệ thống</strong></td><td>Theo dõi/điều tra thao tác: tạo, sửa, xóa, đăng nhập, đăng xuất.</td></tr>
+    </tbody>
+  </table>
+  <div class="note"><b>Cẩn thận khi đổi vai trò</b> của nhân viên — sẽ ảnh hưởng trực tiếp đến quyền xem và tải dữ liệu.</div>
+</section>
+
+<!-- ===================== 17 ===================== -->
+<section class="section">
+  <div class="section-head"><span class="num">17</span><h2>Quy trình mẫu từ A đến Z</h2></div>
+  <p class="lead">Một vụ việc điển hình đi qua các bước sau:</p>
+  <ol class="steps">
+    <li><strong>Tạo/chọn khách hàng</strong> trong mục Khách hàng.</li>
+    <li><strong>Tạo vụ việc</strong>, gán luật sư phụ trách và cộng sự.</li>
+    <li><strong>Lên kế hoạch</strong>: thêm các bước, đặt thời hạn và độ ưu tiên.</li>
+    <li><strong>Tải tài liệu</strong> vào vụ/bước; đặt quyền xem cho file nhạy cảm.</li>
+    <li><strong>Giao việc</strong> cho thành viên, gắn với vụ nếu cần.</li>
+    <li><strong>Theo dõi trên Lịch &amp; hạn</strong>, nhận thông báo khi tới hạn.</li>
+    <li><strong>Trao đổi</strong> qua bình luận trong vụ; ghi <strong>chi phí</strong> phát sinh.</li>
+    <li><strong>Xem Báo cáo</strong> để nắm tiến độ; khi xong thì <strong>Đóng</strong> và <strong>Lưu trữ</strong> vụ.</li>
+  </ol>
+</section>
+
+<!-- ===================== 18 ===================== -->
+<section class="section">
+  <div class="section-head"><span class="num">18</span><h2>Câu hỏi thường gặp (FAQ)</h2></div>
+
+  <h4>Cách tạo vụ việc?</h4>
+  <p>Vào menu <strong>Vụ việc → Tạo vụ việc</strong>. Điền tiêu đề, khách hàng, luật sư phụ trách và cộng sự. Admin/Quản lý thường có quyền tạo; sau khi tạo, mở hub vụ việc để lên kế hoạch và tải tài liệu.</p>
+
+  <h4>Ai chỉnh được cộng sự vụ việc?</h4>
+  <p>Luật sư chính của vụ (hoặc Admin/Quản lý) mở thẻ <strong>Thông tin vụ việc → Chỉnh nhân sự</strong>. Có thể thêm/xóa cộng sự; luật sư chính luôn giữ quyền truy cập vụ.</p>
+
+  <h4>Cách dùng kế hoạch vụ việc?</h4>
+  <p>Vào <strong>Kế hoạch</strong> trên hub vụ việc. Thêm bước, chọn loại công việc, thời hạn và trạng thái. Kéo thả để đổi thứ tự. Mỗi bước có tài liệu và bình luận riêng.</p>
+
+  <h4>Ai được tải / sửa tài liệu?</h4>
+  <p>Tài liệu vụ việc và kế hoạch: <strong>Admin, Quản lý và Luật sư</strong> (có quyền vào vụ). Hỗ trợ và vai trò khác vẫn xem (nếu không bị cấm) và vẫn comment được, kèm file trong bình luận.</p>
+
+  <h4>Giới hạn ai được xem một file?</h4>
+  <p>Luật sư chính (hoặc Admin/Quản lý) bấm biểu tượng <strong>khóa</strong> trên file → chọn <strong>Tất cả thành viên / Chỉ người được chọn / Cấm người được chọn</strong>. Luật sư chính luôn xem được. File trong bình luận không dùng cơ chế này.</p>
+
+  <h4>Ai được bình luận?</h4>
+  <p>Mọi thành viên có quyền vào vụ việc đều comment được (hub, báo cáo, từng bước kế hoạch), kể cả Hỗ trợ. Có thể @nhắc tên và đính kèm file.</p>
+
+  <h4>Chat nội bộ dùng thế nào?</h4>
+  <p>Vào <strong>Chat</strong>, chọn hội thoại hoặc kênh <strong>@all</strong>. Gửi tin, đính kèm, @nhắc tên. Đây là chat công ty, khác với bình luận gắn trên từng vụ việc.</p>
+
+  <h4>Cách ghi nhận chi phí?</h4>
+  <p>Bấm nút <strong>$</strong> góc dưới phải, chọn vụ đang mở, loại chi phí và số tiền. Xem thống kê tại trang <strong>Chi phí</strong>. Không thêm được chi phí cho vụ đã đóng hoặc lưu trữ.</p>
+
+  <h4>Các vai trò khác nhau thế nào?</h4>
+  <p><strong>ADMIN:</strong> toàn quyền quản trị. <strong>MANAGER:</strong> xem rộng, quản lý vụ/khách. <strong>LAWYER:</strong> làm việc vụ việc, upload tài liệu. <strong>SUPPORT:</strong> tham gia vụ được gán, comment; không upload tài liệu vụ/kế hoạch.</p>
+</section>
+
+<!-- ===================== 19 ===================== -->
+<section class="section">
+  <div class="section-head"><span class="num">19</span><h2>Mẹo dùng trên máy tính &amp; điện thoại</h2></div>
+  <div class="grid">
+    <div class="card"><span class="t">Điện thoại</span>Dùng nút menu để mở điều hướng. Cài PWA để mở nhanh và nhận thông báo đẩy. Giao diện tự co giãn, không cần phóng to.</div>
+    <div class="card"><span class="t">Máy tính</span>Menu luôn hiển thị bên trái. Thao tác kéo–thả bước kế hoạch tiện hơn trên màn hình lớn.</div>
+    <div class="card"><span class="t">Ghi nhanh</span>Nút <strong>$</strong> góc dưới phải để ghi chi phí ở bất kỳ đâu.</div>
+    <div class="card"><span class="t">Cần trợ giúp</span>Mở nút <strong>Hướng dẫn</strong> trong app để xem gợi ý theo từng trang và FAQ.</div>
+  </div>
+
+  <div class="footer-brand">
+    NSLAW Work Manager — Hệ thống quản lý công việc nội bộ công ty luật.<br />
+    Tài liệu hướng dẫn người dùng • Phiên bản 1.0 • 07/2026
+  </div>
+</section>
+
+</body>
+</html>

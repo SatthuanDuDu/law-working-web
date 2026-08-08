@@ -78,6 +78,7 @@ enum NotificationType {
   TASK_ASSIGNED
   TASK_DUE
   PLAN_ASSIGNED
+  PLAN_DUE
   GENERAL
   MENTION
   CHAT_MESSAGE
@@ -161,10 +162,13 @@ model Client {
   city         String?
   businessType ClientBusinessType?
   notes        String?
+  deletedAt    DateTime?
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
   matters      Matter[]
   attachments  Attachment[]
+
+  @@index([deletedAt])
 }
 
 model Matter {
@@ -179,6 +183,7 @@ model Matter {
   client       Client         @relation(fields: [clientId], references: [id])
   leadLawyerId String
   leadLawyer   User           @relation("LeadLawyer", fields: [leadLawyerId], references: [id])
+  deletedAt    DateTime?
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   members      MatterMember[]
@@ -191,6 +196,8 @@ model Matter {
   @@index([leadLawyerId])
   @@index([clientId])
   @@index([updatedAt])
+  @@index([status])
+  @@index([deletedAt])
 }
 
 model MatterFolder {
@@ -231,6 +238,7 @@ model MatterPlanStep {
   workType         WorkType?                @relation(fields: [workTypeId], references: [id], onDelete: SetNull)
   startedAt        DateTime?
   dueAt            DateTime?
+  reminderSentAt   DateTime?
   status           MatterPlanStepStatus     @default(NOT_STARTED)
   priority         TaskPriority             @default(MEDIUM)
   statusChangedAt  DateTime?
@@ -247,6 +255,9 @@ model MatterPlanStep {
   assignees        MatterPlanStepAssignee[]
 
   @@index([matterId, sortOrder])
+  @@index([dueAt])
+  @@index([status, dueAt])
+  @@index([startedAt])
 }
 
 model MatterPlanStepAssignee {
@@ -313,6 +324,7 @@ model Task {
   @@index([dueDate])
   @@index([status])
   @@index([matterId])
+  @@index([assigneeId, status, dueDate])
 }
 
 model Attachment {
@@ -515,4 +527,7 @@ model AuditLog {
   entityId   String?
   details    String?
   createdAt  DateTime    @default(now())
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
 }

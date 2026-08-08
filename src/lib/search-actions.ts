@@ -53,6 +53,7 @@ export async function globalSearchAction(rawQuery: string): Promise<GlobalSearch
   const [matters, clients, tasks] = await Promise.all([
     prisma.matter.findMany({
       where: {
+        deletedAt: null,
         ...matterWhere,
         OR: [
           { code: { contains: query, mode: "insensitive" } },
@@ -66,6 +67,7 @@ export async function globalSearchAction(rawQuery: string): Promise<GlobalSearch
     }),
     prisma.client.findMany({
       where: {
+        deletedAt: null,
         ...clientWhere,
         OR: [
           { code: { contains: query, mode: "insensitive" } },

@@ -84,6 +84,7 @@ export const NOTIFICATION_TYPE_LABELS = {
   TASK_ASSIGNED: "Giao việc",
   TASK_DUE: "Hạn công việc",
   PLAN_ASSIGNED: "Giao kế hoạch",
+  PLAN_DUE: "Hạn bước kế hoạch",
   GENERAL: "Chung",
   MENTION: "Nhắc đến",
   CHAT_MESSAGE: "Tin nhắn",
@@ -100,7 +101,9 @@ export type NavLabelKey =
   | "workTypes"
   | "attachmentLabels"
   | "departments"
-  | "auditLogs";
+  | "auditLogs"
+  | "website"
+  | "websiteTraffic";
 
 export const NAV_ITEMS = [
   { href: "/dashboard", labelKey: "dashboard" as const, icon: "LayoutDashboard" },
@@ -113,6 +116,8 @@ export const NAV_ITEMS = [
 export const MANAGER_NAV_ITEMS = [
   { href: "/workload", labelKey: "workload" as const, icon: "Gauge" },
   { href: "/expenses", labelKey: "expenses" as const, icon: "Wallet" },
+  { href: "/website", labelKey: "website" as const, icon: "Globe" },
+  { href: "/website/traffic", labelKey: "websiteTraffic" as const, icon: "BarChart3" },
 ] as const;
 
 export const ADMIN_NAV_ITEMS = [

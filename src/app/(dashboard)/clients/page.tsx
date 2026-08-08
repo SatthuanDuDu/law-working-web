@@ -12,9 +12,12 @@ export default async function ClientsPage() {
   const clientIds = await getAccessibleClientIds(user.id, user.role);
 
   const clients = await prisma.client.findMany({
-    where: clientIds ? { id: { in: clientIds } } : {},
+    where: {
+      deletedAt: null,
+      ...(clientIds ? { id: { in: clientIds } } : {}),
+    },
     include: {
-      _count: { select: { matters: true } },
+      _count: { select: { matters: { where: { deletedAt: null } } } },
     },
     orderBy: { name: "asc" },
   });

@@ -10,12 +10,13 @@ import {
   ArrowUp,
   Check,
   ChevronDown,
+  FileSpreadsheet,
   Pencil,
   Search,
   Trash2,
   X,
 } from "lucide-react";
-import { deleteClientAction } from "@/lib/actions";
+import { deleteClientAction, restoreClientAction, bulkDeleteClientsAction } from "@/lib/actions";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { useListViewMode } from "@/hooks/use-list-view-mode";
 import { CreateClientButton } from "@/components/clients/create-client-button";
@@ -27,7 +28,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ListViewToggle } from "@/components/ui/list-view-toggle";
+import { UndoToast } from "@/components/ui/undo-toast";
 import { useLabelMaps } from "@/i18n/use-label-maps";
+import { downloadExcel } from "@/lib/export-excel";
 import { cn } from "@/lib/utils";
 import type { ClientBusinessType } from "@prisma/client";
 
@@ -405,6 +408,7 @@ export function ClientsList({
   const router = useRouter();
   const locale = useLocale();
   const t = useTranslations("clients");
+  const tPages = useTranslations("pages.clients");
   const tCommon = useTranslations("common");
   const tFilters = useTranslations("filters");
   const labels = useLabelMaps();
@@ -414,6 +418,12 @@ export function ClientsList({
   const [editOpen, setEditOpen] = useState(false);
   const [editClient, setEditClient] = useState<ClientFormInitial | null>(null);
   const { mode, setMode } = useListViewMode("clients");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [undoToast, setUndoToast] = useState<{
+    key: string;
+    clientId: string;
+    name: string;
+  } | null>(null);
 
   function openEdit(client: ClientListItem) {
     setEditClient({
@@ -449,6 +459,11 @@ export function ClientsList({
             });
             return;
           }
+          setUndoToast({
+            key: `${client.id}-${Date.now()}`,
+            clientId: client.id,
+            name: client.name,
+          });
           router.refresh();
         });
       },
@@ -486,6 +501,92 @@ export function ClientsList({
     () => applyClientFilters(clients, filters, labels.clientBusinessType, locale),
     [clients, filters, labels.clientBusinessType, locale],
   );
+
+  const selectableVisibleIds = useMemo(
+    () => (canManage ? visibleClients.map((client) => client.id) : []),
+    [visibleClients, canManage],
+  );
+
+  const activeSelectedIds = useMemo(() => {
+    const visibleIdSet = new Set(visibleClients.map((client) => client.id));
+    return new Set([...selectedIds].filter((id) => visibleIdSet.has(id)));
+  }, [selectedIds, visibleClients]);
+
+  function toggleSelected(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAllVisible() {
+    setSelectedIds((prev) => {
+      const allSelected = selectableVisibleIds.every((id) => prev.has(id));
+      if (allSelected) return new Set();
+      return new Set(selectableVisibleIds);
+    });
+  }
+
+  function handleBulkDelete() {
+    const ids = [...activeSelectedIds];
+    if (ids.length === 0 || !canManage) return;
+    confirm({
+      title: t("confirmBulkDeleteTitle"),
+      message: t("confirmBulkDeleteMessage", { count: ids.length }),
+      confirmLabel: t("deleteConfirmLabel"),
+      cancelLabel: tCommon("cancel"),
+      variant: "destructive",
+      onConfirm: () => {
+        startTransition(async () => {
+          const result = await bulkDeleteClientsAction(ids);
+          if (result.error) {
+            confirm({
+              title: tCommon("cannotDelete"),
+              message: result.error,
+              confirmLabel: tCommon("close"),
+              onConfirm: () => undefined,
+            });
+            return;
+          }
+          setSelectedIds(new Set());
+          if (result.skipped && result.skipped > 0) {
+            confirm({
+              title: tCommon("cannotDelete"),
+              message: t("bulkDeletePartial", {
+                deleted: result.deleted ?? 0,
+                skipped: result.skipped,
+              }),
+              confirmLabel: tCommon("close"),
+              onConfirm: () => undefined,
+            });
+          }
+          router.refresh();
+        });
+      },
+    });
+  }
+
+  function handleExportExcel() {
+    void downloadExcel(
+      tPages("title"),
+      visibleClients.map((client) => ({
+        [t("code")]: client.code,
+        [t("name")]: client.name,
+        [t("email")]: client.email ?? "",
+        [t("phone")]: client.phone ?? "",
+        [t("address")]: client.address ?? "",
+        [t("city")]: client.city ?? "",
+        [t("businessType")]: client.businessType
+          ? labels.clientBusinessType[client.businessType]
+          : "",
+        [t("notes")]: client.notes ?? "",
+        [t("mattersMetricLabel")]: client._count.matters,
+      })),
+      "khach-hang",
+    );
+  }
 
   const hasActiveFilters =
     Boolean(filters.query) ||
@@ -644,9 +745,59 @@ export function ClientsList({
           </div>
         </div>
 
-        <div className="flex justify-end">
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={visibleClients.length === 0}
+            onClick={handleExportExcel}
+            aria-label={tCommon("exportExcel")}
+          >
+            <FileSpreadsheet className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{tCommon("exportExcel")}</span>
+          </Button>
           <ListViewToggle mode={mode} onChange={setMode} size="sm" showTable={false} />
         </div>
+
+        {canManage && activeSelectedIds.size > 0 ? (
+          <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary-muted/50 px-3 py-2 backdrop-blur-sm">
+            <span className="text-sm font-medium text-primary">
+              {t("selectedCount", { count: activeSelectedIds.size })}
+            </span>
+            {selectableVisibleIds.length > 0 ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={toggleSelectAllVisible}
+              >
+                {tCommon("selectAll")}
+              </Button>
+            ) : null}
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={isPending}
+              onClick={handleBulkDelete}
+              className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              {t("bulkDelete")}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedIds(new Set())}
+              className="ml-auto"
+            >
+              <X className="h-3.5 w-3.5" />
+              {tCommon("clearSelection")}
+            </Button>
+          </div>
+        ) : null}
 
         <div className="min-h-0 flex-1 space-y-4">
           {clients.length === 0 ? (
@@ -678,6 +829,15 @@ export function ClientsList({
                     <CardContent className="flex h-full flex-col gap-2 p-3 sm:gap-3 sm:p-4">
                       <div className="min-w-0 space-y-1">
                         <div className="flex flex-wrap items-center gap-1.5">
+                          {canManage ? (
+                            <input
+                              type="checkbox"
+                              checked={activeSelectedIds.has(client.id)}
+                              onChange={() => toggleSelected(client.id)}
+                              aria-label={client.name}
+                              className="h-4 w-4 shrink-0 cursor-pointer rounded border-border accent-primary"
+                            />
+                          ) : null}
                           <span className="rounded-md bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-primary">
                             {client.code}
                           </span>
@@ -724,29 +884,40 @@ export function ClientsList({
                   return (
                     <div key={client.id} className="px-3 py-2.5 sm:px-5 sm:py-3">
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="rounded-md bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-primary">
-                              {client.code}
-                            </span>
-                            <h3 className="truncate text-sm font-semibold text-foreground">
-                              {client.name}
-                            </h3>
-                            {client.businessType ? (
-                              <span className="rounded-full bg-primary-muted px-2 py-0 text-[10px] font-semibold text-primary">
-                                {labels.clientBusinessType[client.businessType]}
-                              </span>
-                            ) : null}
-                            <MatterCountChip client={client} />
-                          </div>
-                          <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                            {meta || "—"}
-                          </p>
-                          {client.notes ? (
-                            <p className="mt-0.5 line-clamp-1 text-xs text-foreground/80 sm:mt-1">
-                              {client.notes}
-                            </p>
+                        <div className="flex min-w-0 flex-1 items-start gap-2">
+                          {canManage ? (
+                            <input
+                              type="checkbox"
+                              checked={activeSelectedIds.has(client.id)}
+                              onChange={() => toggleSelected(client.id)}
+                              aria-label={client.name}
+                              className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-border accent-primary"
+                            />
                           ) : null}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="rounded-md bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-primary">
+                                {client.code}
+                              </span>
+                              <h3 className="truncate text-sm font-semibold text-foreground">
+                                {client.name}
+                              </h3>
+                              {client.businessType ? (
+                                <span className="rounded-full bg-primary-muted px-2 py-0 text-[10px] font-semibold text-primary">
+                                  {labels.clientBusinessType[client.businessType]}
+                                </span>
+                              ) : null}
+                              <MatterCountChip client={client} />
+                            </div>
+                            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                              {meta || "—"}
+                            </p>
+                            {client.notes ? (
+                              <p className="mt-0.5 line-clamp-1 text-xs text-foreground/80 sm:mt-1">
+                                {client.notes}
+                              </p>
+                            ) : null}
+                          </div>
                         </div>
                         <ClientActions client={client} />
                       </div>
@@ -767,6 +938,27 @@ export function ClientsList({
             setEditOpen(false);
             setEditClient(null);
           }}
+        />
+      ) : null}
+      {undoToast ? (
+        <UndoToast
+          toastKey={undoToast.key}
+          message={t("deletedToast", { name: undoToast.name })}
+          undoLabel={tCommon("undo")}
+          onUndo={async () => {
+            const result = await restoreClientAction(undoToast.clientId);
+            if (result.error) {
+              confirm({
+                title: tCommon("cannotDelete"),
+                message: result.error,
+                confirmLabel: tCommon("close"),
+                onConfirm: () => undefined,
+              });
+              return;
+            }
+            router.refresh();
+          }}
+          onDismiss={() => setUndoToast(null)}
         />
       ) : null}
     </>

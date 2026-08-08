@@ -14,6 +14,8 @@
     "saving": "Saving...",
     "confirm": "Confirm",
     "cannotDelete": "Cannot delete",
+    "undo": "Undo",
+    "deletedWithUndo": "Deleted. You can undo for a few seconds.",
     "back": "Back",
     "actions": "Actions",
     "status": "Status",
@@ -32,6 +34,7 @@
     "breadcrumb": "Breadcrumb",
     "viewFile": "View file",
     "download": "Download",
+    "exportExcel": "Export Excel",
     "unassigned": "Unassigned",
     "total": "total",
     "minutes": "{count} min",
@@ -83,6 +86,8 @@
     "attachmentLabels": "Document labels",
     "departments": "Departments",
     "auditLogs": "Audit logs",
+    "website": "NSLAW website",
+    "websiteTraffic": "Website traffic",
     "matterDetail": "Matter details",
     "plan": "Plan",
     "report": "Report"
@@ -153,9 +158,25 @@
       "title": "Document labels",
       "description": "Configure labels for classifying attachments"
     },
+    "website": {
+      "title": "NSLAW website",
+      "description": "Manage public site content and traffic"
+    },
+    "websiteTraffic": {
+      "title": "Website traffic",
+      "description": "Daily pageview statistics"
+    },
     "matterDetail": {
       "title": "Matter details",
       "description": "Matter information and documents"
+    },
+    "website": {
+      "title": "NSLAW Website",
+      "description": "Manage the public website content"
+    },
+    "websiteTraffic": {
+      "title": "Website traffic",
+      "description": "Public site page view statistics"
     },
     "fallback": {
       "title": "NSLAW Work Manager"
@@ -218,6 +239,7 @@
       "TASK_ASSIGNED": "Task assigned",
       "TASK_DUE": "Task due",
       "PLAN_ASSIGNED": "Plan assigned",
+      "PLAN_DUE": "Plan step due",
       "GENERAL": "General",
       "MENTION": "Mention",
       "CHAT_MESSAGE": "Chat"
@@ -319,8 +341,9 @@
     "reportTab": "Report",
     "overview": "Overview",
     "deleteTitle": "Delete matter",
-    "deleteConfirm": "Are you sure you want to delete matter \"{title}\" ({code})? This cannot be undone.",
+    "deleteConfirm": "Are you sure you want to delete matter \"{title}\" ({code})? You can undo right after deleting.",
     "deleteConfirmLabel": "Delete matter",
+    "deletedToast": "Deleted matter \"{title}\"",
     "editMatter": "Edit matter",
     "deleteMatter": "Delete matter",
     "setupPlan": "Plan",
@@ -335,6 +358,7 @@
     "fieldCreatedAt": "Created",
     "fieldDescription": "Description",
     "taskCount": "{count, plural, one {# task} other {# tasks}}",
+    "fieldTaskCount": "Tasks",
     "filterType": "Type",
     "filterLeadLawyer": "Lead lawyer",
     "filterMembers": "Collaborators",
@@ -342,6 +366,11 @@
     "filterCreatedAt": "Created date",
     "searchPlaceholder": "Search by code, title, client, lawyer...",
     "listTruncatedWarning": "Showing the {shown} most recent of {total} matters — use search or filters to narrow the results.",
+    "selectedCount": "{count} selected",
+    "applyBulkStatus": "Apply",
+    "confirmBulkStatusTitle": "Confirm status update",
+    "confirmBulkStatusMessage": "Are you sure you want to change the status of {count} selected matters to \"{status}\"?",
+    "updateStatus": "Update",
     "createModal": {
       "associates": "Associates",
       "removeMember": "Remove {name}",
@@ -534,8 +563,9 @@
     "noClients": "No clients yet",
     "searchPlaceholder": "Search clients...",
     "deleteTitle": "Delete client",
-    "deleteConfirm": "Are you sure you want to delete client \"{name}\"? This cannot be undone.",
+    "deleteConfirm": "Are you sure you want to delete client \"{name}\"? You can undo right after deleting.",
     "deleteConfirmLabel": "Delete client",
+    "deletedToast": "Deleted client \"{name}\"",
     "newClient": "New client",
     "formTitle": "New client",
     "formSubtitle": "Fill in details to add a client to the system.",
@@ -562,7 +592,12 @@
     "viewRelatedMatters": "View {count, plural, one {# related matter} other {# related matters}}",
     "noRelatedMatters": "No related matters",
     "mattersMetricLabel": "Matters",
-    "closeFormAria": "Close new client form"
+    "closeFormAria": "Close new client form",
+    "selectedCount": "{count} selected",
+    "bulkDelete": "Delete selected",
+    "confirmBulkDeleteTitle": "Delete selected clients",
+    "confirmBulkDeleteMessage": "Are you sure you want to delete {count} selected clients? Only clients with no related matters can be deleted. This cannot be undone.",
+    "bulkDeletePartial": "Deleted {deleted} clients. Skipped {skipped} clients that still have related matters."
   },
   "calendar": {
     "title": "Calendar & deadlines",
@@ -885,9 +920,18 @@
   "tasks": {
     "listTitle": "Task list",
     "empty": "No tasks yet.",
-    "noFilterMatch": "No tasks match your search.",
+    "noFilterMatch": "No tasks match the current filters.",
     "searchPlaceholder": "Search by title, assignee, matter...",
-    "listTruncatedWarning": "Showing the {shown} most recent of {total} tasks — use search to narrow the results.",
+    "listTruncatedWarning": "Showing the {shown} most recent of {total} tasks — use search or filters to narrow the results.",
+    "filterStatus": "Status",
+    "filterPriority": "Priority",
+    "filterAssignee": "Assignee",
+    "filterDue": "Due",
+    "dueAll": "All",
+    "dueOverdue": "Overdue",
+    "dueToday": "Today",
+    "dueThisWeek": "This week",
+    "dueNone": "No due date",
     "assignedTo": "Assigned to: {name}",
     "dueLabel": "Due: {date}",
     "overdueSuffix": " (Overdue)",
@@ -941,6 +985,9 @@
     "title": "Documents",
     "attachedTitle": "Attachments",
     "upload": "Upload",
+    "dragDropHint": "Drop files here",
+    "uploading": "Uploading…",
+    "uploadPercent": "{pct}%",
     "empty": "No documents yet",
     "delete": "Delete document",
     "important": "Important",
@@ -1101,6 +1148,10 @@
     "colAmount": "Amount",
     "colCount": "Entries",
     "colPct": "% of total",
+    "colCode": "Code",
+    "colTitle": "Title",
+    "sheetByType": "By type",
+    "sheetByMatter": "By matter",
     "empty": "No expenses in the selected period."
   },
   "chat": {
@@ -1264,6 +1315,15 @@
     "minChars": "Type at least 2 characters to search",
     "hintNavigate": "navigate",
     "hintSelect": "open",
-    "hintClose": "close"
+    "hintClose": "close",
+    "actions": {
+      "section": "Quick actions",
+      "newMatter": "Create new matter",
+      "newClient": "Create client",
+      "newTask": "Create task",
+      "openChat": "Open Chat",
+      "openCalendar": "Open Calendar",
+      "openDashboard": "Open Overview"
+    }
   }
 }

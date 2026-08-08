@@ -14,7 +14,10 @@ export default async function MattersPage() {
   const tPages = await getTranslations("pages.matters");
   const matterIds = await getAccessibleMatterIds(user.id, user.role);
 
-  const matterWhere = matterIds ? { id: { in: matterIds } } : {};
+  const matterWhere = {
+    deletedAt: null,
+    ...(matterIds ? { id: { in: matterIds } } : {}),
+  };
 
   const [filterOptions, totalCount, matters] = await Promise.all([
     getMatterFilterOptions(),

@@ -11,11 +11,11 @@ export const getAccessibleMatterIds = cache(async (userId: string, role: Role) =
 
   const [memberships, ledMatters] = await Promise.all([
     prisma.matterMember.findMany({
-      where: { userId },
+      where: { userId, matter: { deletedAt: null } },
       select: { matterId: true },
     }),
     prisma.matter.findMany({
-      where: { leadLawyerId: userId },
+      where: { leadLawyerId: userId, deletedAt: null },
       select: { id: true },
     }),
   ]);
@@ -35,7 +35,11 @@ export async function getAccessibleClientIds(userId: string, role: Role) {
   if (!matterIds || matterIds.length === 0) return [];
 
   const matters = await prisma.matter.findMany({
-    where: { id: { in: matterIds } },
+    where: {
+      id: { in: matterIds },
+      deletedAt: null,
+      client: { deletedAt: null },
+    },
     select: { clientId: true },
   });
 
@@ -65,13 +69,29 @@ export async function canAccessAttachmentTarget(
     return Boolean(member);
   }
 
-  if (canViewAllMatters(role)) return true;
-
-  const matterIds = await getAccessibleMatterIds(userId, role);
-
   if (target.matterId) {
+    const matter = await prisma.matter.findFirst({
+      where: { id: target.matterId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!matter) return false;
+    if (canViewAllMatters(role)) return true;
+    const matterIds = await getAccessibleMatterIds(userId, role);
     return !!matterIds?.includes(target.matterId);
   }
+
+  if (canViewAllMatters(role)) {
+    if (target.clientId) {
+      const client = await prisma.client.findFirst({
+        where: { id: target.clientId, deletedAt: null },
+        select: { id: true },
+      });
+      return Boolean(client);
+    }
+    return true;
+  }
+
+  const matterIds = await getAccessibleMatterIds(userId, role);
 
   if (target.taskId) {
     const task = await prisma.task.findUnique({
@@ -81,12 +101,22 @@ export async function canAccessAttachmentTarget(
     if (!task) return false;
     if (task.assigneeId === userId || task.createdById === userId) return true;
     if (task.matterId) {
+      const matter = await prisma.matter.findFirst({
+        where: { id: task.matterId, deletedAt: null },
+        select: { id: true },
+      });
+      if (!matter) return false;
       return !!matterIds?.includes(task.matterId);
     }
     return false;
   }
 
   if (target.clientId) {
+    const client = await prisma.client.findFirst({
+      where: { id: target.clientId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!client) return false;
     const clientIds = await getAccessibleClientIds(userId, role);
     if (clientIds === null) return true;
     return clientIds.includes(target.clientId);
@@ -96,8 +126,8 @@ export async function canAccessAttachmentTarget(
 }
 
 export async function assertMatterNotArchived(matterId: string) {
-  const matter = await prisma.matter.findUnique({
-    where: { id: matterId },
+  const matter = await prisma.matter.findFirst({
+    where: { id: matterId, deletedAt: null },
     select: { status: true },
   });
   if (!matter) return { error: "Không tìm thấy vụ việc" as const };

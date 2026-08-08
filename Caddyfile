@@ -26,8 +26,17 @@
 	reverse_proxy nslaw-app:3000
 }
 
-www.{$DOMAIN} {
-	redir https://{$DOMAIN}{uri} permanent
+# Public NSLAW marketing website (homepage-nslaw)
+{$WEB_DOMAIN}, www.{$WEB_DOMAIN} {
+	encode gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+	reverse_proxy nslaw-web:3000
 }
 
 # MinIO stays internal (Docker network only). Uploads go through the Next.js proxy.

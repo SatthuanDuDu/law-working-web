@@ -3,7 +3,16 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { Briefcase, ListTodo, Search, Users } from "lucide-react";
+import {
+  Briefcase,
+  Calendar,
+  LayoutDashboard,
+  ListTodo,
+  MessageCircle,
+  Plus,
+  Search,
+  Users,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useOverlayAnimation } from "@/hooks/use-overlay-animation";
 import {
@@ -25,6 +34,25 @@ const EMPTY_RESULT: GlobalSearchResult = { matters: [], clients: [], tasks: [] }
 
 /** Dispatched by header search buttons so they can open the palette without prop-drilling state. */
 export const OPEN_COMMAND_PALETTE_EVENT = "nslaw:open-command-palette";
+
+const QUICK_ACTION_DEFS = [
+  { key: "newMatter", href: "/matters", icon: Plus, labelKey: "actions.newMatter" as const },
+  { key: "newClient", href: "/clients", icon: Users, labelKey: "actions.newClient" as const },
+  { key: "newTask", href: "/tasks", icon: ListTodo, labelKey: "actions.newTask" as const },
+  { key: "openChat", href: "/chat", icon: MessageCircle, labelKey: "actions.openChat" as const },
+  {
+    key: "openCalendar",
+    href: "/calendar",
+    icon: Calendar,
+    labelKey: "actions.openCalendar" as const,
+  },
+  {
+    key: "openDashboard",
+    href: "/dashboard",
+    icon: LayoutDashboard,
+    labelKey: "actions.openDashboard" as const,
+  },
+];
 
 export function CommandPalette() {
   const router = useRouter();
@@ -82,9 +110,17 @@ export function CommandPalette() {
   }, [mounted]);
 
   const trimmedQuery = query.trim();
+  const queryLower = trimmedQuery.toLowerCase();
 
   useEffect(() => {
-    if (!open || trimmedQuery.length < 2) return;
+    setActiveIndex(0);
+  }, [trimmedQuery]);
+
+  useEffect(() => {
+    if (!open || trimmedQuery.length < 2) {
+      setResult(EMPTY_RESULT);
+      return;
+    }
     debounceRef.current = setTimeout(() => {
       startTransition(async () => {
         const next = await globalSearchAction(trimmedQuery);
@@ -100,6 +136,18 @@ export function CommandPalette() {
   const displayResult = trimmedQuery.length < 2 ? EMPTY_RESULT : result;
 
   const items = useMemo<FlatItem[]>(() => {
+    const actionsGroup = t("actions.section");
+    const actionItems: FlatItem[] = QUICK_ACTION_DEFS.filter((action) => {
+      if (!queryLower) return true;
+      return t(action.labelKey).toLowerCase().includes(queryLower);
+    }).map((action) => ({
+      key: `action-${action.key}`,
+      href: action.href,
+      icon: action.icon,
+      title: t(action.labelKey),
+      group: actionsGroup,
+    }));
+
     const matters: FlatItem[] = displayResult.matters.map((matter) => ({
       key: `matter-${matter.id}`,
       href: `/matters/${matter.id}`,
@@ -123,8 +171,13 @@ export function CommandPalette() {
       title: task.title,
       group: t("tasks"),
     }));
-    return [...matters, ...clients, ...tasks];
-  }, [displayResult, t]);
+    return [...actionItems, ...matters, ...clients, ...tasks];
+  }, [displayResult, queryLower, t]);
+
+  // Keep active index in range when the combined list changes.
+  useEffect(() => {
+    setActiveIndex((i) => (items.length === 0 ? 0 : Math.min(i, items.length - 1)));
+  }, [items.length]);
 
   function select(item: FlatItem) {
     close();
@@ -148,6 +201,12 @@ export function CommandPalette() {
   if (!mounted || typeof document === "undefined") return null;
 
   let groupCursor = "";
+  const showEmptySearchHint =
+    trimmedQuery.length >= 2 && !isPending && items.length === 0;
+  const showMinCharsHint =
+    trimmedQuery.length > 0 &&
+    trimmedQuery.length < 2 &&
+    items.length === 0;
 
   return createPortal(
     <div className="fixed inset-0 z-[10000] flex items-start justify-center px-4 pt-[12vh] sm:pt-[16vh]">
@@ -182,13 +241,13 @@ export function CommandPalette() {
         </div>
 
         <div className="max-h-[60vh] overflow-y-auto py-1.5">
-          {trimmedQuery.length < 2 ? (
-            <p className="px-4 py-6 text-center text-sm text-muted-foreground">
-              {t("minChars")}
-            </p>
-          ) : !isPending && items.length === 0 ? (
+          {showEmptySearchHint ? (
             <p className="px-4 py-6 text-center text-sm text-muted-foreground">
               {t("noResults", { query: trimmedQuery })}
+            </p>
+          ) : showMinCharsHint ? (
+            <p className="px-4 py-6 text-center text-sm text-muted-foreground">
+              {t("minChars")}
             </p>
           ) : (
             items.map((item, index) => {

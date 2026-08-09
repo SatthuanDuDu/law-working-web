@@ -15,6 +15,8 @@ const PAGE_KEYS: Record<string, string> = {
   "/chat": "chat",
   "/workload": "workload",
   "/expenses": "expenses",
+  "/wallet": "wallet",
+  "/admin/spend-categories": "spendCategories",
   "/admin/users": "users",
   "/admin/work-types": "workTypes",
   "/admin/departments": "departments",

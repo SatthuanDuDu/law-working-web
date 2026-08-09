@@ -13,7 +13,6 @@ import {
   matterPlanStepUpdateSchema,
   reorderMatterPlanStepsSchema,
   matterSchema,
-  matterExpenseSchema,
   taskSchema,
   userSchema,
   workTypeSchema,
@@ -2401,65 +2400,5 @@ export async function getOpenMattersForExpenseAction() {
   });
 
   return { matters };
-}
-
-export async function createMatterExpenseAction(formData: FormData) {
-  const user = await requireAuth();
-  const parsed = matterExpenseSchema.safeParse({
-    matterId: formData.get("matterId"),
-    type: formData.get("type"),
-    customTypeLabel: formData.get("customTypeLabel"),
-    amountVnd: formData.get("amountVnd"),
-  });
-
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? (await actionError("invalidData")) };
-  }
-
-  const accessibleIds = await getAccessibleMatterIds(user.id, user.role);
-  if (accessibleIds && !accessibleIds.includes(parsed.data.matterId)) {
-    return { error: await actionError("noMatterAccess") };
-  }
-
-  const matter = await prisma.matter.findUnique({
-    where: { id: parsed.data.matterId },
-    select: { id: true, code: true, title: true, status: true },
-  });
-  if (!matter) return { error: await actionError("matterNotFound") };
-  if (!OPEN_MATTER_STATUSES.includes(matter.status as (typeof OPEN_MATTER_STATUSES)[number])) {
-    return { error: await actionError("matterNotOpen") };
-  }
-
-  const amountVnd = BigInt(parsed.data.amountVnd);
-  const customTypeLabel =
-    parsed.data.type === "OTHER" ? parsed.data.customTypeLabel?.trim() || null : null;
-
-  try {
-    const expense = await prisma.matterExpense.create({
-      data: {
-        matterId: matter.id,
-        type: parsed.data.type,
-        customTypeLabel,
-        amountVnd,
-        createdById: user.id,
-      },
-    });
-
-    await createAuditLog({
-      userId: user.id,
-      action: "CREATE",
-      entityType: "MatterExpense",
-      entityId: expense.id,
-      details: `${matter.code}: ${amountVnd.toString()} VND`,
-    });
-
-    revalidatePath(`/matters/${matter.id}`);
-    revalidatePath("/matters");
-    revalidatePath("/dashboard");
-    return { success: true };
-  } catch (error) {
-    console.error("createMatterExpenseAction failed:", error);
-    return { error: await actionError("cannotCreateExpense") };
-  }
 }
 

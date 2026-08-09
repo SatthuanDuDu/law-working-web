@@ -6,7 +6,6 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
-  useTransition,
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { useTranslations } from "next-intl";
@@ -14,9 +13,7 @@ import { CircleDollarSign, CircleHelp, X, Zap } from "lucide-react";
 import { HelpPanel } from "@/components/help/help-panel";
 import {
   AddExpenseModal,
-  type ExpenseMatterOption,
 } from "@/components/expenses/add-expense-modal";
-import { getOpenMattersForExpenseAction } from "@/lib/actions";
 import { cn } from "@/lib/utils";
 
 const AUTO_COLLAPSE_MS = 5_000;
@@ -213,10 +210,7 @@ export function UtilitySpeedDial() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [helpSession, setHelpSession] = useState(0);
   const [expenseOpen, setExpenseOpen] = useState(false);
-  const [matters, setMatters] = useState<ExpenseMatterOption[]>([]);
-  const [loadingMatters, setLoadingMatters] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const [, startTransition] = useTransition();
 
   const pos = useSyncExternalStore(
     subscribePos,
@@ -256,17 +250,6 @@ export function UtilitySpeedDial() {
   function openExpense() {
     setExpanded(false);
     setExpenseOpen(true);
-    setLoadingMatters(true);
-    startTransition(async () => {
-      try {
-        const result = await getOpenMattersForExpenseAction();
-        setMatters(result.matters);
-      } catch {
-        setMatters([]);
-      } finally {
-        setLoadingMatters(false);
-      }
-    });
   }
 
   const onFabPointerDown = useCallback(
@@ -520,8 +503,6 @@ export function UtilitySpeedDial() {
       <AddExpenseModal
         open={expenseOpen}
         onClose={() => setExpenseOpen(false)}
-        matters={matters}
-        loadingMatters={loadingMatters}
       />
     </>
   );

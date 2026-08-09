@@ -97,6 +97,8 @@ export type NavLabelKey =
   | "calendar"
   | "workload"
   | "expenses"
+  | "wallet"
+  | "spendCategories"
   | "users"
   | "workTypes"
   | "attachmentLabels"
@@ -111,11 +113,13 @@ export const NAV_ITEMS = [
   { href: "/clients", labelKey: "clients" as const, icon: "Users" },
   { href: "/chat", labelKey: "chat" as const, icon: "MessageCircle" },
   { href: "/calendar", labelKey: "calendar" as const, icon: "CalendarDays" },
+  { href: "/wallet", labelKey: "wallet" as const, icon: "Wallet" },
 ] as const;
 
 export const MANAGER_NAV_ITEMS = [
   { href: "/workload", labelKey: "workload" as const, icon: "Gauge" },
-  { href: "/expenses", labelKey: "expenses" as const, icon: "Wallet" },
+  { href: "/expenses", labelKey: "expenses" as const, icon: "CircleDollarSign" },
+  { href: "/admin/spend-categories", labelKey: "spendCategories" as const, icon: "Tags" },
   { href: "/website", labelKey: "website" as const, icon: "Globe" },
   { href: "/website/traffic", labelKey: "websiteTraffic" as const, icon: "BarChart3" },
 ] as const;

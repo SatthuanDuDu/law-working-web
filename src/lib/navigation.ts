@@ -16,6 +16,7 @@ const ROUTE_NAV_KEYS: Record<string, string> = {
   "/expenses": "expenses",
   "/admin/users": "users",
   "/admin/work-types": "workTypes",
+  "/admin/spend-categories": "spendCategories",
   "/admin/attachment-labels": "attachmentLabels",
   "/admin/departments": "departments",
   "/admin/audit-logs": "auditLogs",

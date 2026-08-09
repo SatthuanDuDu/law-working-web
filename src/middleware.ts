@@ -22,6 +22,7 @@ export const config = {
     "/calendar/:path*",
     "/workload/:path*",
     "/expenses/:path*",
+    "/wallet/:path*",
     "/notifications/:path*",
     "/settings/:path*",
     "/admin/:path*",

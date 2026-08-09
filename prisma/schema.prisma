@@ -108,6 +108,11 @@ enum ExpenseType {
   OTHER
 }
 
+enum WalletDirection {
+  CREDIT
+  DEBIT
+}
+
 model Department {
   id        String   @id @default(cuid())
   name      String   @unique
@@ -146,10 +151,12 @@ model User {
   conversationMembers    ConversationMember[]
   chatMessages           ChatMessage[]
   chatMessageMentions    ChatMessageMention[]
-  matterExpenses         MatterExpense[]
+  staffWallet             StaffWallet?
+  walletTxCreated         WalletTransaction[] @relation("WalletTxCreatedBy")
+  walletTxAllocated       WalletTransaction[] @relation("WalletTxAllocatedBy")
   attachmentAccessUpdates AttachmentAccess[]     @relation("AttachmentAccessUpdater")
   attachmentAccessEntries AttachmentAccessUser[]
-  pushSubscriptions      PushSubscription[]
+  pushSubscriptions       PushSubscription[]
 }
 
 model Client {
@@ -191,8 +198,8 @@ model Matter {
   tasks        Task[]
   attachments  Attachment[]
   folders      MatterFolder[]
-  comments     Comment[]
-  expenses     MatterExpense[]
+  comments            Comment[]
+  walletTransactions  WalletTransaction[]
   @@index([leadLawyerId])
   @@index([clientId])
   @@index([updatedAt])
@@ -214,19 +221,64 @@ model MatterFolder {
   @@index([matterId])
 }
 
-model MatterExpense {
-  id              String      @id @default(cuid())
-  matterId        String
-  matter          Matter      @relation(fields: [matterId], references: [id], onDelete: Cascade)
-  type            ExpenseType
-  customTypeLabel String?
-  amountVnd       BigInt
-  createdById     String
-  createdBy       User        @relation(fields: [createdById], references: [id])
-  createdAt       DateTime    @default(now())
+/** Per-user imprest wallet; balance updated with each non-legacy ledger row. */
+model StaffWallet {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balanceVnd BigInt   @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  transactions WalletTransaction[]
+}
 
-  @@index([matterId, createdAt])
-  @@index([createdById])
+model WalletTransaction {
+  id               String               @id @default(cuid())
+  walletUserId     String
+  wallet           StaffWallet          @relation(fields: [walletUserId], references: [userId], onDelete: Cascade)
+  direction        WalletDirection
+  amountVnd        BigInt
+  balanceAfterVnd  BigInt
+  spendCategoryId  String?
+  spendCategory    SpendCategory?       @relation(fields: [spendCategoryId], references: [id], onDelete: SetNull)
+  note             String?
+  detail           String?
+  allocatedById    String?
+  allocatedBy      User?                @relation("WalletTxAllocatedBy", fields: [allocatedById], references: [id], onDelete: SetNull)
+  createdById      String
+  createdBy        User                 @relation("WalletTxCreatedBy", fields: [createdById], references: [id])
+  matterId         String?
+  matter           Matter?              @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  matterPlanStepId String?
+  matterPlanStep   MatterPlanStep?      @relation(fields: [matterPlanStepId], references: [id], onDelete: SetNull)
+  expenseType      ExpenseType?
+  customTypeLabel  String?
+  /** Legacy MatterExpense import: history only, does not change balance. */
+  legacyImported   Boolean              @default(false)
+  createdAt        DateTime             @default(now())
+
+  @@index([walletUserId, createdAt])
+  @@index([spendCategoryId, createdAt])
+  @@index([matterId])
+  @@index([direction, createdAt])
+  @@index([legacyImported])
+}
+
+/** Admin/Manager-managed spend groups (vụ việc, văn phòng phẩm, …). */
+model SpendCategory {
+  id             String              @id @default(cuid())
+  name           String              @unique
+  /** Stable key for seeded system rows: MATTER | OFFICE | OTHER */
+  code           String?             @unique
+  requiresMatter Boolean             @default(false)
+  isSystem       Boolean             @default(false)
+  isActive       Boolean             @default(true)
+  sortOrder      Int                 @default(0)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  transactions   WalletTransaction[]
+
+  @@index([isActive, sortOrder])
 }
 
 model MatterPlanStep {
@@ -253,6 +305,7 @@ model MatterPlanStep {
   comments         Comment[]
   attachments      Attachment[]
   assignees        MatterPlanStepAssignee[]
+  walletTransactions WalletTransaction[]
 
   @@index([matterId, sortOrder])
   @@index([dueAt])

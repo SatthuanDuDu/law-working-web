@@ -976,7 +976,7 @@ export function ChatWorkspace({
       className={cn(
         liquidPanelClass,
         // Fill remaining viewport under the sticky page header (eat main bottom pad).
-        "flex min-h-[24rem] overflow-hidden rounded-[var(--radius-lg)] bg-white",
+        "flex min-h-[24rem] overflow-hidden rounded-[var(--radius-lg)] bg-surface",
         "h-[calc(var(--vv-height,100dvh)-var(--page-header-offset,3.5rem)-0.75rem)] -mb-3",
         "sm:h-[calc(var(--vv-height,100dvh)-var(--page-header-offset,3.5rem)-1.5rem)] sm:-mb-6",
         "lg:h-[calc(var(--vv-height,100dvh)-var(--page-header-offset,3.5rem)-2rem)] lg:-mb-8",
@@ -985,7 +985,7 @@ export function ChatWorkspace({
       {/* Sidebar */}
       <aside
         className={cn(
-          "flex w-full flex-col border-border bg-[#F8FAFC] sm:w-[17.5rem] sm:border-r lg:w-80",
+          "flex w-full flex-col border-border bg-muted/60 sm:w-[17.5rem] sm:border-r lg:w-80",
           showThread ? "hidden sm:flex" : "flex",
         )}
       >
@@ -1155,7 +1155,7 @@ export function ChatWorkspace({
       {/* Thread */}
       <section
         className={cn(
-          "flex min-w-0 flex-1 flex-col bg-white",
+          "flex min-w-0 flex-1 flex-col bg-surface",
           showThread ? "flex" : "hidden sm:flex",
         )}
       >

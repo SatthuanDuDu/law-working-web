@@ -58,6 +58,24 @@ export function getNavItemsForRole(role: Role, tNav?: NavT): NavItem[] {
   return items;
 }
 
+/** True only for the longest matching href (avoids parent+child both active). */
+export function isNavHrefActive(
+  pathname: string,
+  href: string,
+  candidateHrefs: readonly string[],
+): boolean {
+  const matches = (h: string) =>
+    pathname === h || pathname.startsWith(`${h}/`);
+  if (!matches(href)) return false;
+  let best = "";
+  for (const candidate of candidateHrefs) {
+    if (matches(candidate) && candidate.length > best.length) {
+      best = candidate;
+    }
+  }
+  return best === href;
+}
+
 function findActiveNavIndex(pathname: string, items: NavItem[]): number {
   let bestIndex = -1;
   let bestLength = -1;

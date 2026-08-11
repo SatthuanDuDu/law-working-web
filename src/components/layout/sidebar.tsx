@@ -41,6 +41,7 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { cn } from "@/lib/utils";
 import { ADMIN_NAV_ITEMS, MANAGER_NAV_ITEMS, NAV_ITEMS } from "@/lib/constants";
+import { isNavHrefActive } from "@/lib/navigation";
 import { canAccessAdmin, isManagerOrAbove } from "@/lib/permissions";
 import type { Role } from "@prisma/client";
 import { signOut } from "next-auth/react";
@@ -679,6 +680,12 @@ function SidebarContent({
   const tNav = useTranslations("nav");
   const { unreadChatCount, upcomingDueCount } = useShellAlerts();
 
+  const allNavHrefs = [
+    ...NAV_ITEMS.map((i) => i.href),
+    ...(isManagerOrAbove(user.role) ? MANAGER_NAV_ITEMS.map((i) => i.href) : []),
+    ...(canAccessAdmin(user.role) ? ADMIN_NAV_ITEMS.map((i) => i.href) : []),
+  ];
+
   return (
     <>
       {showEdgeToggle ? (
@@ -710,8 +717,7 @@ function SidebarContent({
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-2.5 py-3">
         {NAV_ITEMS.map((item) => {
-          const active =
-            pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const active = isNavHrefActive(pathname, item.href, allNavHrefs);
           const label = tNav(item.labelKey);
           const badge =
             item.href === "/chat"
@@ -749,8 +755,7 @@ function SidebarContent({
               </p>
             )}
             {MANAGER_NAV_ITEMS.map((item) => {
-              const active =
-                pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const active = isNavHrefActive(pathname, item.href, allNavHrefs);
 
               return (
                 <NavLink
@@ -775,8 +780,7 @@ function SidebarContent({
               </p>
             )}
             {ADMIN_NAV_ITEMS.map((item) => {
-              const active =
-                pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const active = isNavHrefActive(pathname, item.href, allNavHrefs);
 
               return (
                 <NavLink

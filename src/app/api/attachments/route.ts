@@ -5,7 +5,10 @@ import { canAccessAttachmentTarget } from "@/lib/access";
 import { buildStorageKey, createUploadUrl } from "@/lib/storage";
 import { createAuditLog } from "@/lib/audit";
 import { buildAttachmentOrigin } from "@/lib/attachment-origin";
-import { canManageMatterDocuments } from "@/lib/permissions";
+import {
+  canManageMatterDocuments,
+  isManagerOrAbove,
+} from "@/lib/permissions";
 import {
   filterVisibleAttachments,
   getAccessSummaries,
@@ -22,6 +25,8 @@ export async function GET(request: Request) {
   const taskId = searchParams.get("taskId") || undefined;
   const clientId = searchParams.get("clientId") || undefined;
   const matterPlanStepId = searchParams.get("matterPlanStepId") || undefined;
+  const walletTransactionId =
+    searchParams.get("walletTransactionId") || undefined;
   const stepOnly = searchParams.get("stepOnly") === "1";
   const folderIdParam = searchParams.get("folderId");
   // folderId=all (default) | unfiled | <id>
@@ -32,8 +37,41 @@ export async function GET(request: Request) {
         ? folderIdParam
         : "all";
 
-  if (!matterId && !taskId && !clientId && !matterPlanStepId) {
+  if (
+    !matterId &&
+    !taskId &&
+    !clientId &&
+    !matterPlanStepId &&
+    !walletTransactionId
+  ) {
     return NextResponse.json({ error: "Thiếu tham chiếu entity" }, { status: 400 });
+  }
+
+  if (walletTransactionId) {
+    const allowed = await canAccessAttachmentTarget(user.id, user.role, {
+      walletTransactionId,
+    });
+    if (!allowed) {
+      return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 403 });
+    }
+    const attachments = await prisma.attachment.findMany({
+      where: { walletTransactionId, isLatest: true },
+      include: {
+        uploadedBy: { select: { id: true, name: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    return NextResponse.json({
+      attachments: attachments.map((file) => ({
+        id: file.id,
+        fileName: file.fileName,
+        mimeType: file.mimeType,
+        sizeBytes: file.sizeBytes,
+        createdAt: file.createdAt,
+        uploadedBy: file.uploadedBy,
+        walletTransactionId: file.walletTransactionId,
+      })),
+    });
   }
 
   let resolvedMatterId = matterId;
@@ -169,6 +207,7 @@ export async function POST(request: Request) {
     clientId,
     matterPlanStepId,
     conversationId,
+    walletTransactionId,
     labelId,
     customLabel,
     folderId,
@@ -182,10 +221,11 @@ export async function POST(request: Request) {
     clientId?: string | null;
     matterPlanStepId?: string | null;
     conversationId?: string | null;
+    walletTransactionId?: string | null;
     labelId?: string | null;
     customLabel?: string | null;
     folderId?: string | null;
-    purpose?: "comment" | "document";
+    purpose?: "comment" | "document" | "wallet";
   };
 
   if (!fileName || !mimeType || typeof sizeBytes !== "number") {
@@ -193,10 +233,12 @@ export async function POST(request: Request) {
   }
 
   const isChatUpload = Boolean(conversationId);
+  const isWalletReceipt =
+    Boolean(walletTransactionId) || purpose === "wallet";
   const trimmedCustom =
     typeof customLabel === "string" ? customLabel.trim() : "";
   const hasLabelId = typeof labelId === "string" && labelId.length > 0;
-  if (!isChatUpload && !hasLabelId && !trimmedCustom) {
+  if (!isChatUpload && !isWalletReceipt && !hasLabelId && !trimmedCustom) {
     return NextResponse.json(
       { error: "Vui lòng chọn nhãn tài liệu hoặc nhập nhãn Khác" },
       { status: 400 },
@@ -254,8 +296,34 @@ export async function POST(request: Request) {
     resolvedFolderId = folder.id;
   }
 
-  if (!resolvedMatterId && !taskId && !clientId && !conversationId) {
+  if (
+    !resolvedMatterId &&
+    !taskId &&
+    !clientId &&
+    !conversationId &&
+    !walletTransactionId
+  ) {
     return NextResponse.json({ error: "Thiếu tham chiếu entity" }, { status: 400 });
+  }
+
+  if (walletTransactionId) {
+    const tx = await prisma.walletTransaction.findUnique({
+      where: { id: walletTransactionId },
+      select: { id: true, direction: true, walletUserId: true, createdById: true },
+    });
+    if (!tx || tx.direction !== "DEBIT") {
+      return NextResponse.json(
+        { error: "Giao dịch chi không hợp lệ" },
+        { status: 400 },
+      );
+    }
+    const canAttach =
+      isManagerOrAbove(user.role) ||
+      tx.walletUserId === user.id ||
+      tx.createdById === user.id;
+    if (!canAttach) {
+      return NextResponse.json({ error: "Không có quyền upload" }, { status: 403 });
+    }
   }
 
   if (resolvedMatterId) {
@@ -273,23 +341,26 @@ export async function POST(request: Request) {
 
   let uploadUrl: string;
   try {
-    const allowed = await canAccessAttachmentTarget(user.id, user.role, {
-      matterId: resolvedMatterId,
-      taskId,
-      clientId,
-      conversationId,
-    });
-    if (!allowed) {
-      return NextResponse.json({ error: "Không có quyền upload" }, { status: 403 });
+    if (!isWalletReceipt) {
+      const allowed = await canAccessAttachmentTarget(user.id, user.role, {
+        matterId: resolvedMatterId,
+        taskId,
+        clientId,
+        conversationId,
+      });
+      if (!allowed) {
+        return NextResponse.json({ error: "Không có quyền upload" }, { status: 403 });
+      }
     }
 
     // Matter document uploads (hub / plan) — lawyers+ only.
-    // Comment drafts and chat stay open to anyone with access.
+    // Comment drafts, chat, and wallet receipts stay open to anyone with access.
     const isCommentDraft = purpose === "comment";
     const isMatterDocument =
       Boolean(resolvedMatterId) &&
       !conversationId &&
-      !isCommentDraft;
+      !isCommentDraft &&
+      !isWalletReceipt;
     if (isMatterDocument && !canManageMatterDocuments(user.role)) {
       return NextResponse.json(
         { error: "Chỉ luật sư/admin được tải tài liệu vụ việc" },
@@ -307,18 +378,21 @@ export async function POST(request: Request) {
           mimeType,
           sizeBytes,
           storageKey,
-          matterId: resolvedMatterId,
+          matterId: isWalletReceipt ? null : resolvedMatterId,
           taskId: taskId || null,
           clientId: clientId || null,
-          matterPlanStepId: matterPlanStepId || null,
+          matterPlanStepId: isWalletReceipt ? null : matterPlanStepId || null,
           conversationId: conversationId || null,
-          folderId: resolvedFolderId,
+          walletTransactionId: walletTransactionId || null,
+          folderId: isWalletReceipt ? null : resolvedFolderId,
           labelId: hasLabelId ? labelId! : null,
           customLabel: hasLabelId
             ? null
             : isChatUpload
               ? trimmedCustom || "Chat"
-              : trimmedCustom,
+              : isWalletReceipt
+                ? trimmedCustom || "Chứng từ"
+                : trimmedCustom,
           uploadedById: user.id,
           // Temporary; immediately rewritten to id below.
           versionGroupId: "pending",

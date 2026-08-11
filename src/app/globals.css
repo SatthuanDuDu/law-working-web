@@ -4,49 +4,34 @@
   --background: #ffffff;
   --foreground: #0f172a;
   --muted-foreground: #64748b;
-  /* Brand: deep green + gold (NSLAW logo) */
-  --primary: #14532d;
+  /* Soft sage / moss pastel (SaaS) — less harsh than deep forest */
+  --primary: #3f6f5a;
   --primary-foreground: #ffffff;
-  /* ~14% white mixed in — clear hover vs solid primary fill */
-  --primary-hover: color-mix(in oklab, white 14%, #14532d);
-  --primary-muted: color-mix(in oklab, var(--primary) 8%, #f4f7f5);
-  --primary-muted-hover: color-mix(in oklab, var(--primary) 12%, #f4f7f5);
-  --accent: #9a7b16;
-  --accent-muted: #f6edcf;
-  --muted: color-mix(in oklab, var(--primary) 5%, #eef2f0);
-  --border: color-mix(in oklab, var(--primary) 8%, #e2e8f0);
-  /* Surface layers — canvas / content / chrome */
-  --canvas: color-mix(in oklab, var(--primary) 5%, #ffffff);
+  --primary-hover: color-mix(in oklab, black 8%, #3f6f5a);
+  --primary-muted: #e8f0ec;
+  --primary-muted-hover: #dce8e2;
+  --accent: #8f7a2e;
+  --accent-muted: #f5f0de;
+  --muted: #f1f5f9;
+  --border: #e2e8f0;
+  /* Surface layers */
+  --canvas: #f8fafc;
   --surface: #ffffff;
-  --surface-elevated: rgb(255 255 255 / 0.86);
-  --glass-border: rgb(255 255 255 / 0.65);
-  --field-hover-bg: color-mix(in oklab, var(--primary) 4%, #f8faf9);
-  --row-hover-bg: color-mix(in oklab, var(--primary) 5%, #f8faf9);
-  /* Flat, sharp radius scale (6px base) */
-  --radius-sm: 0.25rem;
-  --radius-md: 0.375rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.75rem;
-  /* Single unified overlay shadow (avoid multi-layer decorative shadows) */
-  --shadow-overlay: 0 8px 24px -12px rgb(15 23 42 / 0.25);
-  /* App-wide soft white + light primary wash */
-  --body-gradient:
-    radial-gradient(
-      110% 75% at 12% 8%,
-      color-mix(in oklab, var(--primary) 14%, transparent) 0%,
-      transparent 58%
-    ),
-    radial-gradient(
-      90% 65% at 88% 22%,
-      color-mix(in oklab, var(--primary) 10%, transparent) 0%,
-      transparent 55%
-    ),
-    linear-gradient(
-      165deg,
-      #ffffff 0%,
-      color-mix(in oklab, var(--primary) 6%, #ffffff) 45%,
-      color-mix(in oklab, var(--primary) 8%, #f8faf9) 100%
-    );
+  --surface-elevated: #ffffff;
+  --sidebar: #f1f5f9;
+  --glass-border: #e2e8f0;
+  --field-hover-bg: #e8f0ec;
+  --row-hover-bg: #dce8e2;
+  /* Sync radius: 8–12px outer / mid scale */
+  --radius-sm: 0.375rem; /* 6px */
+  --radius-md: 0.5rem; /* 8px */
+  --radius-lg: 0.75rem; /* 12px */
+  --radius-xl: 0.75rem; /* 12px */
+  /* Ultra-thin SaaS shadow */
+  --shadow-overlay: 0 4px 20px rgba(0, 0, 0, 0.03);
+  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.03);
+  /* Flat canvas — no heavy radial wash */
+  --body-gradient: none;
 }
 
 .dark {
@@ -64,18 +49,14 @@
   --border: #2a3a30;
   --canvas: #0c1210;
   --surface: #141c17;
-  --surface-elevated: rgb(22 30 25 / 0.92);
-  --glass-border: rgb(255 255 255 / 0.08);
+  --surface-elevated: #141c17;
+  --sidebar: #121a15;
+  --glass-border: #2a3a30;
   --field-hover-bg: rgb(30 42 34 / 0.95);
   --row-hover-bg: rgb(30 42 34 / 0.98);
-  --shadow-overlay: 0 8px 24px -12px rgb(0 0 0 / 0.55);
-  --body-gradient:
-    linear-gradient(
-      165deg,
-      color-mix(in oklab, var(--canvas) 70%, #0a1a10) 0%,
-      color-mix(in oklab, var(--primary-muted) 55%, #0c1210) 50%,
-      color-mix(in oklab, var(--primary) 18%, #0c1210) 100%
-    );
+  --shadow-overlay: 0 4px 20px rgba(0, 0, 0, 0.35);
+  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.35);
+  --body-gradient: none;
 }
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -96,6 +77,7 @@
   --color-canvas: var(--canvas);
   --color-surface: var(--surface);
   --color-surface-elevated: var(--surface-elevated);
+  --color-sidebar: var(--sidebar);
   --font-sans: var(--font-open-sans);
 }
 
@@ -143,7 +125,6 @@ body {
   overflow-x: clip;
   /* Reduce rubber-band pull that shifts fixed UI while dragging on mobile. */
   overscroll-behavior-y: none;
-  background: var(--body-gradient) fixed;
   background-color: var(--canvas);
   color: var(--foreground);
   font-family: var(--font-open-sans), "Open Sans", Arial, Helvetica, sans-serif;
@@ -170,135 +151,51 @@ html.fab-dragging body {
   box-shadow: var(--shadow-overlay);
 }
 
-/* Soft glass for primary surfaces only — not every control */
-.glass-surface {
-  background-color: var(--surface-elevated);
-  border-color: var(--glass-border);
-  box-shadow: var(--shadow-overlay);
-  backdrop-filter: blur(16px) saturate(1.4);
-  -webkit-backdrop-filter: blur(16px) saturate(1.4);
-}
-
-/* Liquid glass — specular fill (blur via Tailwind backdrop-* on liquidPanelClass;
-   LightningCSS strips backdrop-filter from raw custom CSS in this pipeline) */
+/* Solid SaaS panels (legacy class names kept so call sites stay stable) */
+.glass-surface,
 .liquid-glass {
   position: relative;
-  isolation: isolate;
-  background-color: transparent !important;
-  background-image: linear-gradient(
-    155deg,
-    rgb(255 255 255 / 0.58) 0%,
-    rgb(255 255 255 / 0.28) 42%,
-    rgb(255 255 255 / 0.14) 100%
-  );
+  background-color: var(--surface) !important;
+  background-image: none !important;
   border-width: 1px;
   border-style: solid;
-  border-color: rgb(255 255 255 / 0.88) !important;
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.75),
-    0 14px 36px -16px rgb(15 23 42 / 0.32);
+  border-color: var(--border) !important;
+  box-shadow: var(--shadow-card);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
-.dark .liquid-glass {
-  background-color: transparent !important;
-  background-image: linear-gradient(
-    155deg,
-    rgb(255 255 255 / 0.14) 0%,
-    rgb(255 255 255 / 0.06) 42%,
-    rgb(0 0 0 / 0.34) 100%
-  );
-  border-color: rgb(255 255 255 / 0.3) !important;
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.14),
-    0 14px 36px -16px rgb(0 0 0 / 0.6);
+/* Sidebar nav — muted hover; solid primary when active */
+.sidebar-nav-liquid:hover {
+  background-color: var(--primary-muted) !important;
+  background-image: none !important;
+  border-color: transparent;
+  box-shadow: none;
 }
 
-/* Nav item liquid glass — only on hover / active (sidebar stays solid primary) */
-.sidebar-nav-liquid:hover,
 .sidebar-nav-liquid.is-active,
 .sidebar-nav-liquid:focus-visible {
-  background-color: transparent !important;
-  background-image: linear-gradient(
-    155deg,
-    rgb(255 255 255 / 0.92) 0%,
-    rgb(255 255 255 / 0.72) 45%,
-    rgb(255 255 255 / 0.58) 100%
-  );
-  border-color: rgb(255 255 255 / 0.85);
-  box-shadow: 0 8px 20px -12px rgb(15 23 42 / 0.35);
+  background-color: var(--primary) !important;
+  background-image: none !important;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--primary-foreground);
 }
 
-@supports not ((backdrop-filter: blur(16px)) or (-webkit-backdrop-filter: blur(16px))) {
-  .sidebar-nav-liquid:hover,
-  .sidebar-nav-liquid.is-active,
-  .sidebar-nav-liquid:focus-visible {
-    background-color: #ffffff !important;
-    background-image: none;
-  }
+.sidebar-nav-liquid.is-active:hover {
+  background-color: var(--primary-hover) !important;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .sidebar-nav-liquid:hover,
-  .sidebar-nav-liquid.is-active,
-  .sidebar-nav-liquid:focus-visible {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    background-color: #ffffff !important;
-    background-image: none;
-  }
-}
-
-/* App content canvas — soft under-glow so backdrop-blur reads as liquid glass */
+/* Content column — flat canvas (no glow blobs) */
 .liquid-glass-canvas {
   position: relative;
-  background: transparent;
-  isolation: isolate;
+  background: var(--canvas);
+  isolation: auto;
 }
 
 .liquid-glass-canvas::before {
-  content: "";
-  pointer-events: none;
-  position: absolute;
-  inset: -8% -6% 20%;
-  z-index: -1;
-  background:
-    radial-gradient(
-      55% 45% at 18% 22%,
-      color-mix(in oklab, var(--primary) 26%, transparent) 0%,
-      transparent 70%
-    ),
-    radial-gradient(
-      50% 40% at 86% 18%,
-      color-mix(in oklab, var(--accent) 20%, transparent) 0%,
-      transparent 68%
-    ),
-    radial-gradient(
-      45% 35% at 55% 55%,
-      color-mix(in oklab, var(--primary) 12%, transparent) 0%,
-      transparent 72%
-    );
-  filter: blur(28px);
-  opacity: 0.9;
-}
-
-.dark .liquid-glass-canvas::before {
-  opacity: 0.55;
-  filter: blur(36px);
-}
-
-.dark .liquid-glass-canvas {
-  background: transparent;
-}
-
-@supports not ((backdrop-filter: blur(16px)) or (-webkit-backdrop-filter: blur(16px))) {
-  .glass-surface {
-    background-color: var(--surface);
-  }
-
-  .liquid-glass {
-    background-color: var(--surface) !important;
-    background-image: none;
-  }
+  content: none;
+  display: none;
 }
 
 .attachment-important {
@@ -315,52 +212,25 @@ html.fab-dragging body {
   border-left-color: color-mix(in oklab, var(--primary) 40%, var(--border));
 }
 
-/* Page title / sticky header chrome — denser glass in light; match cards in dark */
+/* Sticky header — full-width white strip + hairline border */
 .page-header-shell {
-  padding: 10px;
+  padding: 0;
 }
 
 .page-header-panel {
-  border-radius: var(--radius-md);
-  color: var(--primary);
-  padding: 10px 14px;
+  border-radius: 0;
+  color: var(--foreground);
+  padding: 12px 16px;
+  background-color: var(--surface) !important;
+  background-image: none !important;
+  border-width: 0 0 1px 0 !important;
+  border-style: solid !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: none !important;
 }
 
-.page-header-panel.liquid-glass {
-  background-image: linear-gradient(
-    155deg,
-    rgb(255 255 255 / 0.78) 0%,
-    rgb(255 255 255 / 0.52) 45%,
-    rgb(255 255 255 / 0.36) 100%
-  );
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.75),
-    0 12px 32px -14px rgb(15 23 42 / 0.28);
-}
-
-.dark .page-header-panel.liquid-glass {
-  background-image: linear-gradient(
-    155deg,
-    rgb(255 255 255 / 0.12) 0%,
-    rgb(255 255 255 / 0.05) 45%,
-    rgb(0 0 0 / 0.3) 100%
-  );
-  border-color: rgb(255 255 255 / 0.24);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.12),
-    0 12px 32px -14px rgb(0 0 0 / 0.55);
-}
-
-@supports not ((backdrop-filter: blur(16px)) or (-webkit-backdrop-filter: blur(16px))) {
-  .page-header-panel.liquid-glass {
-    background-color: rgb(255 255 255 / 0.92) !important;
-    background-image: none;
-  }
-
-  .dark .page-header-panel.liquid-glass {
-    background-color: var(--surface) !important;
-    background-image: none;
-  }
+.dark .page-header-panel {
+  border-color: var(--border) !important;
 }
 
 @keyframes page-enter {
@@ -618,25 +488,12 @@ html.fab-dragging body {
     filter: none;
   }
 
-  .glass-surface {
+  .glass-surface,
+  .liquid-glass {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-    background-color: var(--surface);
-  }
-
-  .liquid-glass {
     background-color: var(--surface) !important;
-    background-image: none;
+    background-image: none !important;
     box-shadow: none;
-  }
-
-  .page-header-panel.liquid-glass {
-    background-color: rgb(255 255 255 / 0.95) !important;
-    background-image: none;
-  }
-
-  .dark .page-header-panel.liquid-glass {
-    background-color: var(--surface) !important;
-    background-image: none;
   }
 }

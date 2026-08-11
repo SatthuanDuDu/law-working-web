@@ -23,12 +23,15 @@ Hệ thống quản lý công việc nội bộ công ty luật: khách hàng, v
   - `/wallet` — số dư + lịch sử + ghi chi (mọi role)
   - `/expenses` — dashboard dòng tiền công ty + phát budget (Admin/Manager)
   - Chi phí vụ việc cũ (`MatterExpense`) đã gộp vào ví
+  - Ghi chi: đính kèm nhiều ảnh/file minh chứng (S3/MinIO, `Attachment.walletTransactionId`)
+  - **Xác nhận 2 phía** (`MoneyConfirmation`): phát budget chỉ CREDIT khi cả nhân viên + người phát xác nhận; nhận tiền khách (matter/plan) bàn giao cho người cùng/cấp cao hơn, cũng 2 phía
+  - Phân quyền ví/chi theo cấp bậc role: Admin/Manager quản lý cùng cấp hoặc cấp dưới; luật sư peer không xem/quản lý nhau
 
 ## Out of scope
 - Website marketing / CMS công khai → `homepage-nslaw`
 - Partner field-researcher PMS → `partner-pms`
 - Billing khách hàng / hóa đơn điện tử / đồng bộ kế toán thuế
-- Đa ví / quỹ phòng ban; workflow duyệt chi; đính kèm chứng từ (có thể slice sau)
+- Đa ví / quỹ phòng ban; OCR hóa đơn; role DIRECTOR riêng
 
 ## Stack & ràng buộc
 - Next.js (App Router) + TypeScript + Tailwind

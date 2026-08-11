@@ -82,6 +82,23 @@ enum NotificationType {
   GENERAL
   MENTION
   CHAT_MESSAGE
+  WALLET_BUDGET_PENDING
+  WALLET_BUDGET_UPDATE
+  WALLET_CLIENT_PENDING
+  WALLET_CLIENT_UPDATE
+}
+
+enum MoneyConfirmationKind {
+  BUDGET_ALLOCATE
+  CLIENT_RECEIPT
+}
+
+enum MoneyConfirmationStatus {
+  PENDING_RECIPIENT
+  PENDING_ALLOCATOR
+  CONFIRMED
+  REJECTED
+  DISPUTED
 }
 
 enum AuditAction {
@@ -154,6 +171,8 @@ model User {
   staffWallet             StaffWallet?
   walletTxCreated         WalletTransaction[] @relation("WalletTxCreatedBy")
   walletTxAllocated       WalletTransaction[] @relation("WalletTxAllocatedBy")
+  moneyConfirmationsFrom  MoneyConfirmation[] @relation("MoneyConfirmFrom")
+  moneyConfirmationsTo    MoneyConfirmation[] @relation("MoneyConfirmTo")
   attachmentAccessUpdates AttachmentAccess[]     @relation("AttachmentAccessUpdater")
   attachmentAccessEntries AttachmentAccessUser[]
   pushSubscriptions       PushSubscription[]
@@ -200,6 +219,7 @@ model Matter {
   folders      MatterFolder[]
   comments            Comment[]
   walletTransactions  WalletTransaction[]
+  moneyConfirmations  MoneyConfirmation[]
   @@index([leadLawyerId])
   @@index([clientId])
   @@index([updatedAt])
@@ -256,12 +276,44 @@ model WalletTransaction {
   /** Legacy MatterExpense import: history only, does not change balance. */
   legacyImported   Boolean              @default(false)
   createdAt        DateTime             @default(now())
+  attachments      Attachment[]
+  moneyConfirmation MoneyConfirmation?
 
   @@index([walletUserId, createdAt])
   @@index([spendCategoryId, createdAt])
   @@index([matterId])
   @@index([direction, createdAt])
   @@index([legacyImported])
+}
+
+/** Dual-sided confirmation for budget allocate / client cash handoff. */
+model MoneyConfirmation {
+  id                   String                   @id @default(cuid())
+  kind                 MoneyConfirmationKind
+  status               MoneyConfirmationStatus  @default(PENDING_RECIPIENT)
+  amountVnd            BigInt
+  note                 String?
+  disputeNote          String?
+  fromUserId           String
+  fromUser             User                     @relation("MoneyConfirmFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUserId             String
+  toUser               User                     @relation("MoneyConfirmTo", fields: [toUserId], references: [id], onDelete: Cascade)
+  matterId             String?
+  matter               Matter?                  @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  matterPlanStepId     String?
+  matterPlanStep       MatterPlanStep?          @relation(fields: [matterPlanStepId], references: [id], onDelete: SetNull)
+  recipientRespondedAt DateTime?
+  allocatorConfirmedAt DateTime?
+  walletTransactionId  String?                  @unique
+  walletTransaction    WalletTransaction?       @relation(fields: [walletTransactionId], references: [id], onDelete: SetNull)
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+
+  @@index([status, createdAt])
+  @@index([fromUserId, status])
+  @@index([toUserId, status])
+  @@index([kind, status])
+  @@index([matterId])
 }
 
 /** Admin/Manager-managed spend groups (vụ việc, văn phòng phẩm, …). */
@@ -306,6 +358,7 @@ model MatterPlanStep {
   attachments      Attachment[]
   assignees        MatterPlanStepAssignee[]
   walletTransactions WalletTransaction[]
+  moneyConfirmations MoneyConfirmation[]
 
   @@index([matterId, sortOrder])
   @@index([dueAt])
@@ -400,6 +453,8 @@ model Attachment {
   conversation     Conversation?    @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   chatMessageId    String?
   chatMessage      ChatMessage?     @relation(fields: [chatMessageId], references: [id], onDelete: Cascade)
+  walletTransactionId String?
+  walletTransaction   WalletTransaction? @relation(fields: [walletTransactionId], references: [id], onDelete: Cascade)
   labelId          String?
   label            AttachmentLabel? @relation(fields: [labelId], references: [id], onDelete: SetNull)
   customLabel      String?
@@ -418,6 +473,7 @@ model Attachment {
   @@index([commentId])
   @@index([conversationId])
   @@index([chatMessageId])
+  @@index([walletTransactionId])
   @@index([labelId])
   @@index([folderId])
   @@index([isImportant])

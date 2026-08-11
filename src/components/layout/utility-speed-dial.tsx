@@ -9,11 +9,16 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { useTranslations } from "next-intl";
-import { CircleDollarSign, CircleHelp, X, Zap } from "lucide-react";
-import { HelpPanel } from "@/components/help/help-panel";
 import {
-  AddExpenseModal,
-} from "@/components/expenses/add-expense-modal";
+  ArrowDownToLine,
+  CircleDollarSign,
+  CircleHelp,
+  X,
+  Zap,
+} from "lucide-react";
+import { HelpPanel } from "@/components/help/help-panel";
+import { AddExpenseModal } from "@/components/expenses/add-expense-modal";
+import { ClientReceiptModal } from "@/components/wallet/client-receipt-modal";
 import { cn } from "@/lib/utils";
 
 const AUTO_COLLAPSE_MS = 5_000;
@@ -210,6 +215,7 @@ export function UtilitySpeedDial() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [helpSession, setHelpSession] = useState(0);
   const [expenseOpen, setExpenseOpen] = useState(false);
+  const [receiptOpen, setReceiptOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
 
   const pos = useSyncExternalStore(
@@ -250,6 +256,11 @@ export function UtilitySpeedDial() {
   function openExpense() {
     setExpanded(false);
     setExpenseOpen(true);
+  }
+
+  function openReceipt() {
+    setExpanded(false);
+    setReceiptOpen(true);
   }
 
   const onFabPointerDown = useCallback(
@@ -321,17 +332,19 @@ export function UtilitySpeedDial() {
   }
 
   const helpLabel = tHelp("fabLabel");
-  const expenseLabel = tExpense("fabLabel");
+  const spendLabel = tExpense("fabSpendLabel");
+  const receiveLabel = tExpense("fabReceiveLabel");
   const toggleLabel = expanded
     ? tCommon("collapseActions")
     : tCommon("expandActions");
   const moveHint = tCommon("moveActions");
 
-  const expenseDelayMs = expanded ? 0 : STAGGER_MS;
-  const helpDelayMs = expanded ? STAGGER_MS : 0;
+  const spendDelayMs = expanded ? 0 : STAGGER_MS * 2;
+  const receiveDelayMs = expanded ? STAGGER_MS : STAGGER_MS;
+  const helpDelayMs = expanded ? STAGGER_MS * 2 : 0;
 
   const expandUp =
-    !pos || pos.top - viewportSize().offsetTop >= SLOT_PX * 2 + EDGE_PAD;
+    !pos || pos.top - viewportSize().offsetTop >= SLOT_PX * 3 + EDGE_PAD;
 
   const shellStyle =
     pos == null
@@ -359,33 +372,49 @@ export function UtilitySpeedDial() {
           onClick: openHelp,
           label: helpLabel,
           delayMs: helpDelayMs,
-          offsetSlots: 2,
+          offsetSlots: 3,
           icon: CircleHelp,
         },
         {
-          key: "expense",
+          key: "receive",
+          onClick: openReceipt,
+          label: receiveLabel,
+          delayMs: receiveDelayMs,
+          offsetSlots: 2,
+          icon: ArrowDownToLine,
+        },
+        {
+          key: "spend",
           onClick: openExpense,
-          label: expenseLabel,
-          delayMs: expenseDelayMs,
+          label: spendLabel,
+          delayMs: spendDelayMs,
           offsetSlots: 1,
           icon: CircleDollarSign,
         },
       ]
     : [
         {
-          key: "expense",
+          key: "spend",
           onClick: openExpense,
-          label: expenseLabel,
-          delayMs: expenseDelayMs,
+          label: spendLabel,
+          delayMs: spendDelayMs,
           offsetSlots: 1,
           icon: CircleDollarSign,
+        },
+        {
+          key: "receive",
+          onClick: openReceipt,
+          label: receiveLabel,
+          delayMs: receiveDelayMs,
+          offsetSlots: 2,
+          icon: ArrowDownToLine,
         },
         {
           key: "help",
           onClick: openHelp,
           label: helpLabel,
           delayMs: helpDelayMs,
-          offsetSlots: 2,
+          offsetSlots: 3,
           icon: CircleHelp,
         },
       ];
@@ -503,6 +532,10 @@ export function UtilitySpeedDial() {
       <AddExpenseModal
         open={expenseOpen}
         onClose={() => setExpenseOpen(false)}
+      />
+      <ClientReceiptModal
+        open={receiptOpen}
+        onClose={() => setReceiptOpen(false)}
       />
     </>
   );

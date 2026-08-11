@@ -8,10 +8,9 @@ import { createAuditLog } from "@/lib/audit";
 import { getAccessibleMatterIds } from "@/lib/access";
 import { actionError } from "@/i18n/server-labels";
 import { ensureStaffWallet } from "@/lib/wallet";
-import {
-  allocateBudgetSchema,
-  walletSpendSchema,
-} from "@/lib/wallet-validations";
+import { walletSpendSchema } from "@/lib/wallet-validations";
+import { canManageWalletUser } from "@/lib/permissions";
+import { allocateBudgetAction as allocateBudgetConfirmation } from "@/lib/money-confirmation-actions";
 
 const OPEN_MATTER_STATUSES = ["NEW", "IN_PROGRESS", "ON_HOLD"] as const;
 
@@ -22,6 +21,13 @@ export type SpendCategoryOption = {
   requiresMatter: boolean;
   isActive: boolean;
   sortOrder: number;
+};
+
+export type WalletTxAttachment = {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
 };
 
 export type WalletTxListItem = {
@@ -45,6 +51,7 @@ export type WalletTxListItem = {
   planStepTitle: string | null;
   walletUserId: string;
   walletUserName: string;
+  attachments: WalletTxAttachment[];
 };
 
 function serializeTx(
@@ -67,6 +74,12 @@ function serializeTx(
     matter: { code: string; title: string } | null;
     matterPlanStep: { title: string } | null;
     wallet: { user: { name: string } };
+    attachments: {
+      id: string;
+      fileName: string;
+      mimeType: string;
+      sizeBytes: number;
+    }[];
   },
 ): WalletTxListItem {
   return {
@@ -90,6 +103,12 @@ function serializeTx(
     planStepTitle: tx.matterPlanStep?.title ?? null,
     walletUserId: tx.walletUserId,
     walletUserName: tx.wallet.user.name,
+    attachments: (tx.attachments ?? []).map((a) => ({
+      id: a.id,
+      fileName: a.fileName,
+      mimeType: a.mimeType,
+      sizeBytes: a.sizeBytes,
+    })),
   };
 }
 
@@ -100,6 +119,16 @@ const txInclude = {
   matterPlanStep: { select: { title: true } },
   spendCategory: { select: { name: true, code: true } },
   wallet: { include: { user: { select: { name: true } } } },
+  attachments: {
+    where: { isLatest: true },
+    select: {
+      id: true,
+      fileName: true,
+      mimeType: true,
+      sizeBytes: true,
+    },
+    orderBy: { createdAt: "asc" as const },
+  },
 } satisfies Prisma.WalletTransactionInclude;
 
 export async function listActiveSpendCategoriesAction() {
@@ -129,73 +158,20 @@ export async function getMyWalletAction() {
 }
 
 export async function listActiveUsersForBudgetAction() {
-  await requireRole(["ADMIN", "MANAGER"]);
+  const actor = await requireRole(["ADMIN", "MANAGER"]);
   const users = await prisma.user.findMany({
     where: { isActive: true },
     select: { id: true, name: true, username: true, role: true },
     orderBy: [{ name: "asc" }],
   });
-  return { users };
+  return {
+    users: users.filter((u) => canManageWalletUser(actor, u)),
+  };
 }
 
+/** Thin wrapper — Next "use server" cannot re-export from another module. */
 export async function allocateBudgetAction(formData: FormData) {
-  const actor = await requireRole(["ADMIN", "MANAGER"]);
-  const parsed = allocateBudgetSchema.safeParse({
-    walletUserId: formData.get("walletUserId"),
-    amountVnd: formData.get("amountVnd"),
-    note: formData.get("note"),
-  });
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? (await actionError("invalidData")) };
-  }
-
-  const target = await prisma.user.findUnique({
-    where: { id: parsed.data.walletUserId },
-    select: { id: true, name: true, isActive: true },
-  });
-  if (!target || !target.isActive) {
-    return { error: await actionError("userNotFound") };
-  }
-
-  const amountVnd = BigInt(parsed.data.amountVnd);
-  const note = parsed.data.note?.trim() || null;
-
-  try {
-    const tx = await prisma.$transaction(async (db) => {
-      await ensureStaffWallet(db, target.id);
-      const updated = await db.staffWallet.update({
-        where: { userId: target.id },
-        data: { balanceVnd: { increment: amountVnd } },
-      });
-      return db.walletTransaction.create({
-        data: {
-          walletUserId: target.id,
-          direction: "CREDIT",
-          amountVnd,
-          balanceAfterVnd: updated.balanceVnd,
-          note,
-          allocatedById: actor.id,
-          createdById: actor.id,
-        },
-        include: txInclude,
-      });
-    });
-
-    await createAuditLog({
-      userId: actor.id,
-      action: "CREATE",
-      entityType: "WalletTransaction",
-      entityId: tx.id,
-      details: `CREDIT ${amountVnd.toString()} → ${target.name}`,
-    });
-
-    revalidatePath("/wallet");
-    revalidatePath("/expenses");
-    return { success: true, transaction: serializeTx(tx) };
-  } catch (error) {
-    console.error("allocateBudgetAction failed:", error);
-    return { error: await actionError("cannotAllocateBudget") };
-  }
+  return allocateBudgetConfirmation(formData);
 }
 
 export async function recordWalletSpendAction(formData: FormData) {
@@ -345,7 +321,23 @@ export async function listWalletTransactionsAction(params: {
   if (params.scope === "mine") {
     where.walletUserId = user.id;
   } else if (params.walletUserId) {
+    const target = await prisma.user.findUnique({
+      where: { id: params.walletUserId },
+      select: { id: true, role: true },
+    });
+    if (!target || !canManageWalletUser(user, target)) {
+      return { error: await actionError("noWalletManagePermission"), transactions: [] };
+    }
     where.walletUserId = params.walletUserId;
+  } else if (params.scope === "company") {
+    const users = await prisma.user.findMany({
+      where: { isActive: true },
+      select: { id: true, role: true },
+    });
+    const allowed = users
+      .filter((u) => canManageWalletUser(user, u))
+      .map((u) => u.id);
+    where.walletUserId = { in: allowed };
   }
 
   if (params.direction && params.direction !== "ALL") {

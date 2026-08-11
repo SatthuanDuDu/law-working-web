@@ -7,14 +7,17 @@
 - `SpendCategory` catalog (Admin/Manager CRUD):
   - System seeds: Vụ việc (`requiresMatter`), Thiết bị/văn phòng phẩm, Chi khác
   - Custom categories allowed; optional “requires matter”
-- No overdraft; no approval workflow in v1
+- No overdraft; **dual confirmation** for budget allocate + client cash handoff (`MoneyConfirmation`)
 - Legacy `MatterExpense` imported then dropped
+- ACL: Admin/Manager manage same/lower rank wallets; peer lawyers cannot
 
 ## UI
-- `/wallet` — all roles: balance, history, filters, spend
-- `/expenses` — Admin/Manager: cashflow KPIs, allocate form, balances, company txs
+- `/wallet` — balance, history, filters, spend + receipt links, pending confirmations, client cash handoff
+- `/expenses` — Admin/Manager: cashflow KPIs (scoped), allocate (pending until confirmed), confirmations, balances, company txs
 - `/admin/spend-categories` — Admin/Manager manage category list
-- FAB `$` — wallet spend modal (categories from catalog)
+- FAB `$` — wallet spend modal (categories from catalog; optional multi-file receipts)
+- Receipts: see `ai/docs/wallet-receipts.md`
+- Confirmations: see `ai/docs/budget-confirmation.md`
 
 ## Ops
 - Schema: `StaffWallet`, `WalletTransaction`, `SpendCategory`

@@ -4,8 +4,14 @@ import { cn } from "@/lib/utils";
 
 export const listDivideClass = "min-w-0 divide-y divide-border/60";
 
-export const listRowClass =
-  "interactive-press block min-w-0 max-w-full px-2.5 py-2.5 text-left transition-colors hover:bg-primary-muted/40 hover:[filter:none] active:[filter:none]";
+/** Shared list-row hover — solid sage wash (readable on white SaaS panels). */
+export const listRowHoverClass =
+  "transition-[background-color,box-shadow,color] duration-150 hover:bg-primary-muted-hover hover:[filter:none] active:bg-primary-muted active:[filter:none]";
+
+export const listRowClass = cn(
+  "interactive-press block min-w-0 max-w-full rounded-md px-2.5 py-2.5 text-left",
+  listRowHoverClass,
+);
 
 export const listRowButtonClass = cn(
   listRowClass,
@@ -15,5 +21,7 @@ export const listRowButtonClass = cn(
 export const listNestedClass =
   "ml-3 min-w-0 space-y-0.5 border-l border-border/70 py-1 pl-3";
 
-export const listNestedRowClass =
-  "interactive-press flex min-w-0 items-start gap-2 rounded-sm px-1.5 py-1.5 text-left hover:bg-primary-muted/50 hover:[filter:none] active:[filter:none]";
+export const listNestedRowClass = cn(
+  "interactive-press flex min-w-0 items-start gap-2 rounded-md px-1.5 py-1.5 text-left",
+  listRowHoverClass,
+);

@@ -19,6 +19,9 @@ import { Input } from "@/components/ui/input";
 import { Label, Select } from "@/components/ui/card";
 import { SectionPanel } from "@/components/ui/section-panel";
 import { allocateBudgetAction, type WalletTxListItem } from "@/lib/wallet-actions";
+import type { MoneyConfirmationListItem } from "@/lib/money-confirmation-actions";
+import { WalletReceiptLinks } from "@/components/wallet/wallet-receipt-links";
+import { MoneyConfirmationsPanel } from "@/components/wallet/money-confirmations-panel";
 import type { CashflowStatsDto } from "@/lib/wallet-stats";
 import { formatVndDigits } from "@/lib/wallet";
 import { liquidPanelClass } from "@/lib/liquid-panel";
@@ -48,10 +51,12 @@ export function CashflowDashboard({
   stats,
   users,
   transactions,
+  confirmations = [],
 }: {
   stats: CashflowStatsDto;
   users: { id: string; name: string; username: string; role: string }[];
   transactions: WalletTxListItem[];
+  confirmations?: MoneyConfirmationListItem[];
 }) {
   const t = useTranslations("expenses");
   const tWallet = useTranslations("wallet");
@@ -180,8 +185,11 @@ export function CashflowDashboard({
         ))}
       </div>
 
+      <MoneyConfirmationsPanel confirmations={confirmations} />
+
       <div className="grid gap-4 lg:grid-cols-2">
         <SectionPanel title={t("allocateTitle")}>
+          <p className="mb-3 text-xs text-muted-foreground">{t("allocatePendingHint")}</p>
           <form onSubmit={handleAllocate} className="space-y-3">
             <div className="space-y-1.5">
               <Label htmlFor="alloc-user">{t("allocateUser")}</Label>
@@ -300,6 +308,7 @@ export function CashflowDashboard({
                     : ""}
                   {tx.detail ? ` · ${tx.detail}` : tx.note ? ` · ${tx.note}` : ""}
                 </p>
+                <WalletReceiptLinks attachments={tx.attachments ?? []} />
               </li>
             ))}
           </ul>

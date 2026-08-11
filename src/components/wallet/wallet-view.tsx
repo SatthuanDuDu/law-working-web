@@ -1,13 +1,26 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label, Select } from "@/components/ui/card";
 import { SectionPanel } from "@/components/ui/section-panel";
 import { AddExpenseModal } from "@/components/expenses/add-expense-modal";
 import type { WalletTxListItem } from "@/lib/wallet-actions";
+import type { MoneyConfirmationListItem } from "@/lib/money-confirmation-actions";
+import { WalletReceiptLinks } from "@/components/wallet/wallet-receipt-links";
+import { MoneyConfirmationsPanel } from "@/components/wallet/money-confirmations-panel";
+import { ClientReceiptModal } from "@/components/wallet/client-receipt-modal";
 import { formatVndDigits } from "@/lib/wallet";
 import { listDivideClass, listRowClass } from "@/lib/list-surface";
 import { cn } from "@/lib/utils";
@@ -26,13 +39,24 @@ function formatWhen(iso: string) {
 export function WalletView({
   balanceVnd,
   initialTransactions,
+  confirmations = [],
 }: {
   balanceVnd: string;
   initialTransactions: WalletTxListItem[];
+  confirmations?: MoneyConfirmationListItem[];
 }) {
   const t = useTranslations("wallet");
   const router = useRouter();
   const [spendOpen, setSpendOpen] = useState(false);
+  const [receiptOpen, setReceiptOpen] = useState(false);
+  const [txMenuOpen, setTxMenuOpen] = useState(false);
+  const [txMenuBox, setTxMenuBox] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
+  const txMenuRef = useRef<HTMLDivElement>(null);
+  const txTriggerRef = useRef<HTMLButtonElement>(null);
   const [direction, setDirection] = useState<"ALL" | "CREDIT" | "DEBIT">("ALL");
   const [categoryId, setCategoryId] = useState<string>("ALL");
   const [sort, setSort] = useState<"newest" | "oldest" | "amount_desc" | "amount_asc">(
@@ -40,6 +64,56 @@ export function WalletView({
   );
   const [includeLegacy, setIncludeLegacy] = useState(false);
   const [, startTransition] = useTransition();
+
+  useLayoutEffect(() => {
+    if (!txMenuOpen) return;
+    function place() {
+      const el = txTriggerRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const width = rect.width;
+      const left = Math.min(
+        Math.max(8, rect.left),
+        window.innerWidth - width - 8,
+      );
+      setTxMenuBox({
+        top: rect.bottom + 6,
+        left,
+        width,
+      });
+    }
+    const raf = window.requestAnimationFrame(place);
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [txMenuOpen]);
+
+  useEffect(() => {
+    if (!txMenuOpen) return;
+    function onPointerDown(event: MouseEvent) {
+      const target = event.target as Node;
+      if (
+        txTriggerRef.current?.contains(target) ||
+        txMenuRef.current?.contains(target)
+      ) {
+        return;
+      }
+      setTxMenuOpen(false);
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setTxMenuOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [txMenuOpen]);
 
   const categoryOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -78,15 +152,67 @@ export function WalletView({
           <p className="text-2xl font-semibold tracking-tight text-primary">
             {formatVndDigits(balanceVnd)} ₫
           </p>
-          <Button
-            type="button"
-            className="interactive-press w-full sm:w-auto"
-            onClick={() => setSpendOpen(true)}
-          >
-            {t("spend")}
-          </Button>
+          <div className="relative w-full sm:w-auto">
+            <Button
+              ref={txTriggerRef}
+              type="button"
+              className="interactive-press w-full sm:w-auto"
+              aria-haspopup="menu"
+              aria-expanded={txMenuOpen}
+              onClick={() => setTxMenuOpen((v) => !v)}
+            >
+              {t("addTransaction")}
+              <ChevronDown
+                className={cn(
+                  "size-4 transition-transform",
+                  txMenuOpen && "rotate-180",
+                )}
+                aria-hidden
+              />
+            </Button>
+            {txMenuOpen && txMenuBox
+              ? createPortal(
+                  <div
+                    ref={txMenuRef}
+                    role="menu"
+                    className="fixed z-[70] overflow-hidden rounded-md border border-border bg-surface py-1 shadow-[var(--shadow-overlay)]"
+                    style={{
+                      top: txMenuBox.top,
+                      left: txMenuBox.left,
+                      width: txMenuBox.width,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="interactive-press flex w-full items-center px-3 py-2.5 text-left text-sm text-foreground transition-colors duration-150 hover:bg-primary-muted hover:text-primary focus-visible:bg-primary-muted focus-visible:text-primary focus-visible:outline-none"
+                      onClick={() => {
+                        setTxMenuOpen(false);
+                        setReceiptOpen(true);
+                      }}
+                    >
+                      {t("addReceive")}
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="interactive-press flex w-full items-center px-3 py-2.5 text-left text-sm text-foreground transition-colors duration-150 hover:bg-primary-muted hover:text-primary focus-visible:bg-primary-muted focus-visible:text-primary focus-visible:outline-none"
+                      onClick={() => {
+                        setTxMenuOpen(false);
+                        setSpendOpen(true);
+                      }}
+                    >
+                      {t("addSpend")}
+                    </button>
+                  </div>,
+                  document.body,
+                )
+              : null}
+          </div>
         </div>
       </SectionPanel>
+
+      <MoneyConfirmationsPanel confirmations={confirmations} />
 
       <SectionPanel title={t("history")}>
         <div className="mb-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -197,6 +323,7 @@ export function WalletView({
                     {tx.planStepTitle ? ` · ${tx.planStepTitle}` : ""}
                   </p>
                 ) : null}
+                <WalletReceiptLinks attachments={tx.attachments ?? []} />
               </li>
             ))}
           </ul>
@@ -207,6 +334,13 @@ export function WalletView({
         open={spendOpen}
         onClose={() => {
           setSpendOpen(false);
+          startTransition(() => router.refresh());
+        }}
+      />
+      <ClientReceiptModal
+        open={receiptOpen}
+        onClose={() => {
+          setReceiptOpen(false);
           startTransition(() => router.refresh());
         }}
       />

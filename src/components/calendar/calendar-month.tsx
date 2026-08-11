@@ -1375,8 +1375,8 @@ function MonthYearPicker({
         onClick={() => (open ? closePicker() : openPicker())}
         className={cn(
           "interactive-press inline-flex min-w-0 items-center justify-center gap-1 rounded-lg px-1 py-1 text-base font-semibold capitalize text-primary sm:min-w-48 sm:px-2 sm:text-lg",
-          "transition-colors hover:bg-primary-muted/50",
-          open && "bg-primary-muted/60",
+          "transition-colors hover:bg-primary-muted-hover",
+          open && "bg-primary-muted",
         )}
       >
         {format(value, "MMMM yyyy", { locale: dateLocale })}
@@ -1443,7 +1443,7 @@ function MonthYearPicker({
               <div className="mt-3 border-t border-border pt-2">
                 <button
                   type="button"
-                  className="interactive-press w-full rounded-md px-2 py-1.5 text-sm text-primary transition-colors hover:bg-primary-muted/50"
+                  className="interactive-press w-full rounded-md px-2 py-1.5 text-sm text-primary transition-colors hover:bg-primary-muted-hover"
                   onClick={() => {
                     onChange(startOfMonth(new Date()));
                     closePicker();
@@ -2211,8 +2211,8 @@ export function CalendarMonth({
                       className={cn(
                         "interactive-press flex min-h-20 cursor-pointer flex-col rounded-md border p-0.5 text-left transition-colors duration-200 sm:min-h-36 sm:rounded-lg sm:p-2.5",
                         inMonth
-                          ? "border-border bg-surface/80 hover:border-primary/30 hover:bg-primary-muted/40"
-                          : "border-border/50 bg-muted/40 text-muted-foreground hover:bg-primary-muted/20",
+                          ? "border-border bg-surface/80 hover:border-primary/30 hover:bg-primary-muted-hover"
+                          : "border-border/50 bg-muted/40 text-muted-foreground hover:bg-primary-muted/40",
                         isSameDay(day, new Date()) && "ring-2 ring-primary/40",
                       )}
                     >

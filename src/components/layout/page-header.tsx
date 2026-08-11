@@ -10,7 +10,6 @@ import { NotificationPanel } from "@/components/notifications/notification-panel
 import { CreateMatterButton } from "@/components/matters/create-matter-button";
 import { HEADER_TOOLBAR_BTN } from "@/components/layout/header-toolbar";
 import { OPEN_COMMAND_PALETTE_EVENT } from "@/components/layout/command-palette";
-import { liquidPanelClass } from "@/lib/liquid-panel";
 import { UrgentReminderStack } from "@/components/layout/urgent-reminder-stack";
 import { usePageMeta } from "@/contexts/page-meta-context";
 import { useSidebar } from "@/contexts/sidebar-context";
@@ -58,8 +57,8 @@ export function PageHeader() {
 
   return (
     <header ref={headerRef} className="page-header-shell sticky top-0 z-20">
-      <div className={cn("page-header-panel", liquidPanelClass)}>
-        <div className="flex items-center justify-between gap-2">
+      <div className="page-header-panel">
+        <div className="flex items-center justify-between gap-2 sm:px-1 lg:px-2">
           <div className="flex shrink-0 items-center gap-1.5">
             <Button
               type="button"
@@ -122,7 +121,7 @@ export function PageHeader() {
         </div>
 
         {meta.title ? (
-          <h1 className="mt-2 min-w-0 break-words text-lg font-bold leading-snug text-primary dark:text-white sm:text-xl lg:text-2xl">
+          <h1 className="mt-2 min-w-0 break-words text-lg font-bold leading-snug text-foreground sm:text-xl lg:text-2xl">
             {meta.title}
           </h1>
         ) : null}
@@ -130,20 +129,20 @@ export function PageHeader() {
         {showBreadcrumbs ? (
           <nav
             aria-label={tCommon("breadcrumb")}
-            className="mt-1 hidden flex-wrap items-center gap-1 text-sm text-primary/70 dark:text-white/70 sm:flex"
+            className="mt-1 hidden flex-wrap items-center gap-1 text-sm text-muted-foreground sm:flex"
           >
             {breadcrumbs.map((crumb, index) => (
               <span key={`${crumb.label}-${index}`} className="flex items-center gap-1">
-                {index > 0 && <span className="text-primary/35 dark:text-white/35">/</span>}
+                {index > 0 && <span className="text-border">/</span>}
                 {crumb.href ? (
                   <Link
                     href={crumb.href}
-                    className="interactive-link text-primary/70 hover:text-primary dark:text-white/70 dark:hover:text-white"
+                    className="interactive-link text-muted-foreground hover:text-foreground"
                   >
                     {crumb.label}
                   </Link>
                 ) : (
-                  <span className="font-medium text-primary dark:text-white">{crumb.label}</span>
+                  <span className="font-medium text-foreground">{crumb.label}</span>
                 )}
               </span>
             ))}

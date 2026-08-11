@@ -7,6 +7,8 @@ import {
 } from "date-fns";
 import { prisma } from "@/lib/prisma";
 import { ensureStaffWallet } from "@/lib/wallet";
+import { canManageWalletUser, type SessionUser } from "@/lib/permissions";
+import type { Role } from "@prisma/client";
 
 export type WalletUserBalance = {
   userId: string;
@@ -71,20 +73,44 @@ export function resolveCashflowRange(searchParams: {
   };
 }
 
-export async function getCashflowStats(range: {
-  from: Date;
-  to: Date;
-}): Promise<CashflowStatsDto> {
+export async function getCashflowStats(
+  range: {
+    from: Date;
+    to: Date;
+  },
+  actor?: Pick<SessionUser, "id" | "role">,
+): Promise<CashflowStatsDto> {
   const createdAt = { gte: range.from, lte: range.to };
+
+  const activeUsers = await prisma.user.findMany({
+    where: { isActive: true },
+    select: { id: true, role: true },
+  });
+  const allowedUserIds = actor
+    ? activeUsers.filter((u) => canManageWalletUser(actor, u)).map((u) => u.id)
+    : activeUsers.map((u) => u.id);
+
+  const walletUserFilter =
+    allowedUserIds.length > 0
+      ? { walletUserId: { in: allowedUserIds } }
+      : { walletUserId: { in: ["__none__"] } };
+
   const baseDebit = {
     direction: "DEBIT" as const,
     legacyImported: false,
     createdAt,
+    ...walletUserFilter,
+  };
+  const baseCredit = {
+    direction: "CREDIT" as const,
+    legacyImported: false,
+    createdAt,
+    ...walletUserFilter,
   };
 
-  const [creditAgg, debitAgg, byCategory, users] = await Promise.all([
+  const [creditAgg, debitAgg, byCategory] = await Promise.all([
     prisma.walletTransaction.aggregate({
-      where: { direction: "CREDIT", legacyImported: false, createdAt },
+      where: baseCredit,
       _sum: { amountVnd: true },
       _count: true,
     }),
@@ -99,16 +125,12 @@ export async function getCashflowStats(range: {
       _sum: { amountVnd: true },
       _count: true,
     }),
-    prisma.user.findMany({
-      where: { isActive: true },
-      select: { id: true },
-    }),
   ]);
 
-  await Promise.all(users.map((u) => ensureStaffWallet(prisma, u.id)));
+  await Promise.all(allowedUserIds.map((id) => ensureStaffWallet(prisma, id)));
 
   const walletsFresh = await prisma.staffWallet.findMany({
-    where: { user: { isActive: true } },
+    where: { userId: { in: allowedUserIds } },
     select: {
       userId: true,
       balanceVnd: true,
@@ -167,7 +189,7 @@ export async function getCashflowStats(range: {
       userId: w.userId,
       name: w.user.name,
       username: w.user.username,
-      role: w.user.role,
+      role: w.user.role as Role,
       balanceVnd: w.balanceVnd.toString(),
     })),
   };

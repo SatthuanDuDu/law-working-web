@@ -169,24 +169,16 @@
       "description": "Configure labels for classifying attachments"
     },
     "website": {
-      "title": "NSLAW website",
-      "description": "Manage public site content and traffic"
-    },
-    "websiteTraffic": {
-      "title": "Website traffic",
-      "description": "Daily pageview statistics"
-    },
-    "matterDetail": {
-      "title": "Matter details",
-      "description": "Matter information and documents"
-    },
-    "website": {
       "title": "NSLAW Website",
       "description": "Manage the public website content"
     },
     "websiteTraffic": {
       "title": "Website traffic",
       "description": "Public site page view statistics"
+    },
+    "matterDetail": {
+      "title": "Matter details",
+      "description": "Matter information and documents"
     },
     "fallback": {
       "title": "NSLAW Work Manager"
@@ -252,7 +244,11 @@
       "PLAN_DUE": "Plan step due",
       "GENERAL": "General",
       "MENTION": "Mention",
-      "CHAT_MESSAGE": "Chat"
+      "CHAT_MESSAGE": "Chat",
+      "WALLET_BUDGET_PENDING": "Budget confirmation pending",
+      "WALLET_BUDGET_UPDATE": "Budget update",
+      "WALLET_CLIENT_PENDING": "Client cash pending",
+      "WALLET_CLIENT_UPDATE": "Client cash update"
     },
     "expenseType": {
       "COURT_FEE": "Court fee",
@@ -344,7 +340,7 @@
     "closedAt": "Closed",
     "noMatters": "No matters yet",
     "filters": "Filters",
-    "searchPlaceholder": "Search matters...",
+    "searchPlaceholder": "Search by code, title, client, lawyer...",
     "info": "Matter info",
     "infoMore": "Client & staff",
     "planTab": "Plan",
@@ -374,7 +370,6 @@
     "filterMembers": "Collaborators",
     "filterClient": "Client (company)",
     "filterCreatedAt": "Created date",
-    "searchPlaceholder": "Search by code, title, client, lawyer...",
     "listTruncatedWarning": "Showing the {shown} most recent of {total} matters — use search or filters to narrow the results.",
     "selectedCount": "{count} selected",
     "applyBulkStatus": "Apply",
@@ -1160,10 +1155,20 @@
     "cannotUpdateSpendCategory": "Unable to update spend category",
     "cannotDeleteSpendCategory": "Unable to delete spend category",
     "cannotDeleteSystemSpendCategory": "Cannot delete a system spend category",
-    "cannotDeleteSpendCategoryInUse": "Category has transactions — deactivate instead of delete"
+    "cannotDeleteSpendCategoryInUse": "Category has transactions — deactivate instead of delete",
+    "noWalletManagePermission": "You cannot manage this user's wallet/spend",
+    "cannotAssignReceiptToSelf": "Cannot hand off to yourself",
+    "assigneeRankTooLow": "Recipient must be same rank or higher",
+    "cannotCreateClientReceipt": "Could not create client cash handoff",
+    "confirmationNotFound": "Confirmation not found",
+    "confirmationWrongStatus": "Confirmation is not in a valid status",
+    "disputeNoteRequired": "Please enter a dispute note",
+    "cannotFinalizeConfirmation": "Could not finalize confirmation"
   },
   "expense": {
     "fabLabel": "Spend from wallet",
+    "fabReceiveLabel": "Receive client cash",
+    "fabSpendLabel": "Spend from wallet",
     "dialogTitle": "Record wallet spend",
     "type": "Matter expense type",
     "typePlaceholder": "Select expense type",
@@ -1190,7 +1195,16 @@
     "detailOtherPlaceholder": "Describe the spend",
     "detailMatterPlaceholder": "Describe the expense",
     "balance": "Wallet balance",
-    "note": "Note"
+    "note": "Note",
+    "receipts": "Receipts (images/files)",
+    "receiptsAdd": "Choose files",
+    "receiptsHint": "Up to {max} files, ≤ 25MB each",
+    "receiptsRemove": "Remove file",
+    "receiptsMax": "You can select at most {max} files",
+    "receiptTooLarge": "File too large: {name}",
+    "receiptUploading": "Uploading receipts…",
+    "receiptUploadFailed": "Could not upload receipt",
+    "receiptUploadFailedAfterSpend": "Spend saved but receipt upload failed — you can add files later"
   },
   "wallet": {
     "title": "Imprest wallet",
@@ -1212,7 +1226,11 @@
     "allocatedBy": "Allocated by",
     "legacy": "Legacy data",
     "afterBalance": "Balance after",
-    "includeLegacy": "Show legacy expenses"
+    "includeLegacy": "Show legacy expenses",
+    "receipts": "Receipts",
+    "addTransaction": "Add transaction",
+    "addReceive": "Receive",
+    "addSpend": "Spend"
   },
   "expenses": {
     "filterLabel": "Reporting period",
@@ -1244,7 +1262,7 @@
     "allocateAmount": "Amount (VND)",
     "allocateNote": "Note",
     "allocateSubmit": "Allocate",
-    "allocateSuccess": "Budget allocated",
+    "allocateSuccess": "Budget request created — waiting for staff confirmation",
     "allocateSaving": "Allocating...",
     "colType": "Type",
     "colMatter": "Matter",
@@ -1261,7 +1279,8 @@
     "sheetByType": "By type",
     "sheetByMatter": "By matter",
     "empty": "No expenses in the selected period.",
-    "emptyTx": "No transactions in this period."
+    "emptyTx": "No transactions in this period.",
+    "allocatePendingHint": "Balance is not credited yet — staff confirm receipt, then you confirm the amount."
   },
   "chat": {
     "title": "Chat",
@@ -1316,13 +1335,13 @@
     "tips": {
       "default": [
         "Use the left menu to move between matters, chat, calendar, and expenses.",
-        "The + button at the bottom-right opens quick actions (help and add expense).",
+        "The + button at the bottom-right opens quick actions (help, receive client cash, and wallet spend).",
         "If something is missing, it may be limited by your role."
       ],
       "dashboard": [
         "The dashboard summarizes today’s work and upcoming deadlines.",
         "Open Matters for case files; Calendar for plan/task due dates.",
-        "Tap + at the bottom-right, then $ to log an expense on an open matter."
+        "Tap + at the bottom-right: $ to spend from wallet, down-arrow to receive client cash."
       ],
       "mattersList": [
         "Create a matter from the top-right button (if you have permission).",
@@ -1361,7 +1380,7 @@
       ],
       "expenses": [
         "This page shows expense stats by period.",
-        "Add a cost quickly: tap + at the bottom-right, then $.",
+        "Add a transaction quickly: + at the bottom-right → $ (Spend) or down-arrow (Receive).",
         "Expenses only attach to open (not closed/archived) matters."
       ],
       "clients": [
@@ -1406,7 +1425,7 @@
       },
       "expenses": {
         "q": "How do I log an expense?",
-        "a": "Tap + at the bottom-right → choose $, then pick an open matter, type, and amount. See stats on Expenses. Closed/archived matters cannot take new expenses."
+        "a": "Tap + at the bottom-right → $ (Spend from wallet) or down-arrow (Receive client cash). For spend: pick an open matter, type, and amount. See stats on Expenses / Wallet."
       },
       "roles": {
         "q": "What do the roles mean?",
@@ -1434,5 +1453,38 @@
       "openCalendar": "Open Calendar",
       "openDashboard": "Open Overview"
     }
+  },
+  "moneyConfirm": {
+    "title": "Pending money confirmations",
+    "empty": "No pending confirmations.",
+    "kindBudget": "Budget allocate",
+    "kindClient": "Client cash",
+    "status": {
+      "PENDING_RECIPIENT": "Awaiting recipient",
+      "PENDING_ALLOCATOR": "Awaiting allocator confirm",
+      "CONFIRMED": "Confirmed",
+      "REJECTED": "Rejected",
+      "DISPUTED": "Amount disputed"
+    },
+    "accept": "Received",
+    "reject": "Reject",
+    "dispute": "Wrong amount",
+    "disputeNote": "Dispute note",
+    "disputePlaceholder": "Describe the amount received / mismatch",
+    "submitDispute": "Submit dispute",
+    "finalize": "Confirm amount & credit wallet",
+    "clientReceiptCta": "Client cash handoff",
+    "clientReceiptTitle": "Client cash handoff",
+    "clientReceiptHint": "Record cash received from a client and hand it to a same-or-higher-rank colleague. Dual confirmation is required before wallet credit.",
+    "clientReceiptSubmit": "Create handoff",
+    "clientReceiptSuccess": "Created — waiting for recipient confirmation",
+    "matter": "Matter",
+    "matterPlaceholder": "Select matter",
+    "planStep": "Plan step",
+    "planStepOptional": "No step (optional)",
+    "assignee": "Handoff recipient",
+    "assigneePlaceholder": "Select recipient",
+    "amount": "Amount (VND)",
+    "note": "Note"
   }
 }

@@ -173,7 +173,10 @@ export function UpcomingDeadlineList({
             <li
               key={item.key}
               className={cn(
-                "min-w-0 border-l-[3px] py-0.5 pl-3 transition-colors",
+                "group/deadline min-w-0 rounded-[var(--radius-md)] border border-transparent border-l-[3px] bg-transparent py-2.5 pl-3 pr-2.5",
+                "transition-[background-color,border-color,box-shadow] duration-150 ease-out",
+                "hover:border-y-border hover:border-r-border hover:bg-primary-muted-hover hover:shadow-[var(--shadow-card)]",
+                "dark:hover:bg-primary-muted-hover",
                 priorityAccentClass(item.statusVariant),
               )}
               title={
@@ -186,7 +189,7 @@ export function UpcomingDeadlineList({
                 href={item.href}
                 className="interactive-press block min-w-0 hover:[filter:none] active:[filter:none]"
               >
-                <p className="break-words text-sm font-medium leading-snug text-foreground sm:text-[0.9375rem]">
+                <p className="break-words text-sm font-medium leading-snug text-foreground transition-colors group-hover/deadline:text-primary sm:text-[0.9375rem]">
                   {item.title}
                 </p>
               </Link>

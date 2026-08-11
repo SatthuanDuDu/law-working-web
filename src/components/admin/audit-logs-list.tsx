@@ -468,7 +468,7 @@ export function AuditLogsList({
                 onClick={() => setSelected(log)}
                 className={cn(
                   "interactive-press flex w-full flex-col gap-2 px-4 py-3 text-left sm:flex-row sm:items-center sm:gap-4 sm:px-6",
-                  "hover:bg-muted/40",
+                  "hover:bg-primary-muted-hover",
                   log.action === "DELETE" && "bg-red-50/40 dark:bg-red-950/10",
                 )}
               >

@@ -1,7 +1,6 @@
 /**
- * Shared liquid-glass panel chrome — reserved for chrome surfaces (header, sidebar,
- * overlays/dialogs). Dense data surfaces (list/table cards) should pass `solid` to
- * <Card> instead: stacking blur under every row tanks scroll perf and readability.
+ * Shared panel chrome. Class name kept for call-site stability; surfaces are
+ * solid SaaS cards (no backdrop-blur / liquid glass).
  */
 export const liquidPanelClass =
-  "liquid-glass border bg-transparent backdrop-blur-[24px] backdrop-saturate-[1.4] motion-reduce:backdrop-blur-none";
+  "liquid-glass rounded-[var(--radius-lg)] border border-border bg-surface shadow-[var(--shadow-card)]";

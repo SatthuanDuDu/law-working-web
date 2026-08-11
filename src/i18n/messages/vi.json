@@ -170,23 +170,15 @@
     },
     "website": {
       "title": "Website NSLAW",
-      "description": "Quản lý nội dung và lượt truy cập trang công khai"
-    },
-    "websiteTraffic": {
-      "title": "Lượt truy cập web",
-      "description": "Thống kê xem trang theo ngày"
-    },
-    "matterDetail": {
-      "title": "Chi tiết vụ việc",
-      "description": "Thông tin và tài liệu vụ việc"
-    },
-    "website": {
-      "title": "Website NSLAW",
       "description": "Quản lý nội dung website công khai"
     },
     "websiteTraffic": {
       "title": "Lượt truy cập web",
       "description": "Thống kê lượt xem trang công khai"
+    },
+    "matterDetail": {
+      "title": "Chi tiết vụ việc",
+      "description": "Thông tin và tài liệu vụ việc"
     },
     "fallback": {
       "title": "NSLAW Work Manager"
@@ -252,7 +244,11 @@
       "PLAN_DUE": "Hạn bước kế hoạch",
       "GENERAL": "Chung",
       "MENTION": "Nhắc đến",
-      "CHAT_MESSAGE": "Tin nhắn"
+      "CHAT_MESSAGE": "Tin nhắn",
+      "WALLET_BUDGET_PENDING": "Chờ xác nhận budget",
+      "WALLET_BUDGET_UPDATE": "Cập nhật budget",
+      "WALLET_CLIENT_PENDING": "Chờ xác nhận tiền khách",
+      "WALLET_CLIENT_UPDATE": "Cập nhật tiền khách"
     },
     "expenseType": {
       "COURT_FEE": "Án phí",
@@ -344,7 +340,7 @@
     "closedAt": "Ngày đóng",
     "noMatters": "Chưa có vụ việc",
     "filters": "Bộ lọc",
-    "searchPlaceholder": "Tìm vụ việc...",
+    "searchPlaceholder": "Tìm theo mã, tên vụ việc, khách hàng, luật sư...",
     "info": "Thông tin vụ việc",
     "infoMore": "Khách hàng & nhân sự",
     "planTab": "Kế hoạch",
@@ -374,7 +370,6 @@
     "filterMembers": "Thành viên cộng tác",
     "filterClient": "Khách hàng (công ty)",
     "filterCreatedAt": "Ngày tạo",
-    "searchPlaceholder": "Tìm theo mã, tên vụ việc, khách hàng, luật sư...",
     "listTruncatedWarning": "Chỉ hiển thị {shown}/{total} vụ việc mới nhất — dùng tìm kiếm hoặc bộ lọc để thu hẹp kết quả.",
     "selectedCount": "Đã chọn {count}",
     "applyBulkStatus": "Áp dụng",
@@ -1160,10 +1155,20 @@
     "cannotUpdateSpendCategory": "Không thể cập nhật nhóm chi phí",
     "cannotDeleteSpendCategory": "Không thể xóa nhóm chi phí",
     "cannotDeleteSystemSpendCategory": "Không thể xóa nhóm chi hệ thống",
-    "cannotDeleteSpendCategoryInUse": "Nhóm đang có giao dịch — hãy tắt thay vì xóa"
+    "cannotDeleteSpendCategoryInUse": "Nhóm đang có giao dịch — hãy tắt thay vì xóa",
+    "noWalletManagePermission": "Không có quyền quản lý ví/chi của người này",
+    "cannotAssignReceiptToSelf": "Không thể bàn giao cho chính mình",
+    "assigneeRankTooLow": "Người nhận phải cùng cấp hoặc cấp cao hơn bạn",
+    "cannotCreateClientReceipt": "Không thể tạo phiếu nhận tiền khách",
+    "confirmationNotFound": "Không tìm thấy phiếu xác nhận",
+    "confirmationWrongStatus": "Phiếu không ở trạng thái phù hợp",
+    "disputeNoteRequired": "Vui lòng nhập ghi chú khiếu nại",
+    "cannotFinalizeConfirmation": "Không thể hoàn tất xác nhận"
   },
   "expense": {
-    "fabLabel": "Ghi chi từ ví",
+    "fabLabel": "Chi từ ví",
+    "fabReceiveLabel": "Nhận tiền khách",
+    "fabSpendLabel": "Chi từ ví",
     "dialogTitle": "Ghi chi từ ví tạm ứng",
     "type": "Loại chi phí vụ việc",
     "typePlaceholder": "Chọn loại chi phí",
@@ -1190,7 +1195,16 @@
     "detailOtherPlaceholder": "Mô tả khoản chi",
     "detailMatterPlaceholder": "Mô tả chi phí cụ thể",
     "balance": "Số dư ví",
-    "note": "Ghi chú"
+    "note": "Ghi chú",
+    "receipts": "Minh chứng (ảnh/file)",
+    "receiptsAdd": "Chọn file",
+    "receiptsHint": "Tối đa {max} file, mỗi file ≤ 25MB",
+    "receiptsRemove": "Bỏ file",
+    "receiptsMax": "Chỉ chọn tối đa {max} file",
+    "receiptTooLarge": "File quá lớn: {name}",
+    "receiptUploading": "Đang tải minh chứng…",
+    "receiptUploadFailed": "Không tải được minh chứng",
+    "receiptUploadFailedAfterSpend": "Đã ghi chi nhưng tải minh chứng thất bại — có thể bổ sung sau"
   },
   "wallet": {
     "title": "Ví tạm ứng",
@@ -1212,7 +1226,11 @@
     "allocatedBy": "Cấp bởi",
     "legacy": "Dữ liệu cũ",
     "afterBalance": "Số dư sau",
-    "includeLegacy": "Hiện chi phí cũ (trước ví)"
+    "includeLegacy": "Hiện chi phí cũ (trước ví)",
+    "receipts": "Minh chứng",
+    "addTransaction": "Thêm giao dịch",
+    "addReceive": "Nhận",
+    "addSpend": "Chi"
   },
   "expenses": {
     "filterLabel": "Kỳ thống kê",
@@ -1244,7 +1262,7 @@
     "allocateAmount": "Số tiền (VND)",
     "allocateNote": "Ghi chú",
     "allocateSubmit": "Phát budget",
-    "allocateSuccess": "Đã phát budget",
+    "allocateSuccess": "Đã tạo phiếu phát budget — chờ nhân viên xác nhận",
     "allocateSaving": "Đang phát...",
     "colType": "Loại",
     "colMatter": "Vụ việc",
@@ -1261,7 +1279,8 @@
     "sheetByType": "Theo loại",
     "sheetByMatter": "Theo vụ việc",
     "empty": "Không có chi phí trong kỳ đã chọn.",
-    "emptyTx": "Không có giao dịch trong kỳ."
+    "emptyTx": "Không có giao dịch trong kỳ.",
+    "allocatePendingHint": "Số tiền chưa cộng ví ngay — nhân viên xác nhận nhận tiền, rồi bạn xác nhận lại số tiền."
   },
   "chat": {
     "title": "Trò chuyện",
@@ -1316,13 +1335,13 @@
     "tips": {
       "default": [
         "Dùng menu bên trái để chuyển giữa vụ việc, chat, lịch và chi phí.",
-        "Nút + góc dưới phải mở thao tác nhanh (hướng dẫn và thêm chi phí).",
+        "Nút + góc dưới phải mở thao tác nhanh: hướng dẫn, nhận tiền khách, chi từ ví.",
         "Nếu không thấy một chức năng, có thể do quyền vai trò của bạn."
       ],
       "dashboard": [
         "Dashboard tóm tắt việc cần làm hôm nay và hạn sắp tới.",
         "Vào Vụ việc để mở hồ sơ; vào Lịch để xem hạn kế hoạch/công việc.",
-        "Bấm nút + góc phải rồi chọn biểu tượng $ để ghi chi phí."
+        "Bấm nút + góc phải: $ để chi từ ví, mũi tên xuống để nhận tiền khách."
       ],
       "mattersList": [
         "Tạo vụ việc mới từ nút góc trên (nếu bạn có quyền).",
@@ -1361,7 +1380,7 @@
       ],
       "expenses": [
         "Trang này thống kê chi phí theo kỳ.",
-        "Thêm khoản chi nhanh: bấm nút + góc phải rồi chọn biểu tượng $.",
+        "Thêm giao dịch nhanh: + góc phải → $ (Chi) hoặc mũi tên xuống (Nhận).",
         "Chỉ gắn chi phí cho vụ việc đang mở (chưa đóng/lưu trữ)."
       ],
       "clients": [
@@ -1406,7 +1425,7 @@
       },
       "expenses": {
         "q": "Cách ghi nhận chi phí?",
-        "a": "Bấm nút + góc dưới phải → chọn $, rồi chọn vụ đang mở, loại chi phí và số tiền. Xem thống kê tại trang Chi phí. Không thêm được chi phí cho vụ đã đóng hoặc lưu trữ."
+        "a": "Bấm nút + góc dưới phải → $ (Chi từ ví) hoặc mũi tên xuống (Nhận tiền khách). Chi: chọn vụ đang mở, loại và số tiền. Thống kê ở trang Chi phí / Ví tạm ứng."
       },
       "roles": {
         "q": "Các vai trò khác nhau thế nào?",
@@ -1434,5 +1453,38 @@
       "openCalendar": "Mở Lịch",
       "openDashboard": "Mở Tổng quan"
     }
+  },
+  "moneyConfirm": {
+    "title": "Chờ xác nhận tiền",
+    "empty": "Không có khoản nào đang chờ xác nhận.",
+    "kindBudget": "Phát budget",
+    "kindClient": "Tiền khách",
+    "status": {
+      "PENDING_RECIPIENT": "Chờ người nhận",
+      "PENDING_ALLOCATOR": "Chờ người phát xác nhận",
+      "CONFIRMED": "Đã xác nhận",
+      "REJECTED": "Từ chối",
+      "DISPUTED": "Khiếu nại số tiền"
+    },
+    "accept": "Đã nhận",
+    "reject": "Từ chối",
+    "dispute": "Sai số tiền",
+    "disputeNote": "Ghi chú khiếu nại",
+    "disputePlaceholder": "Mô tả số tiền thực nhận / lệch",
+    "submitDispute": "Gửi khiếu nại",
+    "finalize": "Xác nhận số tiền & cộng ví",
+    "clientReceiptCta": "Nhận tiền khách",
+    "clientReceiptTitle": "Bàn giao tiền khách",
+    "clientReceiptHint": "Ghi nhận tiền nhận từ KH và bàn giao cho người cùng cấp hoặc cấp cao hơn. Cần xác nhận 2 phía trước khi cộng ví.",
+    "clientReceiptSubmit": "Tạo phiếu bàn giao",
+    "clientReceiptSuccess": "Đã tạo phiếu — chờ người nhận xác nhận",
+    "matter": "Vụ việc",
+    "matterPlaceholder": "Chọn vụ việc",
+    "planStep": "Bước kế hoạch",
+    "planStepOptional": "Không gắn bước (tùy chọn)",
+    "assignee": "Người nhận bàn giao",
+    "assigneePlaceholder": "Chọn người nhận",
+    "amount": "Số tiền (VND)",
+    "note": "Ghi chú"
   }
 }

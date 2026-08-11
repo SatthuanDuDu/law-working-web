@@ -8,6 +8,7 @@ import {
   listActiveUsersForBudgetAction,
   listWalletTransactionsAction,
 } from "@/lib/wallet-actions";
+import { listMoneyConfirmationsAction } from "@/lib/money-confirmation-actions";
 import { requireRole } from "@/lib/session";
 import { getTranslations } from "next-intl/server";
 
@@ -16,18 +17,23 @@ export default async function ExpensesPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
-  await requireRole(["ADMIN", "MANAGER"]);
+  const actor = await requireRole(["ADMIN", "MANAGER"]);
   const tPages = await getTranslations("pages.expenses");
   const params = await searchParams;
   const range = resolveCashflowRange(params);
-  const [stats, usersRes, txRes] = await Promise.all([
-    getCashflowStats({ from: range.from, to: range.to }),
+  const [stats, usersRes, txRes, confirmRes] = await Promise.all([
+    getCashflowStats({ from: range.from, to: range.to }, actor),
     listActiveUsersForBudgetAction(),
     listWalletTransactionsAction({
       scope: "company",
       from: range.fromIso,
       to: range.toIso,
       take: 80,
+    }),
+    listMoneyConfirmationsAction({
+      scope: "manageable",
+      status: "OPEN",
+      take: 40,
     }),
   ]);
 
@@ -38,6 +44,7 @@ export default async function ExpensesPage({
         stats={stats}
         users={usersRes.users}
         transactions={txRes.transactions}
+        confirmations={confirmRes.confirmations}
       />
     </div>
   );

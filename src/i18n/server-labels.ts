@@ -58,6 +58,10 @@ export async function getLabelMaps() {
       GENERAL: t("notificationType.GENERAL"),
       MENTION: t("notificationType.MENTION"),
       CHAT_MESSAGE: t("notificationType.CHAT_MESSAGE"),
+      WALLET_BUDGET_PENDING: t("notificationType.WALLET_BUDGET_PENDING"),
+      WALLET_BUDGET_UPDATE: t("notificationType.WALLET_BUDGET_UPDATE"),
+      WALLET_CLIENT_PENDING: t("notificationType.WALLET_CLIENT_PENDING"),
+      WALLET_CLIENT_UPDATE: t("notificationType.WALLET_CLIENT_UPDATE"),
     },
     clientBusinessType: {
       LLC: t("clientBusinessType.LLC"),

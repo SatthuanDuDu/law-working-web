@@ -4,6 +4,7 @@ import type { Role } from "@prisma/client";
 import {
   canViewAllClients,
   canViewAllMatters,
+  isManagerOrAbove,
 } from "@/lib/permissions";
 
 export const getAccessibleMatterIds = cache(async (userId: string, role: Role) => {
@@ -54,6 +55,7 @@ export async function canAccessAttachmentTarget(
     taskId?: string | null;
     clientId?: string | null;
     conversationId?: string | null;
+    walletTransactionId?: string | null;
   },
 ) {
   if (target.conversationId) {
@@ -67,6 +69,16 @@ export async function canAccessAttachmentTarget(
       select: { id: true },
     });
     return Boolean(member);
+  }
+
+  if (target.walletTransactionId) {
+    const tx = await prisma.walletTransaction.findUnique({
+      where: { id: target.walletTransactionId },
+      select: { walletUserId: true, createdById: true },
+    });
+    if (!tx) return false;
+    if (isManagerOrAbove(role)) return true;
+    return tx.walletUserId === userId || tx.createdById === userId;
   }
 
   if (target.matterId) {

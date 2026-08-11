@@ -75,9 +75,9 @@ export function DashboardShell({
               <Sidebar user={user} variant="desktop" />
             </div>
             <Sidebar user={user} variant="mobile" />
-            <div className="liquid-glass-canvas flex min-h-dvh min-w-0 flex-1 flex-col">
+            <div className="liquid-glass-canvas flex min-h-dvh min-w-0 flex-1 flex-col bg-canvas">
               <PageHeader />
-              <main className="min-w-0 flex-1 p-3 sm:p-6 lg:p-8">{children}</main>
+              <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
             </div>
             <UtilitySpeedDial />
             <NotificationToastHost />

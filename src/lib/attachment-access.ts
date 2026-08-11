@@ -8,16 +8,18 @@ export type AttachmentAccessTarget = {
   commentId?: string | null;
   conversationId?: string | null;
   chatMessageId?: string | null;
+  walletTransactionId?: string | null;
   uploadedById?: string | null;
 };
 
-/** Matter hub / plan documents — not comment or chat attachments. */
+/** Matter hub / plan documents — not comment, chat, or wallet receipt attachments. */
 export function isMatterOrPlanDocument(target: AttachmentAccessTarget) {
   return (
     Boolean(target.matterId) &&
     !target.commentId &&
     !target.conversationId &&
-    !target.chatMessageId
+    !target.chatMessageId &&
+    !target.walletTransactionId
   );
 }
 

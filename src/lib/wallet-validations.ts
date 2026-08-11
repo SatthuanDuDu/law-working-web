@@ -11,6 +11,28 @@ export const allocateBudgetSchema = z.object({
   note: z.string().max(500).optional().nullable(),
 });
 
+export const clientReceiptSchema = z.object({
+  amountVnd: z
+    .string()
+    .trim()
+    .regex(/^\d+$/, "Số tiền không hợp lệ")
+    .refine((v) => BigInt(v) > BigInt(0), "Số tiền phải lớn hơn 0"),
+  toUserId: z.string().min(1, "Vui lòng chọn người nhận bàn giao"),
+  matterId: z.string().min(1, "Vui lòng chọn vụ việc"),
+  matterPlanStepId: z.string().optional().nullable(),
+  note: z.string().max(500).optional().nullable(),
+});
+
+export const moneyConfirmRecipientSchema = z.object({
+  confirmationId: z.string().min(1),
+  response: z.enum(["ACCEPT", "REJECT", "DISPUTE"]),
+  disputeNote: z.string().max(1000).optional().nullable(),
+});
+
+export const moneyConfirmAllocatorSchema = z.object({
+  confirmationId: z.string().min(1),
+});
+
 export const spendCategorySchema = z.object({
   name: z.string().trim().min(1, "Vui lòng nhập tên nhóm").max(100),
   requiresMatter: z.boolean().optional().default(false),

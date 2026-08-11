@@ -64,7 +64,6 @@ export async function generateDeadlineReminders(
       where: {
         dueAt: { not: null, lte: windowEnd },
         status: { in: ["NOT_STARTED", "IN_PROGRESS"] },
-        assignees: { some: {} },
         OR: [...planDueWindowOr],
       },
       select: {
@@ -73,6 +72,7 @@ export async function generateDeadlineReminders(
         dueAt: true,
         matterId: true,
         assignees: { select: { userId: true } },
+        matter: { select: { leadLawyerId: true } },
       },
       take: batchSize,
       orderBy: { dueAt: "asc" },
@@ -105,8 +105,17 @@ export async function generateDeadlineReminders(
       ? `"${step.title}" đã quá hạn.`
       : `"${step.title}" sẽ đến hạn trong vài ngày tới.`;
     const link = `/matters/${step.matterId}/plan`;
-    return step.assignees.map((a) => ({
-      userId: a.userId,
+    const recipientIds = [
+      ...new Set(
+        step.assignees.length > 0
+          ? step.assignees.map((a) => a.userId)
+          : step.matter.leadLawyerId
+            ? [step.matter.leadLawyerId]
+            : [],
+      ),
+    ];
+    return recipientIds.map((userId) => ({
+      userId,
       type: "PLAN_DUE" as const,
       title,
       message,
@@ -115,6 +124,11 @@ export async function generateDeadlineReminders(
       overdue,
     }));
   });
+
+  // Only mark steps that actually produced at least one notification.
+  const notifiedStepIds = [
+    ...new Set(planNotifications.map((n) => n.stepId)),
+  ];
 
   if (taskNotifications.length > 0) {
     await db.notification.createMany({
@@ -151,7 +165,7 @@ export async function generateDeadlineReminders(
       })),
     });
     await db.matterPlanStep.updateMany({
-      where: { id: { in: dueSteps.map((s) => s.id) } },
+      where: { id: { in: notifiedStepIds } },
       data: { reminderSentAt: now },
     });
     for (const n of planNotifications) {

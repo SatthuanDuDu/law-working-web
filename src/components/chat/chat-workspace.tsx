@@ -976,7 +976,7 @@ export function ChatWorkspace({
       className={cn(
         liquidPanelClass,
         // Fill remaining viewport under the sticky page header (eat main bottom pad).
-        "flex min-h-[24rem] overflow-hidden rounded-md",
+        "flex min-h-[24rem] overflow-hidden rounded-[var(--radius-lg)] bg-white",
         "h-[calc(var(--vv-height,100dvh)-var(--page-header-offset,3.5rem)-0.75rem)] -mb-3",
         "sm:h-[calc(var(--vv-height,100dvh)-var(--page-header-offset,3.5rem)-1.5rem)] sm:-mb-6",
         "lg:h-[calc(var(--vv-height,100dvh)-var(--page-header-offset,3.5rem)-2rem)] lg:-mb-8",
@@ -985,11 +985,11 @@ export function ChatWorkspace({
       {/* Sidebar */}
       <aside
         className={cn(
-          "flex w-full flex-col border-border bg-muted/20 sm:w-[17.5rem] sm:border-r lg:w-80",
+          "flex w-full flex-col border-border bg-[#F8FAFC] sm:w-[17.5rem] sm:border-r lg:w-80",
           showThread ? "hidden sm:flex" : "flex",
         )}
       >
-        <div className="space-y-2 border-b border-border px-3 py-2.5">
+        <div className="space-y-2 border-b border-border px-4 py-3">
           <div className="flex items-center gap-2">
             <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
               {t("conversations")}
@@ -1155,19 +1155,19 @@ export function ChatWorkspace({
       {/* Thread */}
       <section
         className={cn(
-          "flex min-w-0 flex-1 flex-col bg-surface",
+          "flex min-w-0 flex-1 flex-col bg-white",
           showThread ? "flex" : "hidden sm:flex",
         )}
       >
         {!active ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center text-sm text-muted-foreground">
+          <div className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center text-sm text-muted-foreground">
             <MessageCircle className="h-9 w-9 opacity-35" />
             <p>{t("emptyHint")}</p>
             <p className="text-xs">{t("searchUserHint")}</p>
           </div>
         ) : (
           <>
-            <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
+            <div className="flex items-center gap-2 border-b border-border px-4 py-3">
               <Button
                 type="button"
                 variant="ghost"

@@ -1,4 +1,4 @@
-import { addDays, startOfDay, endOfDay } from "date-fns";
+import { addDays, endOfDay } from "date-fns";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
@@ -154,7 +154,6 @@ export default async function DashboardPage() {
   const t = await getTranslations("dashboard");
   const tCommon = await getTranslations("common");
   const now = new Date();
-  const todayStart = startOfDay(now);
   const soonEnd = endOfDay(addDays(now, 3));
 
   const matterIds = await getAccessibleMatterIds(user.id, user.role);
@@ -245,15 +244,16 @@ export default async function DashboardPage() {
     prisma.task.findMany({
       where: {
         ...openTaskWhere,
-        dueDate: { gte: todayStart, lte: soonEnd },
+        // Include overdue + due within +3 days (same window as sidebar badge).
+        dueDate: { not: null, lte: soonEnd },
       },
       include: { matter: { select: matterSelect } },
       orderBy: { dueDate: "asc" },
-      take: 8,
+      take: 12,
     }),
     prisma.matterPlanStep.findMany({
       where: {
-        dueAt: { gte: todayStart, lte: soonEnd },
+        dueAt: { not: null, lte: soonEnd },
         status: { not: "DONE" },
         matter: { deletedAt: null },
         ...(matterIds ? { matterId: { in: matterIds } } : {}),

@@ -88,6 +88,10 @@ export const NOTIFICATION_TYPE_LABELS = {
   GENERAL: "Chung",
   MENTION: "Nhắc đến",
   CHAT_MESSAGE: "Tin nhắn",
+  WALLET_BUDGET_PENDING: "Chờ xác nhận budget",
+  WALLET_BUDGET_UPDATE: "Cập nhật budget",
+  WALLET_CLIENT_PENDING: "Chờ xác nhận tiền khách",
+  WALLET_CLIENT_UPDATE: "Cập nhật tiền khách",
 } as const;
 
 export type NavLabelKey =

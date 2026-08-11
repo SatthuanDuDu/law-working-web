@@ -4,17 +4,21 @@ import { requireAuth } from "@/lib/session";
 import { ensureStaffWallet } from "@/lib/wallet";
 import { prisma } from "@/lib/prisma";
 import { listWalletTransactionsAction } from "@/lib/wallet-actions";
+import { listMoneyConfirmationsAction } from "@/lib/money-confirmation-actions";
 import { getTranslations } from "next-intl/server";
 
 export default async function WalletPage() {
   const user = await requireAuth();
   const tPages = await getTranslations("pages.wallet");
   const wallet = await ensureStaffWallet(prisma, user.id);
-  const { transactions } = await listWalletTransactionsAction({
-    scope: "mine",
-    includeLegacy: true,
-    take: 200,
-  });
+  const [{ transactions }, { confirmations }] = await Promise.all([
+    listWalletTransactionsAction({
+      scope: "mine",
+      includeLegacy: true,
+      take: 200,
+    }),
+    listMoneyConfirmationsAction({ scope: "mine", status: "OPEN", take: 40 }),
+  ]);
 
   return (
     <div className="space-y-4">
@@ -22,6 +26,7 @@ export default async function WalletPage() {
       <WalletView
         balanceVnd={wallet.balanceVnd.toString()}
         initialTransactions={transactions}
+        confirmations={confirmations}
       />
     </div>
   );

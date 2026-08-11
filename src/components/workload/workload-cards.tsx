@@ -476,8 +476,8 @@ function PersonTaskSection({
                   "interactive-press block min-w-0 rounded-sm bg-surface/80 py-1.5 pl-2.5 pr-1.5 hover:[filter:none] active:[filter:none]",
                   "border-l-4",
                   accent === "overdue"
-                    ? "border-l-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40"
-                    : "border-l-primary hover:bg-primary-muted/50",
+                    ? "border-l-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/50"
+                    : "border-l-primary hover:bg-primary-muted-hover",
                 )}
               >
                 <WorkloadItemBody

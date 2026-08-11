@@ -158,12 +158,12 @@ function SidebarEdgeToggle({
           "group-focus-visible/rail:opacity-100 group-focus-visible/rail:delay-0",
         )}
       >
-        <span className="absolute top-1/2 right-0 h-36 w-1.5 -translate-y-1/2 rounded-full bg-white/85" />
-        <span className="relative z-[1] mr-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/40 text-white">
+        <span className="absolute top-1/2 right-0 h-36 w-1.5 -translate-y-1/2 rounded-full bg-border" />
+        <span className="relative z-[1] mr-0.5 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-surface text-muted-foreground shadow-[var(--shadow-card)]">
           {collapsed ? (
-            <ChevronRight className="h-4 w-4" strokeWidth={2.5} />
+            <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.5} />
           ) : (
-            <ChevronLeft className="h-4 w-4" strokeWidth={2.5} />
+            <ChevronLeft className="h-3.5 w-3.5" strokeWidth={2.5} />
           )}
         </span>
       </span>
@@ -205,7 +205,7 @@ function NavLinkContent({
             className={cn(
               "absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full px-0.5 text-[10px] font-semibold leading-none",
               active
-                ? "bg-primary text-primary-foreground"
+                ? "bg-white/25 text-white"
                 : "bg-accent text-white",
             )}
           >
@@ -219,8 +219,8 @@ function NavLinkContent({
           className={cn(
             "ml-auto shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
             active
-              ? "bg-primary/15 text-primary"
-              : "bg-white/20 text-white group-hover/nav:bg-primary/15 group-hover/nav:text-primary",
+              ? "bg-white/20 text-white"
+              : "bg-muted text-muted-foreground group-hover/nav:bg-primary/15 group-hover/nav:text-primary",
           )}
         >
           {badgeText}
@@ -259,13 +259,11 @@ function NavLink({
         aria-label={ariaLabel || label}
         data-active={active ? "true" : undefined}
         className={cn(
-          "sidebar-nav-liquid group/nav interactive-press flex min-h-10 items-center rounded-md border border-transparent text-sm transition-[background-color,box-shadow,color,border-color] duration-150",
-          "hover:backdrop-blur-[20px] hover:backdrop-saturate-150 data-[active=true]:backdrop-blur-[20px] data-[active=true]:backdrop-saturate-150",
-          "motion-reduce:hover:backdrop-blur-none motion-reduce:data-[active=true]:backdrop-blur-none",
+          "sidebar-nav-liquid group/nav interactive-press flex min-h-10 items-center rounded-md border border-transparent text-sm transition-[background-color,color] duration-150",
           collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2.5",
           active
-            ? "is-active font-medium text-primary"
-            : "text-white/85 hover:text-primary",
+            ? "is-active font-medium text-primary-foreground"
+            : "text-muted-foreground hover:text-foreground",
         )}
       >
         <NavLinkContent
@@ -534,13 +532,11 @@ function AccountMenu({
           onClick={toggleMenu}
           data-active={open ? "true" : undefined}
           className={cn(
-            "sidebar-nav-liquid interactive-press flex w-full items-center rounded-md border border-transparent transition-[background-color,box-shadow,color,border-color] duration-150",
-            "hover:backdrop-blur-[20px] hover:backdrop-saturate-150 data-[active=true]:backdrop-blur-[20px] data-[active=true]:backdrop-saturate-150",
-            "motion-reduce:hover:backdrop-blur-none motion-reduce:data-[active=true]:backdrop-blur-none",
+            "sidebar-nav-liquid interactive-press flex w-full items-center rounded-md border border-transparent transition-[background-color,color] duration-150",
             collapsed
-              ? "justify-center px-2 py-2.5 text-white/85 hover:text-primary"
-              : "gap-3 px-3 py-3 text-left text-white/90 hover:text-primary",
-            open && "is-active text-primary",
+              ? "justify-center px-2 py-2.5 text-muted-foreground hover:text-foreground"
+              : "gap-3 px-3 py-3 text-left text-foreground hover:text-foreground",
+            open && "is-active text-primary-foreground",
           )}
         >
           {collapsed ? (
@@ -552,7 +548,7 @@ function AccountMenu({
                 <p
                   className={cn(
                     "text-xs",
-                    open ? "text-primary/65" : "text-white/60",
+                    open ? "text-primary-foreground/75" : "text-muted-foreground",
                   )}
                 >
                   {roles[user.role]}
@@ -561,7 +557,7 @@ function AccountMenu({
               <ChevronUp
                 className={cn(
                   "h-4 w-4 shrink-0 transition-transform",
-                  open ? "rotate-180 text-primary/50" : "text-white/50",
+                  open ? "rotate-180 text-primary-foreground/70" : "text-muted-foreground/70",
                 )}
                 aria-hidden
               />
@@ -621,7 +617,7 @@ export function Sidebar({
         ) : null}
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-50 flex w-[min(17.5rem,86vw)] flex-col overflow-hidden border-r border-primary/20 bg-primary text-white shadow-xl transition-transform duration-300 ease-out lg:hidden",
+            "fixed inset-y-0 left-0 z-50 flex w-[min(17.5rem,86vw)] flex-col overflow-hidden border-r border-border bg-sidebar text-foreground shadow-[var(--shadow-overlay)] transition-transform duration-300 ease-out lg:hidden",
             mobileOpen ? "translate-x-0" : "-translate-x-full pointer-events-none",
           )}
           aria-hidden={!mobileOpen}
@@ -645,7 +641,7 @@ export function Sidebar({
       {dialog}
       <aside
         className={cn(
-          "relative flex h-full flex-col overflow-visible border-r border-primary/20 bg-primary text-white transition-all duration-300 ease-in-out",
+          "relative flex h-full flex-col overflow-visible border-r border-border bg-sidebar text-foreground transition-all duration-300 ease-in-out",
           collapsed ? "w-[4.75rem]" : "w-56",
         )}
       >
@@ -691,11 +687,11 @@ function SidebarContent({
 
       <div
         className={cn(
-          "flex items-center border-b border-white/10 bg-white/5 py-4 backdrop-blur-md",
+          "flex items-center border-b border-border bg-transparent py-4",
           collapsed ? "justify-center px-3" : "gap-2.5 px-4",
         )}
       >
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white ring-1 ring-white/20">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white ring-1 ring-border">
           <Image
             src="/logo-nslaw.png"
             alt="NSLAW"
@@ -706,8 +702,8 @@ function SidebarContent({
         </div>
         {!collapsed && (
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">NSLAW</p>
-            <p className="truncate text-xs text-white/60">{tAccount("brandSubtitle")}</p>
+            <p className="truncate text-sm font-semibold text-foreground">NSLAW</p>
+            <p className="truncate text-xs text-muted-foreground">{tAccount("brandSubtitle")}</p>
           </div>
         )}
       </div>
@@ -748,7 +744,7 @@ function SidebarContent({
         {isManagerOrAbove(user.role) && (
           <div className="pt-4">
             {!collapsed && (
-              <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-white/40">
+              <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground/70">
                 {tAccount("sectionManager")}
               </p>
             )}
@@ -774,7 +770,7 @@ function SidebarContent({
         {canAccessAdmin(user.role) && (
           <div className="pt-4">
             {!collapsed && (
-              <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-white/40">
+              <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground/70">
                 {tAccount("sectionAdmin")}
               </p>
             )}
@@ -798,7 +794,7 @@ function SidebarContent({
         )}
       </nav>
 
-      <div className="relative z-40 border-t border-white/10 px-3 py-4">
+      <div className="relative z-40 border-t border-border px-3 py-4">
         <AccountMenu
           user={user}
           collapsed={collapsed}

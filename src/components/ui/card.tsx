@@ -19,14 +19,16 @@ export function Card({
   solid = false,
   ...props
 }: React.HTMLAttributes<HTMLDivElement> & {
-  /** Opaque white surface instead of liquid glass (overlays, login, etc.). */
+  /** Opaque white surface (default panels already solid SaaS). */
   solid?: boolean;
 }) {
   return (
     <div
       className={cn(
-        "rounded-md border",
-        solid ? "border-border bg-surface surface" : liquidPanelClass,
+        "rounded-[var(--radius-lg)] border",
+        solid
+          ? "border-border bg-surface shadow-[var(--shadow-card)]"
+          : liquidPanelClass,
         className,
       )}
       {...props}

@@ -73,7 +73,7 @@ export function WorkloadCharts({ rows }: { rows: WorkloadRow[] }) {
                 />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="open" fill="#14532d" name="Đang mở" radius={[0, 4, 4, 0]} stackId="a" />
+                <Bar dataKey="open" fill="#3f6f5a" name="Đang mở" radius={[0, 4, 4, 0]} stackId="a" />
                 <Bar dataKey="overdue" fill="#e11d48" name="Quá hạn" radius={[0, 4, 4, 0]} stackId="a" />
               </BarChart>
             </ResponsiveContainer>

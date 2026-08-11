@@ -1,10 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition, type FormEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type FormEvent,
+} from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { X } from "lucide-react";
+import { Paperclip, X } from "lucide-react";
 import {
   getPlanStepsForMatterAction,
   getMyWalletAction,
@@ -20,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label, Select } from "@/components/ui/card";
 import { formatVndDigits } from "@/lib/wallet";
+import { putAttachmentBytes } from "@/lib/browser-upload";
 import { cn } from "@/lib/utils";
 
 export type ExpenseMatterOption = {
@@ -27,6 +35,9 @@ export type ExpenseMatterOption = {
   code: string;
   title: string;
 };
+
+const MAX_RECEIPT_FILES = 10;
+const MAX_RECEIPT_BYTES = 25 * 1024 * 1024;
 
 function digitsOnly(raw: string) {
   return raw.replace(/\D/g, "");
@@ -74,6 +85,9 @@ function WalletSpendForm({
   const [matterId, setMatterId] = useState("");
   const [steps, setSteps] = useState<{ id: string; title: string }[]>([]);
   const [amountDigits, setAmountDigits] = useState("");
+  const [receiptFiles, setReceiptFiles] = useState<File[]>([]);
+  const [uploadHint, setUploadHint] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPending, startTransition] = useTransition();
 
   const effectiveCategoryId = categoryId || categories[0]?.id || "";
@@ -91,20 +105,103 @@ function WalletSpendForm({
     });
   }
 
+  function handleReceiptPick(fileList: FileList | null) {
+    if (!fileList?.length) return;
+    setError("");
+    const next = [...receiptFiles];
+    for (const file of Array.from(fileList)) {
+      if (next.length >= MAX_RECEIPT_FILES) {
+        setError(t("receiptsMax", { max: MAX_RECEIPT_FILES }));
+        break;
+      }
+      if (file.size <= 0 || file.size > MAX_RECEIPT_BYTES) {
+        setError(t("receiptTooLarge", { name: file.name }));
+        continue;
+      }
+      const dup = next.some(
+        (f) => f.name === file.name && f.size === file.size && f.lastModified === file.lastModified,
+      );
+      if (!dup) next.push(file);
+    }
+    setReceiptFiles(next);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function removeReceipt(index: number) {
+    setReceiptFiles((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  async function uploadReceipts(transactionId: string, files: File[]) {
+    let ok = 0;
+    for (const file of files) {
+      const prepare = await fetch("/api/attachments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileName: file.name,
+          mimeType: file.type || "application/octet-stream",
+          sizeBytes: file.size,
+          walletTransactionId: transactionId,
+          purpose: "wallet",
+        }),
+      });
+      const prepared = (await prepare.json().catch(() => ({}))) as {
+        attachment?: { id: string };
+        uploadUrl?: string;
+        error?: string;
+      };
+      if (!prepare.ok || !prepared.attachment?.id || !prepared.uploadUrl) {
+        throw new Error(prepared.error || t("receiptUploadFailed"));
+      }
+      const uploaded = await putAttachmentBytes({
+        attachmentId: prepared.attachment.id,
+        uploadUrl: prepared.uploadUrl,
+        file,
+        mimeType: file.type || "application/octet-stream",
+      });
+      if (!uploaded.ok) {
+        await fetch(`/api/attachments/${prepared.attachment.id}`, {
+          method: "DELETE",
+        }).catch(() => undefined);
+        throw new Error(t("receiptUploadFailed"));
+      }
+      ok += 1;
+    }
+    return ok;
+  }
+
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
     const formData = new FormData(form);
     formData.set("amountVnd", amountDigits);
     formData.set("spendCategoryId", effectiveCategoryId);
+    const filesToUpload = [...receiptFiles];
 
     setError("");
+    setUploadHint("");
     setSuccess(false);
     startTransition(async () => {
       const result = await recordWalletSpendAction(formData);
       if (result?.error) {
         setError(result.error);
         return;
+      }
+      const txId = result?.transaction?.id;
+      if (txId && filesToUpload.length > 0) {
+        setUploadHint(t("receiptUploading"));
+        try {
+          await uploadReceipts(txId, filesToUpload);
+        } catch (err) {
+          setUploadHint("");
+          setError(
+            err instanceof Error ? err.message : t("receiptUploadFailedAfterSpend"),
+          );
+          setSuccess(true);
+          router.refresh();
+          return;
+        }
+        setUploadHint("");
       }
       setSuccess(true);
       router.refresh();
@@ -264,7 +361,58 @@ function WalletSpendForm({
         <Input id="spend-note" name="note" />
       </div>
 
+      <div className="space-y-1.5">
+        <Label htmlFor="spend-receipts">{t("receipts")}</Label>
+        <input
+          ref={fileInputRef}
+          id="spend-receipts"
+          type="file"
+          multiple
+          accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.heic,.webp"
+          className="sr-only"
+          onChange={(e) => handleReceiptPick(e.target.files)}
+        />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="interactive-press"
+            disabled={isPending || receiptFiles.length >= MAX_RECEIPT_FILES}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Paperclip className="size-4" aria-hidden />
+            {t("receiptsAdd")}
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            {t("receiptsHint", { max: MAX_RECEIPT_FILES })}
+          </span>
+        </div>
+        {receiptFiles.length > 0 ? (
+          <ul className="space-y-1 rounded-md border border-border bg-muted/30 p-2">
+            {receiptFiles.map((file, index) => (
+              <li
+                key={`${file.name}-${file.size}-${file.lastModified}`}
+                className="flex items-center justify-between gap-2 text-sm"
+              >
+                <span className="min-w-0 truncate">{file.name}</span>
+                <button
+                  type="button"
+                  className="interactive-press shrink-0 rounded-md p-1 text-muted-foreground hover:bg-surface hover:text-foreground"
+                  onClick={() => removeReceipt(index)}
+                  aria-label={t("receiptsRemove")}
+                  disabled={isPending}
+                >
+                  <X className="size-3.5" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
+
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {uploadHint ? <p className="text-sm text-muted-foreground">{uploadHint}</p> : null}
       {success ? <p className="text-sm text-emerald-700">{t("success")}</p> : null}
 
       <div className="flex justify-end gap-2 pt-2">

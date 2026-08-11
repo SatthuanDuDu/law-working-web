@@ -39,8 +39,8 @@ export function SectionHeader({
 }
 
 /**
- * Content panel with liquid glass (app-wide, same as Tổng quan).
- * Pass `solid` for opaque surface when glass is unsuitable (rare).
+ * Content panel — solid SaaS surface (same chrome as cards).
+ * Pass `solid` for explicit opaque surface (default path already solid).
  */
 export function SectionPanel({
   title,

@@ -6,17 +6,9 @@ import { updateMatterStatusAction } from "@/lib/actions";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { useLabelMaps } from "@/i18n/use-label-maps";
 import { cn } from "@/lib/utils";
+import { matterStatusChipClass } from "@/components/ui/status-chip";
 import { useTranslations } from "next-intl";
 import type { MatterStatus } from "@prisma/client";
-
-/** Flat Material tonal chips — no colored glow/shadow */
-const STATUS_TAG_CLASS: Record<MatterStatus, string> = {
-  NEW: "bg-sky-500 text-white",
-  IN_PROGRESS: "bg-amber-500 text-white",
-  ON_HOLD: "bg-rose-500 text-white",
-  CLOSED: "bg-emerald-500 text-white",
-  ARCHIVED: "bg-slate-500 text-white",
-};
 
 const STATUS_DOT_CLASS: Record<MatterStatus, string> = {
   NEW: "bg-sky-500",
@@ -50,8 +42,8 @@ export function MatterStatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold tracking-wide",
-        STATUS_TAG_CLASS[status],
+        matterStatusChipClass(status),
+        "gap-1 py-1 font-semibold tracking-wide",
         interactive && "interactive-chip cursor-pointer",
         open && "brightness-95",
         className,
@@ -218,7 +210,7 @@ export function MatterStatusControl({
           <ul
             role="listbox"
             aria-labelledby={`matter-status-${matterId}`}
-            className="absolute right-0 top-full z-20 mt-1.5 min-w-[10.5rem] overflow-hidden rounded-[5px] border border-border bg-surface py-1 shadow-[var(--shadow-overlay)]"
+            className="absolute right-0 top-full z-20 mt-1.5 min-w-[10.5rem] overflow-hidden rounded-md border border-border bg-surface py-1 shadow-[var(--shadow-overlay)]"
           >
             {menuItems.map((item) => {
               const selected = item.value === currentStatus;

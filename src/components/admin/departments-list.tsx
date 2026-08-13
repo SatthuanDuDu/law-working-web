@@ -10,6 +10,8 @@ import { EditDepartmentModal } from "@/components/admin/edit-department-modal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PageToolbar } from "@/components/layout/page-toolbar";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export type DepartmentListItem = {
   id: string;
@@ -57,7 +59,7 @@ export function DepartmentsList({ items }: { items: DepartmentListItem[] }) {
   return (
     <>
       {dialog}
-      <Card className="rounded-[5px]">
+      <Card className="rounded-md">
         <CardHeader className="gap-3 space-y-0 pb-3">
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <CardTitle className="text-base sm:text-lg">{t("listTitle")}</CardTitle>
@@ -71,16 +73,18 @@ export function DepartmentsList({ items }: { items: DepartmentListItem[] }) {
             </p>
           </div>
 
-          <div className="relative min-w-0">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder={t("searchPlaceholder")}
-              className="h-9 pl-9"
-              aria-label={t("searchLabel")}
-            />
-          </div>
+          <PageToolbar>
+            <div className="relative min-w-0 w-full max-w-md">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={t("searchPlaceholder")}
+                className="h-9 pl-9"
+                aria-label={t("searchLabel")}
+              />
+            </div>
+          </PageToolbar>
           {actionError ? (
             <p className="text-sm text-red-600">{actionError}</p>
           ) : null}
@@ -88,13 +92,13 @@ export function DepartmentsList({ items }: { items: DepartmentListItem[] }) {
 
         <CardContent className="divide-y divide-border/70 p-0">
           {items.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground sm:px-6">
-              {t("emptyHint")}
-            </p>
+            <div className="p-4 sm:p-6">
+              <EmptyState>{t("emptyHint")}</EmptyState>
+            </div>
           ) : visibleItems.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground sm:px-6">
-              {t("noFilterMatch")}
-            </p>
+            <div className="p-4 sm:p-6">
+              <EmptyState>{t("noFilterMatch")}</EmptyState>
+            </div>
           ) : (
             visibleItems.map((item) => (
               <div key={item.id} className="px-4 py-3 sm:px-6">

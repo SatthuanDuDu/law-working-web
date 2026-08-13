@@ -60,6 +60,8 @@ export default async function TasksPage() {
         totalCount={totalCount}
         currentUserId={user.id}
         canManage={canViewAll}
+        users={users}
+        matters={matters}
         actions={<TaskForm users={users} matters={matters} />}
       />
     </>

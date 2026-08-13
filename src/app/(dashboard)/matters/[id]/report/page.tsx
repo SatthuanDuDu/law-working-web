@@ -205,26 +205,26 @@ export default async function MatterReportPage({
           />
         </div>
 
-        <Card className="rounded-[5px] xl:col-span-2">
+        <Card className="rounded-md xl:col-span-2">
           <CardHeader>
             <CardTitle>{tReport("currentStatus")}</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-[5px] border border-border p-3">
+            <div className="rounded-md border border-border p-3">
               <p className="text-xs text-muted-foreground">{tReport("planSteps")}</p>
               <p className="mt-1 text-2xl font-semibold text-foreground">
                 {matter.planSteps.length}
               </p>
             </div>
-            <div className="rounded-[5px] border border-border p-3">
+            <div className="rounded-md border border-border p-3">
               <p className="text-xs text-muted-foreground">{tReport("inProgress")}</p>
               <p className="mt-1 text-2xl font-semibold text-sky-600">{inProgressSteps}</p>
             </div>
-            <div className="rounded-[5px] border border-border p-3">
+            <div className="rounded-md border border-border p-3">
               <p className="text-xs text-muted-foreground">{tReport("done")}</p>
               <p className="mt-1 text-2xl font-semibold text-emerald-600">{doneSteps}</p>
             </div>
-            <div className="rounded-[5px] border border-border p-3">
+            <div className="rounded-md border border-border p-3">
               <p className="text-xs text-muted-foreground">{tReport("blocked")}</p>
               <p className="mt-1 text-2xl font-semibold text-red-600">{blockedSteps}</p>
             </div>
@@ -244,7 +244,7 @@ export default async function MatterReportPage({
       </div>
 
       <div className="mt-8 grid gap-6 xl:grid-cols-2">
-        <Card className="rounded-[5px]">
+        <Card className="rounded-md">
           <CardHeader>
             <CardTitle>{tReport("recentActivity")}</CardTitle>
           </CardHeader>
@@ -268,7 +268,7 @@ export default async function MatterReportPage({
           </CardContent>
         </Card>
 
-        <Card className="rounded-[5px]">
+        <Card className="rounded-md">
           <CardHeader>
             <CardTitle>{tReport("relatedTasks")}</CardTitle>
           </CardHeader>
@@ -277,7 +277,7 @@ export default async function MatterReportPage({
               <p className="text-sm text-muted-foreground">{tReport("noRelatedTasks")}</p>
             ) : (
               matter.tasks.map((task) => (
-                <div key={task.id} className="rounded-[5px] border border-border p-3 text-sm">
+                <div key={task.id} className="rounded-md border border-border p-3 text-sm">
                   <p className="font-medium">{task.title}</p>
                   <p className="text-muted-foreground">
                     {task.assignee.name}
@@ -292,7 +292,7 @@ export default async function MatterReportPage({
       </div>
 
       <div className="mt-8">
-        <Card className="rounded-[5px]">
+        <Card className="rounded-md">
           <CardHeader>
             <CardTitle>{tReport("commentsTitle")}</CardTitle>
           </CardHeader>

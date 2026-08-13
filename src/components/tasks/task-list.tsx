@@ -15,11 +15,19 @@ import { updateTaskStatusAction } from "@/lib/actions";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { useListViewMode } from "@/hooks/use-list-view-mode";
 import { useLabelMaps } from "@/i18n/use-label-maps";
-import { Badge, Card, CardContent, CardHeader, CardTitle, Select } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, Select } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { ListViewToggle } from "@/components/ui/list-view-toggle";
+import { PageToolbar } from "@/components/layout/page-toolbar";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  StatusChip,
+  taskPriorityChipClass,
+  taskStatusChipClass,
+} from "@/components/ui/status-chip";
+import { TaskDetailPanel } from "@/components/tasks/task-detail-panel";
 import { downloadExcel } from "@/lib/export-excel";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -34,6 +42,7 @@ type TaskListItem = {
   dueDate: Date | null;
   assigneeId: string;
   createdById: string;
+  matterId: string | null;
   assignee: { id: string; name: string };
   matter: { id: string; code: string; title: string } | null;
 };
@@ -121,6 +130,8 @@ export function TaskList({
   currentUserId,
   canManage,
   actions,
+  users = [],
+  matters = [],
 }: {
   tasks: TaskListItem[];
   /** True DB count — may exceed tasks.length when the list-limit cap truncated the fetch. */
@@ -128,6 +139,8 @@ export function TaskList({
   currentUserId: string;
   canManage: boolean;
   actions?: ReactNode;
+  users?: { id: string; name: string }[];
+  matters?: { id: string; code: string; title: string }[];
 }) {
   const t = useTranslations("tasks");
   const tPages = useTranslations("pages.tasks");
@@ -136,6 +149,7 @@ export function TaskList({
   const { taskStatus, taskPriority } = useLabelMaps();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [selectedTask, setSelectedTask] = useState<TaskListItem | null>(null);
   const { confirm, dialog } = useConfirmDialog();
   const { mode, setMode } = useListViewMode("tasks");
   const [filters, setFilters] = useState<TaskFilterState>(DEFAULT_FILTERS);
@@ -251,13 +265,6 @@ export function TaskList({
     );
   }
 
-  const priorityVariant = {
-    LOW: "default",
-    MEDIUM: "info",
-    HIGH: "warning",
-    URGENT: "danger",
-  } as const;
-
   function renderTaskCard(task: TaskListItem, compact: boolean) {
     const canUpdate =
       canManage ||
@@ -279,7 +286,13 @@ export function TaskList({
       >
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <p className="font-medium">{task.title}</p>
+            <button
+              type="button"
+              className="interactive-press text-left font-medium text-foreground hover:text-primary"
+              onClick={() => setSelectedTask(task)}
+            >
+              {task.title}
+            </button>
             {task.description ? (
               <p
                 className={cn(
@@ -304,9 +317,10 @@ export function TaskList({
               </p>
             ) : null}
           </div>
-          <Badge variant={priorityVariant[task.priority]} className="w-fit shrink-0">
-            {taskPriority[task.priority]}
-          </Badge>
+          <StatusChip
+            label={taskPriority[task.priority]}
+            className={cn(taskPriorityChipClass(task.priority), "w-fit shrink-0")}
+          />
         </div>
         <div className={cn("mt-3 flex items-center gap-3", compact && "mt-auto pt-3")}>
           {canUpdate ? (
@@ -325,7 +339,10 @@ export function TaskList({
               ))}
             </Select>
           ) : (
-            <Badge variant="info">{taskStatus[task.status]}</Badge>
+            <StatusChip
+              label={taskStatus[task.status]}
+              className={taskStatusChipClass(task.status)}
+            />
           )}
         </div>
       </div>
@@ -356,7 +373,13 @@ export function TaskList({
           ) : null}
         </td>
         <td className="min-w-[14rem] px-3 py-2.5 align-top">
-          <p className="truncate font-medium text-foreground">{task.title}</p>
+          <button
+            type="button"
+            className="interactive-press block max-w-full truncate text-left font-medium text-foreground hover:text-primary"
+            onClick={() => setSelectedTask(task)}
+          >
+            {task.title}
+          </button>
           {task.matter ? (
             <p className="truncate text-[11px] text-primary/80">{task.matter.code}</p>
           ) : null}
@@ -365,9 +388,10 @@ export function TaskList({
           {task.assignee.name}
         </td>
         <td className="px-3 py-2.5 align-top">
-          <Badge variant={priorityVariant[task.priority]}>
-            {taskPriority[task.priority]}
-          </Badge>
+          <StatusChip
+            label={taskPriority[task.priority]}
+            className={taskPriorityChipClass(task.priority)}
+          />
         </td>
         <td
           className={cn(
@@ -392,7 +416,10 @@ export function TaskList({
               ))}
             </Select>
           ) : (
-            <Badge variant="info">{taskStatus[task.status]}</Badge>
+            <StatusChip
+              label={taskStatus[task.status]}
+              className={taskStatusChipClass(task.status)}
+            />
           )}
         </td>
       </tr>
@@ -455,138 +482,145 @@ export function TaskList({
               <p>{t("listTruncatedWarning", { shown: tasks.length, total: totalCount })}</p>
             </div>
           ) : null}
-          {tasks.length > 0 ? (
-            <div className="space-y-2.5 border-b border-border/60 pb-3">
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  type="search"
-                  value={filters.query}
-                  onChange={(event) =>
-                    setFilters({ ...filters, query: event.target.value })
-                  }
-                  placeholder={t("searchPlaceholder")}
-                  aria-label={t("searchPlaceholder")}
-                  className="h-10 pl-9"
-                />
-              </div>
-              <div className="flex items-end gap-2 overflow-x-auto pb-0.5">
-                <div className="min-w-[8rem] flex-1">
-                  <p className="mb-1 truncate text-xs text-muted-foreground">
-                    {t("filterStatus")}
-                  </p>
-                  <FilterSelect
-                    value={filters.status}
-                    onChange={(status) =>
-                      setFilters({
-                        ...filters,
-                        status: status as TaskStatus | "",
-                      })
-                    }
-                    aria-label={t("filterStatus")}
-                    options={[
-                      { value: "", label: tCommon("all") },
-                      ...TASK_STATUSES.map((status) => ({
-                        value: status,
-                        label: taskStatus[status],
-                      })),
-                    ]}
-                  />
-                </div>
-                <div className="min-w-[8rem] flex-1">
-                  <p className="mb-1 truncate text-xs text-muted-foreground">
-                    {t("filterPriority")}
-                  </p>
-                  <FilterSelect
-                    value={filters.priority}
-                    onChange={(priority) =>
-                      setFilters({
-                        ...filters,
-                        priority: priority as TaskPriority | "",
-                      })
-                    }
-                    aria-label={t("filterPriority")}
-                    options={[
-                      { value: "", label: tCommon("all") },
-                      ...TASK_PRIORITIES.map((priority) => ({
-                        value: priority,
-                        label: taskPriority[priority],
-                      })),
-                    ]}
-                  />
-                </div>
-                <div className="min-w-[9rem] flex-1">
-                  <p className="mb-1 truncate text-xs text-muted-foreground">
-                    {t("filterAssignee")}
-                  </p>
-                  <FilterSelect
-                    value={filters.assigneeId}
-                    onChange={(assigneeId) =>
-                      setFilters({ ...filters, assigneeId })
-                    }
-                    aria-label={t("filterAssignee")}
-                    options={[
-                      { value: "", label: tCommon("all") },
-                      ...assigneeOptions,
-                    ]}
-                  />
-                </div>
-                <div className="min-w-[8.5rem] flex-1">
-                  <p className="mb-1 truncate text-xs text-muted-foreground">
-                    {t("filterDue")}
-                  </p>
-                  <FilterSelect
-                    value={filters.due}
-                    onChange={(due) =>
-                      setFilters({ ...filters, due: due as DueFilter })
-                    }
-                    aria-label={t("filterDue")}
-                    options={[
-                      { value: "all", label: t("dueAll") },
-                      { value: "overdue", label: t("dueOverdue") },
-                      { value: "today", label: t("dueToday") },
-                      { value: "thisWeek", label: t("dueThisWeek") },
-                      { value: "none", label: t("dueNone") },
-                    ]}
-                  />
-                </div>
+          <PageToolbar
+            actions={
+              <>
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  tabIndex={hasActiveFilters ? 0 : -1}
-                  aria-hidden={!hasActiveFilters}
-                  aria-disabled={!hasActiveFilters}
-                  aria-label={tFilters("clearFilters")}
-                  className={cn(
-                    "h-10 shrink-0 text-red-600 transition-[opacity,background-color,color] duration-500 ease-out hover:bg-red-50 hover:text-red-700",
-                    hasActiveFilters ? "opacity-100" : "pointer-events-none opacity-0",
-                  )}
-                  onClick={() => {
-                    if (!hasActiveFilters) return;
-                    setFilters(DEFAULT_FILTERS);
-                  }}
+                  disabled={visibleTasks.length === 0}
+                  onClick={handleExportExcel}
+                  aria-label={tCommon("exportExcel")}
                 >
-                  <X className="h-3.5 w-3.5" />
-                  {tFilters("clearFilters")}
+                  <FileSpreadsheet className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">{tCommon("exportExcel")}</span>
                 </Button>
+                <ListViewToggle mode={mode} onChange={setMode} size="sm" />
+              </>
+            }
+          >
+            {tasks.length > 0 ? (
+              <div className="flex w-full min-w-0 flex-col gap-2.5">
+                <div className="relative w-full">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    type="search"
+                    value={filters.query}
+                    onChange={(event) =>
+                      setFilters({ ...filters, query: event.target.value })
+                    }
+                    placeholder={t("searchPlaceholder")}
+                    aria-label={t("searchPlaceholder")}
+                    className="h-10 pl-9"
+                  />
+                </div>
+                <div className="flex w-full items-end gap-2 overflow-x-auto pb-0.5">
+                  <div className="min-w-[8rem] flex-1">
+                    <p className="mb-1 truncate text-xs text-muted-foreground">
+                      {t("filterStatus")}
+                    </p>
+                    <FilterSelect
+                      value={filters.status}
+                      onChange={(status) =>
+                        setFilters({
+                          ...filters,
+                          status: status as TaskStatus | "",
+                        })
+                      }
+                      aria-label={t("filterStatus")}
+                      options={[
+                        { value: "", label: tCommon("all") },
+                        ...TASK_STATUSES.map((status) => ({
+                          value: status,
+                          label: taskStatus[status],
+                        })),
+                      ]}
+                    />
+                  </div>
+                  <div className="min-w-[8rem] flex-1">
+                    <p className="mb-1 truncate text-xs text-muted-foreground">
+                      {t("filterPriority")}
+                    </p>
+                    <FilterSelect
+                      value={filters.priority}
+                      onChange={(priority) =>
+                        setFilters({
+                          ...filters,
+                          priority: priority as TaskPriority | "",
+                        })
+                      }
+                      aria-label={t("filterPriority")}
+                      options={[
+                        { value: "", label: tCommon("all") },
+                        ...TASK_PRIORITIES.map((priority) => ({
+                          value: priority,
+                          label: taskPriority[priority],
+                        })),
+                      ]}
+                    />
+                  </div>
+                  <div className="min-w-[9rem] flex-1">
+                    <p className="mb-1 truncate text-xs text-muted-foreground">
+                      {t("filterAssignee")}
+                    </p>
+                    <FilterSelect
+                      value={filters.assigneeId}
+                      onChange={(assigneeId) =>
+                        setFilters({ ...filters, assigneeId })
+                      }
+                      aria-label={t("filterAssignee")}
+                      options={[
+                        { value: "", label: tCommon("all") },
+                        ...assigneeOptions,
+                      ]}
+                    />
+                  </div>
+                  <div className="min-w-[8.5rem] flex-1">
+                    <p className="mb-1 truncate text-xs text-muted-foreground">
+                      {t("filterDue")}
+                    </p>
+                    <FilterSelect
+                      value={filters.due}
+                      onChange={(due) =>
+                        setFilters({ ...filters, due: due as DueFilter })
+                      }
+                      aria-label={t("filterDue")}
+                      options={[
+                        { value: "all", label: t("dueAll") },
+                        { value: "overdue", label: t("dueOverdue") },
+                        { value: "today", label: t("dueToday") },
+                        { value: "thisWeek", label: t("dueThisWeek") },
+                        { value: "none", label: t("dueNone") },
+                      ]}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    tabIndex={hasActiveFilters ? 0 : -1}
+                    aria-hidden={!hasActiveFilters}
+                    aria-disabled={!hasActiveFilters}
+                    aria-label={tFilters("clearFilters")}
+                    className={cn(
+                      "h-10 shrink-0 text-red-600 transition-[opacity,background-color,color] duration-500 ease-out hover:bg-red-50 hover:text-red-700",
+                      hasActiveFilters
+                        ? "opacity-100"
+                        : "pointer-events-none opacity-0",
+                    )}
+                    onClick={() => {
+                      if (!hasActiveFilters) return;
+                      setFilters(DEFAULT_FILTERS);
+                    }}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    {tFilters("clearFilters")}
+                  </Button>
+                </div>
               </div>
-            </div>
-          ) : null}
-          <div className="flex items-center justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={visibleTasks.length === 0}
-              onClick={handleExportExcel}
-              aria-label={tCommon("exportExcel")}
-            >
-              <FileSpreadsheet className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{tCommon("exportExcel")}</span>
-            </Button>
-            <ListViewToggle mode={mode} onChange={setMode} size="sm" />
-          </div>
+            ) : null}
+          </PageToolbar>
           {mode === "table" && activeSelectedIds.size > 0 ? (
             <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary-muted/50 px-3 py-2">
               <span className="text-sm font-medium text-primary">
@@ -624,11 +658,16 @@ export function TaskList({
             </div>
           ) : null}
           {tasks.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("empty")}</p>
+            <EmptyState>{t("empty")}</EmptyState>
           ) : visibleTasks.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("noFilterMatch")}</p>
+            <EmptyState>{t("noFilterMatch")}</EmptyState>
           ) : mode === "table" ? (
-            renderTableView()
+            <>
+              <div className="hidden sm:block">{renderTableView()}</div>
+              <div className="divide-y divide-border/60 sm:hidden">
+                {visibleTasks.map((task) => renderTaskCard(task, false))}
+              </div>
+            </>
           ) : mode === "grid" ? (
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {visibleTasks.map((task) => renderTaskCard(task, true))}
@@ -640,6 +679,39 @@ export function TaskList({
           )}
         </CardContent>
       </Card>
+      <TaskDetailPanel
+        task={selectedTask}
+        open={Boolean(selectedTask)}
+        onClose={() => setSelectedTask(null)}
+        users={
+          users.length > 0
+            ? users
+            : Array.from(
+                new Map(
+                  tasks.map((task) => [
+                    task.assignee.id,
+                    { id: task.assignee.id, name: task.assignee.name },
+                  ]),
+                ).values(),
+              )
+        }
+        matters={
+          matters.length > 0
+            ? matters
+            : tasks
+                .filter((task) => task.matter)
+                .map((task) => ({
+                  id: task.matter!.id,
+                  code: task.matter!.code,
+                  title: task.matter!.title,
+                }))
+        }
+        canDelete={
+          Boolean(selectedTask) &&
+          (canManage || selectedTask!.createdById === currentUserId)
+        }
+        onSaved={() => router.refresh()}
+      />
     </>
   );
 }

@@ -34,6 +34,7 @@ import {
   Sun,
   Globe,
   BarChart3,
+  ClipboardList,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
@@ -69,6 +70,7 @@ const iconMap = {
   MessageCircle,
   Globe,
   BarChart3,
+  ClipboardList,
 };
 
 function SidebarTooltip({
@@ -414,7 +416,7 @@ function AccountMenu({
                     width: menuBox.width,
                   }
             }
-            className="fixed z-[60] overflow-hidden rounded-[5px] border border-border bg-surface py-1 shadow-[var(--shadow-overlay)]"
+            className="fixed z-[60] overflow-hidden rounded-md border border-border bg-surface py-1 shadow-[var(--shadow-overlay)]"
           >
             <div className="border-b border-border px-3 py-2">
               <p className="truncate text-sm font-medium text-foreground">

@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ClipboardList, Route } from "lucide-react";
+import { ClipboardList, ListTodo, Route } from "lucide-react";
 import { PageHeaderSlot } from "@/components/layout/page-header-slot";
 import { AttachmentPanel } from "@/components/attachments/attachment-panel";
 import { MatterAiSummary } from "@/components/matters/matter-ai-summary";
 import { MatterInfoCard } from "@/components/matters/matter-info-card";
+import { TaskForm } from "@/components/tasks/task-form";
+import { TaskList } from "@/components/tasks/task-list";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
@@ -17,6 +19,7 @@ import {
   filterVisibleAttachments,
   getAccessSummaries,
 } from "@/lib/attachment-access";
+import { getTranslations } from "next-intl/server";
 
 export default async function MatterHubPage({
   params,
@@ -63,6 +66,39 @@ export default async function MatterHubPage({
     (isManagerOrAbove(user.role) || matter.leadLawyerId === user.id);
 
   const formData = canEditMembers ? await getMatterFormData(user) : null;
+  const tReport = await getTranslations("matters.report");
+  const canViewAllTasks = isManagerOrAbove(user.role);
+
+  const [matterTasks, staffUsers] = await Promise.all([
+    prisma.task.findMany({
+      where: { matterId: matter.id },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        status: true,
+        priority: true,
+        dueDate: true,
+        assigneeId: true,
+        createdById: true,
+        matterId: true,
+        createdAt: true,
+        updatedAt: true,
+        assignee: { select: { id: true, name: true, email: true, role: true } },
+        createdBy: { select: { id: true, name: true, email: true, role: true } },
+        matter: { select: { id: true, code: true, title: true, status: true } },
+      },
+      orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }],
+      take: 100,
+    }),
+    prisma.user.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, email: true, role: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
+
+  const matterOption = [{ id: matter.id, code: matter.code, title: matter.title }];
 
   const attachmentsWithCounts = await attachVersionCounts(matter.attachments);
   const visibleAttachments = await filterVisibleAttachments(
@@ -118,9 +154,9 @@ export default async function MatterHubPage({
 
         <div className="grid gap-4 sm:grid-cols-2 xl:col-span-2 xl:grid-cols-1 xl:content-start">
           <Link href={`/matters/${matter.id}/report`} className="group block">
-            <Card className="h-full rounded-[5px] transition-colors group-hover:border-primary/40 group-hover:bg-primary-muted/40">
+            <Card className="h-full rounded-md transition-colors group-hover:border-primary/40 group-hover:bg-primary-muted/40">
               <CardHeader className="flex flex-row items-center gap-3 space-y-0">
-                <span className="flex h-11 w-11 items-center justify-center rounded-[5px] bg-primary text-white transition-colors group-hover:bg-primary-hover">
+                <span className="flex h-11 w-11 items-center justify-center rounded-md bg-primary text-white transition-colors group-hover:bg-primary-hover">
                   <ClipboardList className="h-5 w-5" />
                 </span>
                 <div>
@@ -137,9 +173,9 @@ export default async function MatterHubPage({
           </Link>
 
           <Link href={`/matters/${matter.id}/plan`} className="group block">
-            <Card className="h-full rounded-[5px] transition-colors group-hover:border-primary/40 group-hover:bg-primary-muted/40">
+            <Card className="h-full rounded-md transition-colors group-hover:border-primary/40 group-hover:bg-primary-muted/40">
               <CardHeader className="flex flex-row items-center gap-3 space-y-0">
-                <span className="flex h-11 w-11 items-center justify-center rounded-[5px] bg-primary text-white transition-colors group-hover:bg-primary-hover">
+                <span className="flex h-11 w-11 items-center justify-center rounded-md bg-primary text-white transition-colors group-hover:bg-primary-hover">
                   <Route className="h-5 w-5" />
                 </span>
                 <div>
@@ -157,6 +193,30 @@ export default async function MatterHubPage({
 
           <MatterAiSummary matterId={matter.id} className="sm:col-span-2 xl:col-span-1" />
         </div>
+      </div>
+
+      <div className="mt-8 space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
+            <ListTodo className="h-4 w-4 text-primary" />
+            {tReport("relatedTasks")}
+          </h2>
+          {canEditContent ? (
+            <TaskForm
+              users={staffUsers}
+              matters={matterOption}
+              defaultMatterId={matter.id}
+            />
+          ) : null}
+        </div>
+        <TaskList
+          tasks={matterTasks}
+          totalCount={matterTasks.length}
+          currentUserId={user.id}
+          canManage={canViewAllTasks || canEditContent}
+          users={staffUsers}
+          matters={matterOption}
+        />
       </div>
 
       <div className="mt-8">

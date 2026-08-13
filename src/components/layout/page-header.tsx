@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
-import { ChevronLeft, ChevronRight, Menu, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, ListChecks, Menu, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getBreadcrumbs } from "@/lib/navigation";
 import { NotificationPanel } from "@/components/notifications/notification-panel";
@@ -12,6 +12,7 @@ import { HEADER_TOOLBAR_BTN } from "@/components/layout/header-toolbar";
 import { OPEN_COMMAND_PALETTE_EVENT } from "@/components/layout/command-palette";
 import { UrgentReminderStack } from "@/components/layout/urgent-reminder-stack";
 import { usePageMeta } from "@/contexts/page-meta-context";
+import { usePersonalTodoPanel } from "@/contexts/personal-todo-panel-context";
 import { useSidebar } from "@/contexts/sidebar-context";
 import { useVisitHistoryNav } from "@/hooks/use-visit-history-nav";
 import { useShellAlerts } from "@/hooks/use-shell-alerts";
@@ -24,6 +25,8 @@ export function PageHeader() {
   const tNav = useTranslations("nav");
   const tCommon = useTranslations("common");
   const tAccount = useTranslations("account");
+  const tTodo = useTranslations("personalTodo");
+  const { open: todoOpen, toggle: toggleTodo } = usePersonalTodoPanel();
   const breadcrumbs = getBreadcrumbs(pathname, tNav, tCommon);
   const { canGoBack, canGoForward, goBack, goForward } = useVisitHistoryNav();
   const { openMobile } = useSidebar();
@@ -110,6 +113,23 @@ export function PageHeader() {
               <Search />
             </Button>
             <CreateMatterButton />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className={cn(
+                HEADER_TOOLBAR_BTN,
+                "interactive-press",
+                todoOpen && "text-primary",
+              )}
+              onClick={toggleTodo}
+              aria-label={tTodo("togglePanel")}
+              aria-pressed={todoOpen}
+              aria-controls="personal-todo-panel"
+              title={tTodo("togglePanel")}
+            >
+              <ListChecks />
+            </Button>
             <NotificationPanel
               unreadCount={unreadCount}
               urgentReminders={urgentReminders}

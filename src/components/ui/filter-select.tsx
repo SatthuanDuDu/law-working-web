@@ -127,7 +127,7 @@ export function FilterSelect({
                 left: menuBox.left,
                 width: menuBox.width,
               }}
-              className="fixed z-[60] max-h-56 overflow-y-auto rounded-[5px] border border-border bg-surface py-1 shadow-[var(--shadow-overlay)]"
+              className="fixed z-[60] max-h-56 overflow-y-auto rounded-md border border-border bg-surface py-1 shadow-[var(--shadow-overlay)]"
             >
               {options.map((option) => {
                 const isSelected = option.value === value;

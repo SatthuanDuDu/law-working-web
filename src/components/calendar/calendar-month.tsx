@@ -33,59 +33,13 @@ import {
 import { useLabelMaps } from "@/i18n/use-label-maps";
 import { cn } from "@/lib/utils";
 import { liquidPanelClass } from "@/lib/liquid-panel";
+import {
+  planStepStatusChipClass,
+  StatusChip,
+  taskPriorityChipClass,
+  taskStatusChipClass,
+} from "@/components/ui/status-chip";
 import type { MatterPlanStepStatus, TaskPriority, TaskStatus } from "@prisma/client";
-
-/** Soft Material tonal chips by task priority (lists / tooltips) */
-const TASK_PRIORITY_CHIP_CLASS: Record<TaskPriority, string> = {
-  LOW: "bg-yellow-100 text-yellow-900 dark:bg-yellow-950/50 dark:text-yellow-200",
-  MEDIUM: "bg-amber-100 text-amber-950 dark:bg-amber-950/50 dark:text-amber-200",
-  HIGH: "bg-orange-500 text-white dark:bg-orange-600",
-  URGENT: "bg-red-600 text-white dark:bg-red-700",
-};
-
-const PLAN_STATUS_BADGE: Record<
-  MatterPlanStepStatus,
-  { Icon: typeof Check; className: string }
-> = {
-  NOT_STARTED: {
-    Icon: Circle,
-    className: "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-100",
-  },
-  IN_PROGRESS: {
-    Icon: CircleDot,
-    className: "bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300",
-  },
-  DONE: {
-    Icon: Check,
-    className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300",
-  },
-  BLOCKED: {
-    Icon: Ban,
-    className: "bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300",
-  },
-};
-
-const TASK_STATUS_BADGE: Record<
-  TaskStatus,
-  { Icon: typeof Check; className: string }
-> = {
-  TODO: {
-    Icon: Circle,
-    className: "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-100",
-  },
-  IN_PROGRESS: {
-    Icon: CircleDot,
-    className: "bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300",
-  },
-  DONE: {
-    Icon: Check,
-    className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300",
-  },
-  CANCELLED: {
-    Icon: X,
-    className: "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-200",
-  },
-};
 
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 
@@ -574,24 +528,17 @@ function PreviewKindLabel({ children }: { children: ReactNode }) {
 }
 
 function PreviewStatusChip({
-  Icon,
   label,
   className,
 }: {
-  Icon: typeof Check;
   label: string;
-  className: string;
+  className?: string;
 }) {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold",
-        className,
-      )}
-    >
-      <Icon className="h-3 w-3" strokeWidth={2.5} aria-hidden />
-      {label}
-    </span>
+    <StatusChip
+      label={label}
+      className={cn("px-2 text-[11px] font-semibold", className)}
+    />
   );
 }
 
@@ -603,14 +550,13 @@ function PreviewPriorityChip({
   label: string;
 }) {
   return (
-    <span
+    <StatusChip
+      label={label}
       className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold",
-        TASK_PRIORITY_CHIP_CLASS[priority],
+        taskPriorityChipClass(priority),
+        "px-2 text-[11px] font-semibold",
       )}
-    >
-      {label}
-    </span>
+    />
   );
 }
 
@@ -709,7 +655,6 @@ function TaskPreviewContent({
 }) {
   const t = useTranslations("calendar");
   const labels = useLabelMaps();
-  const status = TASK_STATUS_BADGE[task.status];
   const matterLine = task.matterTitle
     ? `${task.matterCode ? `${task.matterCode} · ` : ""}${task.matterTitle}`
     : null;
@@ -735,9 +680,8 @@ function TaskPreviewContent({
         ) : null}
         <div className="flex flex-wrap gap-1.5">
           <PreviewStatusChip
-            Icon={status.Icon}
             label={labels.taskStatus[task.status]}
-            className={status.className}
+            className={taskStatusChipClass(task.status)}
           />
           <PreviewPriorityChip
             priority={task.priority}
@@ -796,7 +740,6 @@ function PlanPreviewContent({
 }) {
   const t = useTranslations("calendar");
   const labels = useLabelMaps();
-  const status = PLAN_STATUS_BADGE[step.status];
 
   return (
     <div className="space-y-3 p-3.5">
@@ -814,9 +757,8 @@ function PlanPreviewContent({
         </p>
         <div className="flex flex-wrap gap-1.5">
           <PreviewStatusChip
-            Icon={status.Icon}
             label={labels.planStepStatus[step.status]}
-            className={status.className}
+            className={planStepStatusChipClass(step.status)}
           />
           <PreviewPriorityChip
             priority={step.priority}
@@ -1395,7 +1337,7 @@ function MonthYearPicker({
               role="dialog"
               aria-label={t("pickMonthYear")}
               style={{ top: box.top, left: box.left, width: 280 }}
-              className="fixed z-[70] rounded-[5px] border border-border bg-surface p-3"
+              className="fixed z-[70] rounded-md border border-border bg-surface p-3"
             >
               <div className="mb-3 flex items-center justify-between gap-2">
                 <Button

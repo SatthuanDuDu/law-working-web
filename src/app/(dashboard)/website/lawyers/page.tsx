@@ -2,6 +2,16 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+
+import {
+  Table,
+  TBody,
+  TD,
+  TH,
+  THead,
+  TR,
+  TableEmptyRow,
+} from "@/components/ui/table";
 import { LocalePair } from "@/components/website-cms/locale-pair";
 import { MediaUploadField } from "@/components/website-cms/media-upload-field";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
@@ -247,26 +257,29 @@ export default async function WebsiteLawyersPage({
       ) : null}
 
       <div className="overflow-hidden rounded-md border border-border bg-surface">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-border bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
-            <tr>
-              <th className="px-4 py-3">Họ tên</th>
-              <th className="px-4 py-3">Chức danh</th>
-              <th className="px-4 py-3">Trạng thái</th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {lawyers.map((lawyer) => {
+        <Table>
+          <THead className="border-b border-border bg-muted/50">
+            <TR>
+              <TH className="px-4 py-3">Họ tên</TH>
+              <TH className="px-4 py-3">Chức danh</TH>
+              <TH className="px-4 py-3">Trạng thái</TH>
+              <TH className="px-4 py-3" />
+            </TR>
+          </THead>
+          <TBody>
+            {lawyers.length === 0 ? (
+              <TableEmptyRow colSpan={4}>Chưa có luật sư nào.</TableEmptyRow>
+            ) : (
+              lawyers.map((lawyer) => {
               const title = lawyer.translations.find((t) => t.locale === "vi")?.title ?? "—";
               return (
-                <tr key={lawyer.id}>
-                  <td className="px-4 py-3 font-medium">{lawyer.name}</td>
-                  <td className="px-4 py-3">{title}</td>
-                  <td className="px-4 py-3">
+                <TR key={lawyer.id}>
+                  <TD className="px-4 py-3 font-medium">{lawyer.name}</TD>
+                  <TD className="px-4 py-3">{title}</TD>
+                  <TD className="px-4 py-3">
                     {lawyer.status === "PUBLISHED" ? "Công khai" : "Nháp"}
-                  </td>
-                  <td className="px-4 py-3 text-right">
+                  </TD>
+                  <TD className="px-4 py-3 text-right">
                     <div className="flex flex-wrap items-center justify-end gap-3">
                       <Link
                         href={`/website/lawyers?edit=${lawyer.id}`}
@@ -281,12 +294,13 @@ export default async function WebsiteLawyersPage({
                         </button>
                       </form>
                     </div>
-                  </td>
-                </tr>
+                  </TD>
+                </TR>
               );
-            })}
-          </tbody>
-        </table>
+              })
+            )}
+          </TBody>
+        </Table>
       </div>
     </div>
   );

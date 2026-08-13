@@ -22,7 +22,8 @@ export async function GET(request: Request) {
   }
 
   const result = await generateDeadlineReminders(prisma);
-  const created = result.taskReminders + result.planReminders;
+  const created =
+    result.taskReminders + result.planReminders + result.todoReminders;
 
   return NextResponse.json({ ok: true, created, ...result });
 }

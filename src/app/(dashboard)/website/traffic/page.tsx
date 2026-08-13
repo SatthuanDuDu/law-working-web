@@ -2,6 +2,15 @@ import { Eye, TrendingUp } from "lucide-react";
 
 import { getTrafficReport } from "@/lib/cms-traffic";
 import { requireRole } from "@/lib/session";
+import {
+  Table,
+  TBody,
+  TD,
+  TH,
+  THead,
+  TR,
+  TableEmptyRow,
+} from "@/components/ui/table";
 
 function formatDay(day: string) {
   const [y, m, d] = day.split("-");
@@ -47,52 +56,54 @@ export default async function WebsiteTrafficPage() {
           <div className="border-b border-border px-4 py-3">
             <h2 className="font-semibold text-foreground">Trang xem nhiều nhất (30 ngày)</h2>
           </div>
-          {report.topPaths.length === 0 ? (
-            <p className="px-4 py-8 text-sm text-muted-foreground">Chưa có dữ liệu.</p>
-          ) : (
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-border bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-3">Đường dẫn</th>
-                  <th className="px-4 py-3 text-right">Lượt xem</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {report.topPaths.map((row) => (
-                  <tr key={row.path}>
-                    <td className="max-w-xs truncate px-4 py-3 font-mono text-xs">{row.path}</td>
-                    <td className="px-4 py-3 text-right font-semibold">{row.views}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          <Table>
+            <THead className="border-b border-border bg-muted/50">
+              <TR>
+                <TH className="px-4 py-3">Đường dẫn</TH>
+                <TH className="px-4 py-3 text-right">Lượt xem</TH>
+              </TR>
+            </THead>
+            <TBody>
+              {report.topPaths.length === 0 ? (
+                <TableEmptyRow colSpan={2}>Chưa có dữ liệu.</TableEmptyRow>
+              ) : (
+                report.topPaths.map((row) => (
+                  <TR key={row.path}>
+                    <TD className="max-w-xs truncate px-4 py-3 font-mono text-xs">
+                      {row.path}
+                    </TD>
+                    <TD className="px-4 py-3 text-right font-semibold">{row.views}</TD>
+                  </TR>
+                ))
+              )}
+            </TBody>
+          </Table>
         </section>
 
         <section className="overflow-hidden rounded-md border border-border bg-surface">
           <div className="border-b border-border px-4 py-3">
             <h2 className="font-semibold text-foreground">Lượt xem theo ngày (30 ngày)</h2>
           </div>
-          {report.dailyTotals.length === 0 ? (
-            <p className="px-4 py-8 text-sm text-muted-foreground">Chưa có dữ liệu.</p>
-          ) : (
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-border bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-3">Ngày</th>
-                  <th className="px-4 py-3 text-right">Lượt xem</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border max-h-96 overflow-y-auto">
-                {report.dailyTotals.map((row) => (
-                  <tr key={row.day}>
-                    <td className="px-4 py-3">{formatDay(row.day)}</td>
-                    <td className="px-4 py-3 text-right font-semibold">{row.views}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          <Table>
+            <THead className="border-b border-border bg-muted/50">
+              <TR>
+                <TH className="px-4 py-3">Ngày</TH>
+                <TH className="px-4 py-3 text-right">Lượt xem</TH>
+              </TR>
+            </THead>
+            <TBody className="max-h-96 overflow-y-auto">
+              {report.dailyTotals.length === 0 ? (
+                <TableEmptyRow colSpan={2}>Chưa có dữ liệu.</TableEmptyRow>
+              ) : (
+                report.dailyTotals.map((row) => (
+                  <TR key={row.day}>
+                    <TD className="px-4 py-3">{formatDay(row.day)}</TD>
+                    <TD className="px-4 py-3 text-right font-semibold">{row.views}</TD>
+                  </TR>
+                ))
+              )}
+            </TBody>
+          </Table>
         </section>
       </div>
     </div>

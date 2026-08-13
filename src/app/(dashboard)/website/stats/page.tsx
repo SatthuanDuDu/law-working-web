@@ -2,6 +2,16 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+
+import {
+  Table,
+  TBody,
+  TD,
+  TH,
+  THead,
+  TR,
+  TableEmptyRow,
+} from "@/components/ui/table";
 import { Field, Input } from "@/components/ui/field";
 import { LocalePair } from "@/components/website-cms/locale-pair";
 import { slugify } from "@/lib/utils";
@@ -129,24 +139,27 @@ export default async function WebsiteStatsPage({
       ) : null}
 
       <div className="overflow-hidden rounded-md border border-border bg-surface">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-border bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
-            <tr>
-              <th className="px-4 py-3">Thứ tự</th>
-              <th className="px-4 py-3">Giá trị</th>
-              <th className="px-4 py-3">Nhãn (VI)</th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {stats.map((stat) => {
+        <Table>
+          <THead className="border-b border-border bg-muted/50">
+            <TR>
+              <TH className="px-4 py-3">Thứ tự</TH>
+              <TH className="px-4 py-3">Giá trị</TH>
+              <TH className="px-4 py-3">Nhãn (VI)</TH>
+              <TH className="px-4 py-3" />
+            </TR>
+          </THead>
+          <TBody>
+            {stats.length === 0 ? (
+              <TableEmptyRow colSpan={4}>Chưa có số liệu nào.</TableEmptyRow>
+            ) : (
+              stats.map((stat) => {
               const label = stat.translations.find((t) => t.locale === "vi")?.label ?? "—";
               return (
-                <tr key={stat.id}>
-                  <td className="px-4 py-3">{stat.order}</td>
-                  <td className="px-4 py-3 font-medium">{stat.value}</td>
-                  <td className="px-4 py-3">{label}</td>
-                  <td className="px-4 py-3 text-right">
+                <TR key={stat.id}>
+                  <TD className="px-4 py-3">{stat.order}</TD>
+                  <TD className="px-4 py-3 font-medium">{stat.value}</TD>
+                  <TD className="px-4 py-3">{label}</TD>
+                  <TD className="px-4 py-3 text-right">
                     <div className="flex flex-wrap items-center justify-end gap-3">
                       <Link
                         href={`/website/stats?edit=${stat.id}`}
@@ -161,12 +174,13 @@ export default async function WebsiteStatsPage({
                         </button>
                       </form>
                     </div>
-                  </td>
-                </tr>
+                  </TD>
+                </TR>
               );
-            })}
-          </tbody>
-        </table>
+              })
+            )}
+          </TBody>
+        </Table>
       </div>
     </div>
   );

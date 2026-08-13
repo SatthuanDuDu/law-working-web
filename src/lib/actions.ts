@@ -58,6 +58,7 @@ function revalidateTasks() {
   revalidatePath("/tasks");
   revalidatePath("/calendar");
   revalidatePath("/dashboard");
+  revalidatePath("/matters");
 }
 
 export async function changePasswordAction(formData: FormData) {
@@ -1782,6 +1783,105 @@ export async function updateTaskStatusAction(id: string, status: string) {
     entityType: "Task",
     entityId: id,
     details: `${task.title}: ${task.status} → ${status}`,
+  });
+
+  revalidateTasks();
+  return { success: true };
+}
+
+export async function updateTaskAction(formData: FormData) {
+  const user = await requireAuth();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { error: await actionError("invalidData") };
+
+  const existing = await prisma.task.findUnique({ where: { id } });
+  if (!existing) return { error: "Không tìm thấy công việc" };
+
+  const canEdit =
+    existing.assigneeId === user.id ||
+    existing.createdById === user.id ||
+    user.role === "ADMIN" ||
+    user.role === "MANAGER";
+  if (!canEdit) return { error: "Không có quyền cập nhật" };
+
+  const parsed = taskSchema.safeParse({
+    title: formData.get("title"),
+    description: formData.get("description"),
+    status: formData.get("status") || existing.status,
+    priority: formData.get("priority"),
+    dueDate: formData.get("dueDate") || null,
+    assigneeId: formData.get("assigneeId"),
+    matterId: formData.get("matterId") || null,
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? (await actionError("invalidData")) };
+  }
+
+  const assigneeChanged = parsed.data.assigneeId !== existing.assigneeId;
+
+  const task = await prisma.task.update({
+    where: { id },
+    data: {
+      title: parsed.data.title,
+      description: parsed.data.description || null,
+      status: parsed.data.status,
+      priority: parsed.data.priority,
+      dueDate: parsed.data.dueDate ? new Date(parsed.data.dueDate) : null,
+      assigneeId: parsed.data.assigneeId,
+      matterId: parsed.data.matterId || null,
+    },
+  });
+
+  if (assigneeChanged) {
+    await prisma.notification.create({
+      data: {
+        userId: parsed.data.assigneeId,
+        type: "TASK_ASSIGNED",
+        title: "Được giao việc mới",
+        message: `Bạn được giao: ${parsed.data.title}`,
+        link: "/tasks",
+      },
+    });
+    void notifyUsersPush(parsed.data.assigneeId, {
+      title: "Được giao việc mới",
+      body: `Bạn được giao: ${parsed.data.title}`,
+      url: "/tasks",
+      tag: `task-assigned-${task.id}`,
+    });
+  }
+
+  await createAuditLog({
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "Task",
+    entityId: task.id,
+    details: task.title,
+  });
+
+  revalidateTasks();
+  return { success: true };
+}
+
+export async function deleteTaskAction(id: string) {
+  const user = await requireAuth();
+  const existing = await prisma.task.findUnique({ where: { id } });
+  if (!existing) return { error: "Không tìm thấy công việc" };
+
+  const canDelete =
+    existing.createdById === user.id ||
+    user.role === "ADMIN" ||
+    user.role === "MANAGER";
+  if (!canDelete) return { error: "Không có quyền xóa" };
+
+  await prisma.task.delete({ where: { id } });
+
+  await createAuditLog({
+    userId: user.id,
+    action: "DELETE",
+    entityType: "Task",
+    entityId: id,
+    details: existing.title,
   });
 
   revalidateTasks();

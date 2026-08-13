@@ -31,7 +31,7 @@ export default async function AdminSpendCategoriesPage() {
     <>
       <PageHeaderSlot title={tPages("title")} />
       <div className="grid gap-8 xl:grid-cols-[360px_1fr]">
-        <Card className="rounded-[5px]">
+        <Card className="rounded-md">
           <CardHeader>
             <CardTitle>{t("addTitle")}</CardTitle>
           </CardHeader>

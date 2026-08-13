@@ -198,7 +198,7 @@ export default async function MatterPlanPage({
           />
         </aside>
 
-        <Card className="min-w-0 overflow-visible rounded-[5px] xl:col-span-2">
+        <Card className="min-w-0 overflow-visible rounded-md xl:col-span-2">
           <CardContent className="overflow-visible p-4 sm:p-6">
             <MatterPlanTimeline
               matterId={matter.id}

@@ -85,6 +85,7 @@ export const NOTIFICATION_TYPE_LABELS = {
   TASK_DUE: "Hạn công việc",
   PLAN_ASSIGNED: "Giao kế hoạch",
   PLAN_DUE: "Hạn bước kế hoạch",
+  PERSONAL_TODO_DUE: "Hạn To-do",
   GENERAL: "Chung",
   MENTION: "Nhắc đến",
   CHAT_MESSAGE: "Tin nhắn",
@@ -98,7 +99,9 @@ export type NavLabelKey =
   | "dashboard"
   | "matters"
   | "clients"
+  | "chat"
   | "calendar"
+  | "tasks"
   | "workload"
   | "expenses"
   | "wallet"
@@ -115,6 +118,7 @@ export const NAV_ITEMS = [
   { href: "/dashboard", labelKey: "dashboard" as const, icon: "LayoutDashboard" },
   { href: "/matters", labelKey: "matters" as const, icon: "Briefcase" },
   { href: "/clients", labelKey: "clients" as const, icon: "Users" },
+  { href: "/tasks", labelKey: "tasks" as const, icon: "ClipboardList" },
   { href: "/chat", labelKey: "chat" as const, icon: "MessageCircle" },
   { href: "/calendar", labelKey: "calendar" as const, icon: "CalendarDays" },
   { href: "/wallet", labelKey: "wallet" as const, icon: "Wallet" },

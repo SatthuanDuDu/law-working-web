@@ -14,6 +14,8 @@ import { Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FilterSelect } from "@/components/ui/filter-select";
+import { PageToolbar } from "@/components/layout/page-toolbar";
+import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 
 export type WorkTypeListItem = {
@@ -95,7 +97,7 @@ export function WorkTypesList({ items }: { items: WorkTypeListItem[] }) {
   return (
     <>
       {dialog}
-      <Card className="rounded-[5px]">
+      <Card className="rounded-md">
         <CardHeader className="gap-3 space-y-0 pb-3">
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <CardTitle className="text-base sm:text-lg">{t("listTitle")}</CardTitle>
@@ -109,8 +111,8 @@ export function WorkTypesList({ items }: { items: WorkTypeListItem[] }) {
             </p>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
-            <div className="relative min-w-0">
+          <PageToolbar>
+            <div className="relative min-w-0 flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={query}
@@ -131,7 +133,7 @@ export function WorkTypesList({ items }: { items: WorkTypeListItem[] }) {
                 { value: "inactive", label: tAdmin("inactiveShort") },
               ]}
             />
-          </div>
+          </PageToolbar>
           {actionError ? (
             <p className="text-sm text-red-600">{actionError}</p>
           ) : null}
@@ -139,13 +141,13 @@ export function WorkTypesList({ items }: { items: WorkTypeListItem[] }) {
 
         <CardContent className="divide-y divide-border/70 p-0">
           {items.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground sm:px-6">
-              {t("emptyHint")}
-            </p>
+            <div className="p-4 sm:p-6">
+              <EmptyState>{t("emptyHint")}</EmptyState>
+            </div>
           ) : visibleItems.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground sm:px-6">
-              {t("noFilterMatch")}
-            </p>
+            <div className="p-4 sm:p-6">
+              <EmptyState>{t("noFilterMatch")}</EmptyState>
+            </div>
           ) : (
             visibleItems.map((item) => (
               <div

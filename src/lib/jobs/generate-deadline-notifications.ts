@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 async function main() {
   const result = await generateDeadlineReminders(prisma);
   console.log(
-    `Created ${result.taskReminders} task + ${result.planReminders} plan deadline notifications.`,
+    `Created ${result.taskReminders} task + ${result.planReminders} plan + ${result.todoReminders} to-do deadline notifications.`,
   );
 }
 

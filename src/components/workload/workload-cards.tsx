@@ -187,7 +187,7 @@ function ExpandableKpiCard({
   const [open, setOpen] = useState(false);
 
   return (
-    <div className={cn(liquidPanelClass, "min-w-0 max-w-full overflow-hidden rounded-[5px] transition-colors duration-200 hover:border-primary/30")}>
+    <div className={cn(liquidPanelClass, "min-w-0 max-w-full overflow-hidden rounded-md transition-colors duration-200 hover:border-primary/30")}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -199,7 +199,7 @@ function ExpandableKpiCard({
       >
         <span
           className={cn(
-            "flex h-11 w-11 shrink-0 items-center justify-center rounded-[5px]",
+            "flex h-11 w-11 shrink-0 items-center justify-center rounded-md",
             tone,
           )}
         >
@@ -328,7 +328,7 @@ export function WorkloadPersonCards({ rows }: { rows: WorkloadPersonRow[] }) {
   );
 
   return (
-    <Card className="rounded-[5px]">
+    <Card className="rounded-md">
       <CardHeader>
         <CardTitle>{t("byPerson")}</CardTitle>
       </CardHeader>
@@ -359,7 +359,7 @@ function PersonWorkloadCard({
   return (
     <div
       className={cn(
-        "min-w-0 max-w-full overflow-hidden rounded-[5px] border",
+        "min-w-0 max-w-full overflow-hidden rounded-md border",
         hasOverdue
           ? "border-rose-200 bg-rose-50/30 dark:border-rose-900/50 dark:bg-rose-950/30"
           : liquidPanelClass,
@@ -513,7 +513,7 @@ export function WorkloadDepartmentCards({
   );
 
   return (
-    <Card className="rounded-[5px]">
+    <Card className="rounded-md">
       <CardHeader>
         <CardTitle>{t("byDepartment")}</CardTitle>
       </CardHeader>
@@ -548,7 +548,7 @@ function DepartmentWorkloadCard({
   return (
     <div
       className={cn(
-        "min-w-0 max-w-full overflow-hidden rounded-[5px] border",
+        "min-w-0 max-w-full overflow-hidden rounded-md border",
         hasOverdue
           ? "border-rose-200 bg-rose-50/30 dark:border-rose-900/50 dark:bg-rose-950/30"
           : liquidPanelClass,

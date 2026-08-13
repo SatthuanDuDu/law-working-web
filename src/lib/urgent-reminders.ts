@@ -72,7 +72,7 @@ export async function getUrgentReminders(
 
   const nowMs = now.getTime();
 
-  return steps
+  const planItems = steps
     .filter((step) => {
       const startsAt = step.startedAt ?? step.dueAt;
       if (!startsAt) return false;
@@ -82,7 +82,6 @@ export async function getUrgentReminders(
         step.dueAt?.toISOString() ?? null,
       );
     })
-    .slice(0, 10)
     .map((step) => {
       const startsAt = step.startedAt ?? step.dueAt!;
       return {
@@ -92,6 +91,46 @@ export async function getUrgentReminders(
         startsAt: startsAt.toISOString(),
         endsAt: step.dueAt?.toISOString() ?? null,
         timeLabel: formatStartTime(step.dueAt ?? startsAt),
-      };
+      } satisfies UrgentReminderItem;
     });
+
+  const personalTodos = await prisma.personalTodo.findMany({
+    where: {
+      ownerId: userId,
+      isDone: false,
+      hasTime: true,
+      dueDate: {
+        gte: twoHoursAgo,
+        lte: withinTwoHours,
+      },
+    },
+    select: { id: true, title: true, dueDate: true },
+    orderBy: { dueDate: "asc" },
+    take: 10,
+  });
+
+  const todoItems = personalTodos
+    .filter((todo) => {
+      if (!todo.dueDate) return false;
+      return isUrgentReminderActive(
+        nowMs,
+        todo.dueDate.toISOString(),
+        null,
+      );
+    })
+    .map((todo) => {
+      const due = todo.dueDate!;
+      return {
+        id: `todo-${todo.id}`,
+        title: todo.title,
+        href: "/dashboard?todo=1",
+        startsAt: due.toISOString(),
+        endsAt: null,
+        timeLabel: formatStartTime(due),
+      } satisfies UrgentReminderItem;
+    });
+
+  return [...planItems, ...todoItems]
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+    .slice(0, 10);
 }

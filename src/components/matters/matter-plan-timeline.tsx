@@ -3,12 +3,8 @@
 import { useState, useTransition, type DragEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Ban,
-  Check,
   ChevronDown,
   ChevronRight,
-  Circle,
-  CircleDot,
   GripVertical,
   Pencil,
   Plus,
@@ -16,6 +12,11 @@ import {
   X,
 } from "lucide-react";
 import type { MatterPlanStepStatus, TaskPriority } from "@prisma/client";
+import {
+  planStepStatusChipClass,
+  StatusChip,
+  taskPriorityChipClass,
+} from "@/components/ui/status-chip";
 import {
   deleteMatterPlanStepAction,
   reorderMatterPlanStepsAction,
@@ -73,62 +74,12 @@ export type MatterPlanStepItem = {
   attachments: AttachmentItem[];
 };
 
-const STATUS_BADGE: Record<
-  MatterPlanStepStatus,
-  { Icon: typeof Check; className: string }
-> = {
-  NOT_STARTED: {
-    Icon: Circle,
-    className: "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-100",
-  },
-  IN_PROGRESS: {
-    Icon: CircleDot,
-    className: "bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300",
-  },
-  DONE: {
-    Icon: Check,
-    className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300",
-  },
-  BLOCKED: {
-    Icon: Ban,
-    className: "bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300",
-  },
-};
-
-const PRIORITY_CHIP: Record<TaskPriority, string> = {
-  LOW: "bg-yellow-300 text-yellow-950",
-  MEDIUM: "bg-amber-400 text-amber-950",
-  HIGH: "bg-orange-500 text-white",
-  URGENT: "bg-red-600 text-white",
-};
-
 const PRIORITY_OPTIONS: TaskPriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
-
-function StatusBadge({
-  status,
-  label,
-}: {
-  status: MatterPlanStepStatus;
-  label: string;
-}) {
-  const { Icon, className } = STATUS_BADGE[status];
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold",
-        className,
-      )}
-    >
-      <Icon className="h-3 w-3" strokeWidth={2.5} />
-      {label}
-    </span>
-  );
-}
 
 const fieldLabelClass = "block text-sm font-medium text-foreground";
 
 const outlinedFieldInputClass =
-  "interactive-field h-11 min-w-0 max-w-full w-full rounded-[5px] border border-border bg-surface px-3 py-0 text-sm leading-normal text-foreground";
+  "interactive-field h-11 min-w-0 max-w-full w-full rounded-md border border-border bg-surface px-3 py-0 text-sm leading-normal text-foreground";
 
 function toDatetimeLocalValue(iso: string | null): string {
   if (!iso) return "";
@@ -505,7 +456,7 @@ export function MatterPlanTimeline({
                       <div className="flex min-w-0 flex-1 gap-2">
                         {canEdit && !isEditing ? (
                           <span
-                            className="mt-0.5 flex h-8 w-7 shrink-0 items-center justify-center rounded-[5px] text-muted-foreground"
+                            className="mt-0.5 flex h-8 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground"
                             aria-hidden
                           >
                             <GripVertical className="h-4 w-4" />
@@ -741,24 +692,28 @@ export function MatterPlanTimeline({
                                   {step.title}
                                 </p>
                                 <div className="flex flex-wrap items-center gap-1.5">
-                                  <StatusBadge
-                                    status={step.status}
+                                  <StatusChip
                                     label={planStepStatus[step.status]}
-                                  />
-                                  <span
                                     className={cn(
-                                      "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold",
-                                      PRIORITY_CHIP[step.priority],
+                                      planStepStatusChipClass(step.status),
+                                      "px-2 text-[11px] font-semibold",
                                     )}
-                                  >
-                                    {step.priority === "LOW"
-                                      ? t("importanceLow")
-                                      : step.priority === "MEDIUM"
-                                        ? t("importanceMedium")
-                                        : step.priority === "HIGH"
-                                          ? t("importanceHigh")
-                                          : t("importanceUrgent")}
-                                  </span>
+                                  />
+                                  <StatusChip
+                                    label={
+                                      step.priority === "LOW"
+                                        ? t("importanceLow")
+                                        : step.priority === "MEDIUM"
+                                          ? t("importanceMedium")
+                                          : step.priority === "HIGH"
+                                            ? t("importanceHigh")
+                                            : t("importanceUrgent")
+                                    }
+                                    className={cn(
+                                      taskPriorityChipClass(step.priority),
+                                      "px-2 text-[11px] font-semibold",
+                                    )}
+                                  />
                                 </div>
                                 {step.statusChangedAt ? (
                                   <p className="text-xs text-muted-foreground">
@@ -877,7 +832,7 @@ export function MatterPlanTimeline({
                                         .value as MatterPlanStepStatus,
                                     )
                                   }
-                                  className="h-9 w-full min-w-0 appearance-none rounded-[5px] py-0 pl-3 pr-9 text-center sm:w-auto sm:min-w-[10rem]"
+                                  className="h-9 w-full min-w-0 appearance-none rounded-md py-0 pl-3 pr-9 text-center sm:w-auto sm:min-w-[10rem]"
                                   aria-label={t("statusLabel")}
                                 >
                                   {(
@@ -903,7 +858,7 @@ export function MatterPlanTimeline({
                                   disabled={isUpdatingStep || Boolean(editingId)}
                                   onClick={() => beginEdit(step)}
                                   aria-label={t("editStep")}
-                                  className="h-9 w-9 rounded-[5px] text-muted-foreground hover:bg-primary-muted hover:text-primary"
+                                  className="h-9 w-9 rounded-md text-muted-foreground hover:bg-primary-muted hover:text-primary"
                                 >
                                   <Pencil className="h-4 w-4" />
                                 </Button>
@@ -914,7 +869,7 @@ export function MatterPlanTimeline({
                                   disabled={isUpdatingStep}
                                   onClick={() => handleDelete(step)}
                                   aria-label={t("deleteStep")}
-                                  className="h-9 w-9 rounded-[5px] text-muted-foreground hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"
+                                  className="h-9 w-9 rounded-md text-muted-foreground hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>

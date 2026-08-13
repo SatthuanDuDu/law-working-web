@@ -226,7 +226,7 @@ export function LocationPicker({
               aria-controls={listId}
               aria-autocomplete="list"
               className={cn(
-                "interactive-field h-11 w-full min-w-0 max-w-full rounded-[5px] border border-border bg-surface px-3 pr-9 text-base text-foreground sm:text-sm",
+                "interactive-field h-11 w-full min-w-0 max-w-full rounded-md border border-border bg-surface px-3 pr-9 text-base text-foreground sm:text-sm",
                 "placeholder:text-muted-foreground",
               )}
             />

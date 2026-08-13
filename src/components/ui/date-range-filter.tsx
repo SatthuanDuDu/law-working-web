@@ -248,7 +248,7 @@ export function DateRangeFilter({
                 left: menuBox.left,
                 width: menuBox.width,
               }}
-              className="fixed z-[60] rounded-[5px] border border-border bg-surface p-3 shadow-[var(--shadow-overlay)]"
+              className="fixed z-[60] rounded-md border border-border bg-surface p-3 shadow-[var(--shadow-overlay)]"
             >
               <div className="mb-2 flex items-center justify-between gap-2">
                 <Button

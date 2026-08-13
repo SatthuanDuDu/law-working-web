@@ -9,12 +9,16 @@ Hệ thống quản lý công việc nội bộ công ty luật: khách hàng, v
 
 ## In scope
 - Auth / phân quyền (NextAuth Credentials + JWT)
-- Khách hàng, vụ việc (matters), kế hoạch, tasks
+- Khách hàng, vụ việc (matters), kế hoạch, tasks (tạo / sửa / xoá / panel chi tiết)
+- **To-do** (panel phải kiểu Gmail, nút checklist trên header; `PersonalTodo`)
+  - Chỉ chủ sở hữu thấy; **không** AuditLog
+  - Hạn ngày/giờ, lặp daily/weekly/monthly; nhắc qua cron + in-app
+  - Giao việc công ty vẫn ở `/tasks`; `/my-work` redirect về `/tasks`
 - Tài liệu đính kèm (S3 / MinIO / R2)
 - Lịch & nhắc hạn; thông báo in-app
 - Dashboard Tổng quan (`/dashboard`) + Workload (Manager/Admin)
 - Quản trị: nhân viên, loại công việc, phòng ban, nhật ký
-- Responsive (drawer mobile)
+- Responsive (drawer mobile) + UI primitives dùng chung (PageToolbar, StatusChip, Table, EmptyState)
 - **Dòng tiền nội bộ / ví tạm ứng (imprest):**
   - Mỗi user có 1 `StaffWallet`; số dư theo ledger `WalletTransaction`
   - **ADMIN + MANAGER** được **CREDIT** (phát budget) cho user
@@ -32,6 +36,7 @@ Hệ thống quản lý công việc nội bộ công ty luật: khách hàng, v
 - Partner field-researcher PMS → `partner-pms`
 - Billing khách hàng / hóa đơn điện tử / đồng bộ kế toán thuế
 - Đa ví / quỹ phòng ban; OCR hóa đơn; role DIRECTOR riêng
+- Todo cá nhân: nhắc hạn cron / chia sẻ / assign giữa nhân viên (v1 không làm)
 
 ## Stack & ràng buộc
 - Next.js (App Router) + TypeScript + Tailwind
@@ -45,6 +50,7 @@ Hệ thống quản lý công việc nội bộ công ty luật: khách hàng, v
 - Không nhầm schema CMS của website vào workspace
 - Không bỏ baseline layout `/dashboard` khi thử UI mới (giữ để revert)
 - Không cho overdraft (số dư âm) ở v1
+- Không để Admin/Manager đọc PersonalTodo của người khác; không audit log todo cá nhân
 
 ## Liên kết
 - Repo: `https://github.com/SatthuanDuDu/law-working-web.git` (local folder `luat-work-manager`)
@@ -53,3 +59,5 @@ Hệ thống quản lý công việc nội bộ công ty luật: khách hàng, v
 - Sibling: `/Users/trancongvinh/Documents/Claude Code Life/Projects/homepage-nslaw`
 - Project rules: `.cursor/rules/` (material-you, dashboard-overview-ui, desktop-mobile-parity, verify-before-handoff)
 - Chi tiết mô hình ví: `ai/docs/budget-wallet.md`
+- Todo cá nhân: `ai/docs/personal-todo.md`
+- UI primitives: `ai/docs/ui-primitives.md`

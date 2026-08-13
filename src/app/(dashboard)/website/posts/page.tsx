@@ -5,6 +5,15 @@ import { Button } from "@/components/ui/button";
 import { LocalePair } from "@/components/website-cms/locale-pair";
 import { MediaUploadField } from "@/components/website-cms/media-upload-field";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
+import {
+  Table,
+  TBody,
+  TD,
+  TH,
+  THead,
+  TR,
+  TableEmptyRow,
+} from "@/components/ui/table";
 import { slugify } from "@/lib/utils";
 import { cmsDb } from "@/lib/cms-db";
 import { revalidatePublicSite } from "@/lib/cms-revalidate";
@@ -216,44 +225,56 @@ export default async function WebsitePostsPage({
       ) : null}
 
       <div className="overflow-hidden rounded-md border border-border bg-surface">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-border bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
-            <tr>
-              <th className="px-4 py-3">Tiêu đề</th>
-              <th className="px-4 py-3">Chuyên mục</th>
-              <th className="px-4 py-3">Ngày</th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {posts.map((post) => {
-              const title = post.translations.find((t) => t.locale === "vi")?.title ?? "—";
-              return (
-                <tr key={post.id}>
-                  <td className="px-4 py-3 font-medium">{title}</td>
-                  <td className="px-4 py-3">{post.category?.translations[0]?.name ?? "—"}</td>
-                  <td className="px-4 py-3">{post.publishedAt.toLocaleDateString("vi-VN")}</td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex flex-wrap items-center justify-end gap-3">
-                      <Link
-                        href={`/website/posts?edit=${post.id}`}
-                        className="font-semibold text-primary hover:underline"
-                      >
-                        Sửa
-                      </Link>
-                      <form action={deletePost} className="inline">
-                        <input type="hidden" name="id" value={post.id} />
-                        <button type="submit" className="font-semibold text-red-700 hover:underline">
-                          Xoá
-                        </button>
-                      </form>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <Table>
+          <THead className="border-b border-border bg-muted/50">
+            <TR>
+              <TH className="px-4 py-3">Tiêu đề</TH>
+              <TH className="px-4 py-3">Chuyên mục</TH>
+              <TH className="px-4 py-3">Ngày</TH>
+              <TH className="px-4 py-3" />
+            </TR>
+          </THead>
+          <TBody>
+            {posts.length === 0 ? (
+              <TableEmptyRow colSpan={4}>Chưa có bài viết nào.</TableEmptyRow>
+            ) : (
+              posts.map((post) => {
+                const title =
+                  post.translations.find((t) => t.locale === "vi")?.title ?? "—";
+                return (
+                  <TR key={post.id}>
+                    <TD className="px-4 py-3 font-medium">{title}</TD>
+                    <TD className="px-4 py-3">
+                      {post.category?.translations[0]?.name ?? "—"}
+                    </TD>
+                    <TD className="px-4 py-3">
+                      {post.publishedAt.toLocaleDateString("vi-VN")}
+                    </TD>
+                    <TD className="px-4 py-3 text-right">
+                      <div className="flex flex-wrap items-center justify-end gap-3">
+                        <Link
+                          href={`/website/posts?edit=${post.id}`}
+                          className="font-semibold text-primary hover:underline"
+                        >
+                          Sửa
+                        </Link>
+                        <form action={deletePost} className="inline">
+                          <input type="hidden" name="id" value={post.id} />
+                          <button
+                            type="submit"
+                            className="font-semibold text-red-700 hover:underline"
+                          >
+                            Xoá
+                          </button>
+                        </form>
+                      </div>
+                    </TD>
+                  </TR>
+                );
+              })
+            )}
+          </TBody>
+        </Table>
       </div>
     </div>
   );

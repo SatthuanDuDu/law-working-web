@@ -32,7 +32,7 @@ export type PlanStepSummary = {
 const fieldLabelClass = "block text-sm font-medium text-foreground";
 
 const outlinedFieldInputClass =
-  "interactive-field h-11 min-w-0 max-w-full w-full rounded-[5px] border border-border bg-surface px-3 py-0 text-sm leading-normal text-foreground";
+  "interactive-field h-11 min-w-0 max-w-full w-full rounded-md border border-border bg-surface px-3 py-0 text-sm leading-normal text-foreground";
 
 const STATUS_PILL: Record<MatterPlanStepStatus, string> = {
   NOT_STARTED: "bg-muted text-foreground",

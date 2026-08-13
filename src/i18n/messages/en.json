@@ -92,7 +92,8 @@
     "websiteTraffic": "Website traffic",
     "matterDetail": "Matter details",
     "plan": "Plan",
-    "report": "Report"
+    "report": "Report",
+    "myWork": "My work"
   },
   "pages": {
     "dashboard": {
@@ -182,6 +183,10 @@
     },
     "fallback": {
       "title": "NSLAW Work Manager"
+    },
+    "myWork": {
+      "title": "My work",
+      "description": "Assigned tasks and your private checklist"
     }
   },
   "labels": {
@@ -242,6 +247,7 @@
       "TASK_DUE": "Task due",
       "PLAN_ASSIGNED": "Plan assigned",
       "PLAN_DUE": "Plan step due",
+      "PERSONAL_TODO_DUE": "To-do due",
       "GENERAL": "General",
       "MENTION": "Mention",
       "CHAT_MESSAGE": "Chat",
@@ -712,7 +718,10 @@
     "noMyMatters": "No matters assigned to you.",
     "updatedAt": "Updated {date}",
     "expandCard": "Expand {label}",
-    "collapseCard": "Collapse {label}"
+    "collapseCard": "Collapse {label}",
+    "personalTodos": "To-do",
+    "noPersonalTodos": "No open to-dos.",
+    "personalTodoDoneCount": "{done}/{total} items"
   },
   "workload": {
     "openWork": "Open tasks",
@@ -993,7 +1002,10 @@
     "noMatter": "-- No matter --",
     "priorityLabel": "Priority",
     "statusLabel": "Status",
-    "dueDateLabel": "Due date"
+    "dueDateLabel": "Due date",
+    "detailTitle": "Task details",
+    "confirmDeleteTitle": "Delete task",
+    "confirmDeleteMessage": "Are you sure you want to delete \"{title}\"?"
   },
   "comments": {
     "placeholder": "Write a comment... use @ to mention",
@@ -1336,11 +1348,11 @@
       "default": [
         "Use the left menu to move between matters, chat, calendar, and expenses.",
         "The + button at the bottom-right opens quick actions (help, receive client cash, and wallet spend).",
-        "If something is missing, it may be limited by your role."
+        "To-do: header checklist icon (right panel). Company assignments stay under Tasks."
       ],
       "dashboard": [
         "The dashboard summarizes today’s work and upcoming deadlines.",
-        "Open Matters for case files; Calendar for plan/task due dates.",
+        "Tap the checklist icon in the header to open To-do (right panel, Gmail-style).",
         "Tap + at the bottom-right: $ to spend from wallet, down-arrow to receive client cash."
       ],
       "mattersList": [
@@ -1371,7 +1383,7 @@
       "tasks": [
         "Assign tasks with an owner and due date; link a matter when needed.",
         "Track TODO / in progress / done on the list.",
-        "Task due dates also appear on the Calendar page."
+        "To-do (personal checklist) is the header icon, not this page."
       ],
       "calendar": [
         "See plan and task deadlines by week or month.",
@@ -1392,6 +1404,11 @@
         "Admin area: staff, departments, work types, document labels…",
         "Only Admin (and some Manager items) see the full menu.",
         "Be careful changing roles — it affects upload/view permissions."
+      ],
+      "myWork": [
+        "To-do opens from the checklist icon in the header (right panel).",
+        "Add a task, set date/time, optionally repeat; tick to complete.",
+        "Company assignments stay on the Tasks page (/tasks)."
       ]
     },
     "faq": {
@@ -1486,5 +1503,47 @@
     "assigneePlaceholder": "Select recipient",
     "amount": "Amount (VND)",
     "note": "Note"
+  },
+  "myWork": {
+    "tabsLabel": "Work views",
+    "tabAssigned": "Assigned",
+    "tabPersonal": "Personal"
+  },
+  "personalTodo": {
+    "panelTitle": "To-do",
+    "togglePanel": "Open To-do",
+    "closePanel": "Close To-do",
+    "addTask": "Add a task…",
+    "titlePlaceholder": "Title",
+    "detailsPlaceholder": "Details",
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "setTime": "Set time",
+    "repeat": "Repeat",
+    "repeatNone": "None",
+    "repeatDaily": "Daily",
+    "repeatWeekly": "Weekly",
+    "repeatMonthly": "Monthly",
+    "emptyTitle": "No tasks yet",
+    "emptyHint": "Add the things you need to do and track them in To-do.",
+    "done": "Done",
+    "saveTask": "Save",
+    "cancelComposer": "Cancel",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "weekdayMon": "Mon",
+    "weekdayTue": "Tue",
+    "weekdayWed": "Wed",
+    "weekdayThu": "Thu",
+    "weekdayFri": "Fri",
+    "weekdaySat": "Sat",
+    "weekdaySun": "Sun",
+    "quickAddPlaceholder": "Add a task…",
+    "add": "Add",
+    "empty": "No tasks yet. Type and press Enter.",
+    "markDone": "Mark done",
+    "markOpen": "Reopen",
+    "editTitle": "Edit title",
+    "doneHidden": "Completed ({count})"
   }
 }

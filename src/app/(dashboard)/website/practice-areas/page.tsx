@@ -2,10 +2,19 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TBody,
+  TD,
+  TH,
+  THead,
+  TR,
+  TableEmptyRow,
+} from "@/components/ui/table";
+import { StatusChip } from "@/components/ui/status-chip";
 import { cmsDb } from "@/lib/cms-db";
 import { revalidatePublicSite } from "@/lib/cms-revalidate";
 import { requireRole } from "@/lib/session";
-import { cn } from "@/lib/utils";
 
 async function deletePracticeArea(formData: FormData) {
   "use server";
@@ -38,58 +47,59 @@ export default async function WebsitePracticeAreasPage() {
       </div>
 
       <div className="overflow-hidden rounded-md border border-border bg-surface">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-border bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
-            <tr>
-              <th className="px-4 py-3 font-semibold">Thứ tự</th>
-              <th className="px-4 py-3 font-semibold">Tên (VI)</th>
-              <th className="px-4 py-3 font-semibold">Name (EN)</th>
-              <th className="px-4 py-3 font-semibold">Trạng thái</th>
-              <th className="px-4 py-3 font-semibold" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {areas.map((area) => {
-              const vi = area.translations.find((t) => t.locale === "vi");
-              const en = area.translations.find((t) => t.locale === "en");
-              return (
-                <tr key={area.id} className="interactive-row">
-                  <td className="px-4 py-3">{area.order}</td>
-                  <td className="px-4 py-3 font-medium">{vi?.name ?? "—"}</td>
-                  <td className="px-4 py-3">{en?.name ?? "—"}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={cn(
-                        "rounded-full px-2 py-0.5 text-xs font-semibold",
-                        area.status === "PUBLISHED"
-                          ? "bg-primary-muted text-primary"
-                          : "bg-muted text-muted-foreground",
-                      )}
-                    >
-                      {area.status === "PUBLISHED" ? "Công khai" : "Nháp"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex flex-wrap items-center justify-end gap-3">
-                      <Link
-                        href={`/website/practice-areas/${area.id}`}
-                        className="font-semibold text-primary hover:underline"
-                      >
-                        Sửa
-                      </Link>
-                      <form action={deletePracticeArea} className="inline">
-                        <input type="hidden" name="id" value={area.id} />
-                        <button type="submit" className="font-semibold text-red-700 hover:underline">
-                          Xoá
-                        </button>
-                      </form>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <Table>
+          <THead className="border-b border-border bg-muted/50">
+            <TR>
+              <TH className="px-4 py-3">Thứ tự</TH>
+              <TH className="px-4 py-3">Tên (VI)</TH>
+              <TH className="px-4 py-3">Name (EN)</TH>
+              <TH className="px-4 py-3">Trạng thái</TH>
+              <TH className="px-4 py-3" />
+            </TR>
+          </THead>
+          <TBody>
+            {areas.length === 0 ? (
+              <TableEmptyRow colSpan={5}>Chưa có lĩnh vực nào.</TableEmptyRow>
+            ) : (
+              areas.map((area) => {
+                const vi = area.translations.find((t) => t.locale === "vi");
+                const en = area.translations.find((t) => t.locale === "en");
+                return (
+                  <TR key={area.id} className="interactive-row">
+                    <TD className="px-4 py-3">{area.order}</TD>
+                    <TD className="px-4 py-3 font-medium">{vi?.name ?? "—"}</TD>
+                    <TD className="px-4 py-3">{en?.name ?? "—"}</TD>
+                    <TD className="px-4 py-3">
+                      <StatusChip
+                        label={area.status === "PUBLISHED" ? "Công khai" : "Nháp"}
+                        tone={area.status === "PUBLISHED" ? "primary" : "slate"}
+                      />
+                    </TD>
+                    <TD className="px-4 py-3 text-right">
+                      <div className="flex flex-wrap items-center justify-end gap-3">
+                        <Link
+                          href={`/website/practice-areas/${area.id}`}
+                          className="font-semibold text-primary hover:underline"
+                        >
+                          Sửa
+                        </Link>
+                        <form action={deletePracticeArea} className="inline">
+                          <input type="hidden" name="id" value={area.id} />
+                          <button
+                            type="submit"
+                            className="font-semibold text-red-700 hover:underline"
+                          >
+                            Xoá
+                          </button>
+                        </form>
+                      </div>
+                    </TD>
+                  </TR>
+                );
+              })
+            )}
+          </TBody>
+        </Table>
       </div>
     </div>
   );

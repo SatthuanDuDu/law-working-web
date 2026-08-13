@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/card";
 import { SectionPanel } from "@/components/ui/section-panel";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   finalizeMoneyConfirmationAction,
   respondMoneyConfirmationAction,
@@ -63,7 +64,7 @@ export function MoneyConfirmationsPanel({
       <SectionPanel title={t("title")}>
       {error ? <p className="mb-2 text-sm text-destructive">{error}</p> : null}
       {confirmations.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("empty")}</p>
+        <EmptyState>{t("empty")}</EmptyState>
       ) : (
         <ul className={cn(listDivideClass, "rounded-md border border-border")}>
           {confirmations.map((c) => {

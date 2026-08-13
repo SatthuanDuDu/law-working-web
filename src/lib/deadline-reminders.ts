@@ -6,17 +6,18 @@ const DEFAULT_BATCH_SIZE = 100;
 
 type Db = Pick<
   PrismaClient,
-  "task" | "matterPlanStep" | "notification"
+  "task" | "matterPlanStep" | "personalTodo" | "notification"
 >;
 
 export type DeadlineReminderResult = {
   taskReminders: number;
   planReminders: number;
+  todoReminders: number;
 };
 
 /**
- * Upcoming (≤3 days) + overdue (repeat after 24h) reminders for Tasks and
- * MatterPlanSteps. Batches notification creates; caps each entity type.
+ * Upcoming (≤3 days) + overdue (repeat after 24h) reminders for Tasks,
+ * MatterPlanSteps, and personal To-dos. Batches notification creates.
  */
 export async function generateDeadlineReminders(
   db: Db,
@@ -44,7 +45,7 @@ export async function generateDeadlineReminders(
     },
   ] as const;
 
-  const [dueTasks, dueSteps] = await Promise.all([
+  const [dueTasks, dueSteps, dueTodos] = await Promise.all([
     db.task.findMany({
       where: {
         dueDate: { not: null, lte: windowEnd },
@@ -76,6 +77,21 @@ export async function generateDeadlineReminders(
       },
       take: batchSize,
       orderBy: { dueAt: "asc" },
+    }),
+    db.personalTodo.findMany({
+      where: {
+        isDone: false,
+        dueDate: { not: null, lte: windowEnd },
+        OR: [...dueWindowOr],
+      },
+      select: {
+        id: true,
+        title: true,
+        dueDate: true,
+        ownerId: true,
+      },
+      take: batchSize,
+      orderBy: { dueDate: "asc" },
     }),
   ]);
 
@@ -123,6 +139,23 @@ export async function generateDeadlineReminders(
       stepId: step.id,
       overdue,
     }));
+  });
+
+  const todoNotifications = dueTodos.map((todo) => {
+    const due = todo.dueDate!;
+    const overdue = due < todayStart;
+    const title = overdue ? "To-do đã quá hạn" : "To-do sắp đến hạn";
+    const message = overdue
+      ? `"${todo.title}" đã quá hạn.`
+      : `"${todo.title}" sẽ đến hạn trong vài ngày tới.`;
+    return {
+      userId: todo.ownerId,
+      type: "PERSONAL_TODO_DUE" as const,
+      title,
+      message,
+      link: "/dashboard?todo=1",
+      todoId: todo.id,
+    };
   });
 
   // Only mark steps that actually produced at least one notification.
@@ -178,8 +211,33 @@ export async function generateDeadlineReminders(
     }
   }
 
+  if (todoNotifications.length > 0) {
+    await db.notification.createMany({
+      data: todoNotifications.map(({ userId, type, title, message, link }) => ({
+        userId,
+        type,
+        title,
+        message,
+        link,
+      })),
+    });
+    await db.personalTodo.updateMany({
+      where: { id: { in: dueTodos.map((todo) => todo.id) } },
+      data: { reminderSentAt: now },
+    });
+    for (const n of todoNotifications) {
+      void notifyUsersPush(n.userId, {
+        title: n.title,
+        body: n.message,
+        url: n.link,
+        tag: `todo-due-${n.todoId}`,
+      });
+    }
+  }
+
   return {
     taskReminders: taskNotifications.length,
     planReminders: planNotifications.length,
+    todoReminders: todoNotifications.length,
   };
 }

@@ -11,13 +11,15 @@ import {
   usePageMeta,
   type PageMeta,
 } from "@/contexts/page-meta-context";
+import { PersonalTodoPanel } from "@/components/personal-todo/personal-todo-panel";
+import { PersonalTodoPanelProvider } from "@/contexts/personal-todo-panel-context";
 import { ShellAlertsProvider } from "@/contexts/shell-alerts-context";
 import { SidebarProvider } from "@/contexts/sidebar-context";
 import { getPageMeta } from "@/lib/page-meta";
 import type { SessionUser } from "@/lib/permissions";
 import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
-import { useLayoutEffect, useMemo, useRef } from "react";
+import { Suspense, useLayoutEffect, useMemo, useRef } from "react";
 
 function PathnameMetaSync() {
   const pathname = usePathname();
@@ -67,22 +69,31 @@ export function DashboardShell({
     <SidebarProvider>
       <PageMetaProvider initialMeta={initialMeta}>
         <ShellAlertsProvider>
-          <ServerMetaSync meta={serverMeta} />
-          <PathnameMetaSync />
-          <ServiceWorkerRegister />
-          <div className="flex min-h-dvh bg-transparent">
-            <div className="sticky top-0 z-30 hidden h-dvh shrink-0 transition-[width] duration-300 ease-in-out lg:block">
-              <Sidebar user={user} variant="desktop" />
+          <Suspense fallback={null}>
+          <PersonalTodoPanelProvider>
+            <ServerMetaSync meta={serverMeta} />
+            <PathnameMetaSync />
+            <ServiceWorkerRegister />
+            <div className="flex h-dvh min-h-0 bg-transparent">
+              <div className="sticky top-0 z-30 hidden h-dvh shrink-0 transition-[width] duration-300 ease-in-out lg:block">
+                <Sidebar user={user} variant="desktop" />
+              </div>
+              <Sidebar user={user} variant="mobile" />
+              <div className="liquid-glass-canvas flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-canvas">
+                <PageHeader />
+                <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
+                  <main className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+                    {children}
+                  </main>
+                  <PersonalTodoPanel />
+                </div>
+              </div>
+              <UtilitySpeedDial />
+              <NotificationToastHost />
+              <CommandPalette />
             </div>
-            <Sidebar user={user} variant="mobile" />
-            <div className="liquid-glass-canvas flex min-h-dvh min-w-0 flex-1 flex-col bg-canvas">
-              <PageHeader />
-              <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
-            </div>
-            <UtilitySpeedDial />
-            <NotificationToastHost />
-            <CommandPalette />
-          </div>
+          </PersonalTodoPanelProvider>
+          </Suspense>
         </ShellAlertsProvider>
       </PageMetaProvider>
     </SidebarProvider>

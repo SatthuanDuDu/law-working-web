@@ -17,6 +17,7 @@ import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { Card, CardContent, CardHeader, CardTitle, Select } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ListViewToggle } from "@/components/ui/list-view-toggle";
+import { PageToolbar } from "@/components/layout/page-toolbar";
 import { UndoToast } from "@/components/ui/undo-toast";
 import { MatterStatusBadge } from "@/components/matters/matter-status-control";
 import {
@@ -652,14 +653,36 @@ export function MattersList({
     <>
       {dialog}
       <div className="space-y-4">
-        <MattersFiltersBar
-          filters={effectiveFilters}
-          onChange={handleFiltersChange}
-          typeOptions={Object.keys(labels.matterType) as MatterType[]}
-          lawyers={filterOptions.lawyers}
-          members={filterOptions.members}
-          clients={filterOptions.clients}
-        />
+        <div className="shrink-0 border-b border-border/60 pb-3">
+          <PageToolbar
+            actions={
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={visibleMatters.length === 0}
+                  onClick={handleExportExcel}
+                  aria-label={tCommon("exportExcel")}
+                >
+                  <FileSpreadsheet className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">{tCommon("exportExcel")}</span>
+                </Button>
+                <ListViewToggle mode={mode} onChange={setMode} size="sm" />
+              </>
+            }
+          >
+            <MattersFiltersBar
+              filters={effectiveFilters}
+              onChange={handleFiltersChange}
+              typeOptions={Object.keys(labels.matterType) as MatterType[]}
+              lawyers={filterOptions.lawyers}
+              members={filterOptions.members}
+              clients={filterOptions.clients}
+              className="min-w-0 flex-1 basis-full sm:basis-0"
+            />
+          </PageToolbar>
+        </div>
 
         {totalCount > matters.length ? (
           <div className="flex items-start gap-2 rounded-md border border-amber-300/60 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300">
@@ -672,21 +695,6 @@ export function MattersList({
             </p>
           </div>
         ) : null}
-
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={visibleMatters.length === 0}
-            onClick={handleExportExcel}
-            aria-label={tCommon("exportExcel")}
-          >
-            <FileSpreadsheet className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{tCommon("exportExcel")}</span>
-          </Button>
-          <ListViewToggle mode={mode} onChange={setMode} size="sm" />
-        </div>
 
         {activeSelectedIds.size > 0 ? (
           <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary-muted/50 px-3 py-2 backdrop-blur-sm">
@@ -738,7 +746,12 @@ export function MattersList({
             </CardContent>
           </Card>
         ) : mode === "table" ? (
-          renderTableView()
+          <>
+            <div className="hidden sm:block">{renderTableView()}</div>
+            <div className="space-y-4 sm:hidden">
+              {visibleMatters.map((matter) => renderListCard(matter))}
+            </div>
+          </>
         ) : mode === "grid" ? (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {visibleMatters.map((matter) => renderGridCard(matter))}

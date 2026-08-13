@@ -1,15 +1,10 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
-import { createPortal } from "react-dom";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import {
-  ArrowDown,
-  ArrowUp,
-  Check,
-  ChevronDown,
   FileSpreadsheet,
   Pencil,
   Search,
@@ -28,6 +23,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ListViewToggle } from "@/components/ui/list-view-toggle";
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
+import { PageToolbar } from "@/components/layout/page-toolbar";
 import { UndoToast } from "@/components/ui/undo-toast";
 import { useLabelMaps } from "@/i18n/use-label-maps";
 import { downloadExcel } from "@/lib/export-excel";
@@ -66,254 +63,6 @@ const DEFAULT_FILTERS: ClientsFilterState = {
   sortBy: "name",
   sortDir: "asc",
 };
-
-type Option = { value: string; label: string };
-
-function SortToggle({
-  active,
-  sortDir,
-  onToggle,
-  label,
-}: {
-  active: boolean;
-  sortDir: "asc" | "desc";
-  onToggle: () => void;
-  label: string;
-}) {
-  const t = useTranslations("filters");
-  const direction = sortDir === "asc" ? t("sortAsc") : t("sortDesc");
-
-  return (
-    <button
-      type="button"
-      onClick={(event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        onToggle();
-      }}
-      className={cn(
-        "interactive-press inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors",
-        "hover:bg-muted hover:text-foreground",
-        active && "bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary",
-      )}
-      aria-label={
-        active
-          ? t("sortActive", { label, direction })
-          : `${label}: ${t("sort")}`
-      }
-      title={active ? direction : t("sort")}
-    >
-      {active && sortDir === "asc" ? (
-        <ArrowUp className="h-3.5 w-3.5" strokeWidth={2.25} />
-      ) : (
-        <ArrowDown className="h-3.5 w-3.5" strokeWidth={2.25} />
-      )}
-    </button>
-  );
-}
-
-function MultiSelectFilter({
-  label,
-  options,
-  values,
-  onChange,
-  sortActive,
-  sortDir,
-  onToggleSort,
-  emptyLabel,
-}: {
-  label: string;
-  options: Option[];
-  values: string[];
-  onChange: (next: string[]) => void;
-  sortActive: boolean;
-  sortDir: "asc" | "desc";
-  onToggleSort: () => void;
-  emptyLabel: string;
-}) {
-  const t = useTranslations("filters");
-  const [open, setOpen] = useState(false);
-  const [menuBox, setMenuBox] = useState<{
-    top: number;
-    left: number;
-    width: number;
-  } | null>(null);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const fieldRef = useRef<HTMLDivElement>(null);
-  const menuRef = useRef<HTMLUListElement>(null);
-  const listId = useId();
-
-  function measureMenuBox() {
-    const rect = fieldRef.current?.getBoundingClientRect();
-    if (!rect) return null;
-    const width = Math.min(Math.max(rect.width, 200), window.innerWidth - 16);
-    const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
-    return {
-      top: rect.bottom + 6,
-      left,
-      width,
-    };
-  }
-
-  function openMenu() {
-    const nextBox = measureMenuBox();
-    if (nextBox) setMenuBox(nextBox);
-    setOpen(true);
-  }
-
-  function closeMenu() {
-    setOpen(false);
-    setMenuBox(null);
-  }
-
-  function toggleMenu() {
-    if (open) {
-      closeMenu();
-      return;
-    }
-    openMenu();
-  }
-
-  useEffect(() => {
-    if (!open) return;
-
-    function onPointerDown(event: MouseEvent) {
-      const target = event.target as Node;
-      if (rootRef.current?.contains(target) || menuRef.current?.contains(target)) {
-        return;
-      }
-      closeMenu();
-    }
-
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") closeMenu();
-    }
-
-    function onReposition() {
-      const nextBox = measureMenuBox();
-      if (nextBox) setMenuBox(nextBox);
-    }
-
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    window.addEventListener("resize", onReposition);
-    window.addEventListener("scroll", onReposition, true);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("resize", onReposition);
-      window.removeEventListener("scroll", onReposition, true);
-    };
-  }, [open]);
-
-  function toggle(value: string) {
-    if (values.includes(value)) {
-      onChange(values.filter((item) => item !== value));
-      return;
-    }
-    onChange([...values, value]);
-  }
-
-  const summary =
-    values.length === 0
-      ? emptyLabel
-      : values.length === 1
-        ? (options.find((option) => option.value === values[0])?.label ?? t("selectedOne"))
-        : t("selectedCount", { count: values.length });
-
-  return (
-    <div ref={rootRef} className="relative min-w-0 w-full">
-      <p className="mb-1 truncate text-xs text-muted-foreground">{label}</p>
-      <div
-        ref={fieldRef}
-        className={cn(
-          "interactive-field flex h-10 w-full cursor-pointer items-center rounded-[5px] border border-border bg-surface pl-3 pr-1 text-sm leading-normal",
-          "hover:border-primary/35 hover:bg-muted/90",
-          open && "border-primary/40 bg-muted/90",
-          values.length > 0 && "border-primary/40 bg-primary-muted/40 hover:bg-primary-muted/55",
-        )}
-      >
-        <button
-          type="button"
-          aria-haspopup="listbox"
-          aria-expanded={open}
-          aria-controls={listId}
-          onClick={toggleMenu}
-          className="interactive-press flex min-h-10 min-w-0 flex-1 items-center text-left"
-        >
-          <span className="truncate">{summary}</span>
-        </button>
-        <SortToggle
-          active={sortActive}
-          sortDir={sortDir}
-          onToggle={onToggleSort}
-          label={label}
-        />
-        <button
-          type="button"
-          tabIndex={-1}
-          aria-hidden
-          onClick={toggleMenu}
-          className="interactive-press inline-flex h-7 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <ChevronDown
-            className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")}
-          />
-        </button>
-      </div>
-      {open && menuBox
-        ? createPortal(
-            <ul
-              ref={menuRef}
-              id={listId}
-              role="listbox"
-              aria-multiselectable
-              style={{
-                top: menuBox.top,
-                left: menuBox.left,
-                width: menuBox.width,
-              }}
-              className="fixed z-[60] max-h-56 overflow-y-auto rounded-[5px] border border-border bg-surface py-1"
-            >
-              {options.length === 0 ? (
-                <li className="px-3 py-2 text-sm text-muted-foreground">{t("noOptions")}</li>
-              ) : (
-                options.map((option) => {
-                  const selected = values.includes(option.value);
-                  return (
-                    <li key={option.value} role="option" aria-selected={selected}>
-                      <button
-                        type="button"
-                        className={cn(
-                          "interactive-press flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-muted",
-                          selected && "bg-muted font-medium text-foreground hover:bg-muted",
-                        )}
-                        onClick={() => toggle(option.value)}
-                      >
-                        <span
-                          className={cn(
-                            "flex h-4 w-4 items-center justify-center rounded border transition-colors",
-                            selected
-                              ? "border-primary bg-primary text-white"
-                              : "border-border bg-surface",
-                          )}
-                          aria-hidden
-                        >
-                          {selected ? <Check className="h-3 w-3" /> : null}
-                        </span>
-                        <span className="min-w-0 flex-1 truncate">{option.label}</span>
-                      </button>
-                    </li>
-                  );
-                })
-              )}
-            </ul>,
-            document.body,
-          )
-        : null}
-    </div>
-  );
-}
 
 function toggleSort(
   filters: ClientsFilterState,
@@ -667,7 +416,30 @@ export function ClientsList({
               className="h-10 pl-9"
             />
           </div>
-          <div className="flex items-end gap-2">
+          <PageToolbar
+            actions={
+              <>
+                <CreateClientButton />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={visibleClients.length === 0}
+                  onClick={handleExportExcel}
+                  aria-label={tCommon("exportExcel")}
+                >
+                  <FileSpreadsheet className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">{tCommon("exportExcel")}</span>
+                </Button>
+                <ListViewToggle
+                  mode={mode}
+                  onChange={setMode}
+                  size="sm"
+                  showTable={false}
+                />
+              </>
+            }
+          >
             <div className="flex min-w-0 flex-1 items-end gap-2 overflow-x-auto pb-0.5">
               <div className="min-w-[9.5rem] flex-1">
                 <MultiSelectFilter
@@ -739,25 +511,7 @@ export function ClientsList({
                 {tFilters("clearFilters")}
               </Button>
             </div>
-            <div className="shrink-0 self-end pb-0.5">
-              <CreateClientButton />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={visibleClients.length === 0}
-            onClick={handleExportExcel}
-            aria-label={tCommon("exportExcel")}
-          >
-            <FileSpreadsheet className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{tCommon("exportExcel")}</span>
-          </Button>
-          <ListViewToggle mode={mode} onChange={setMode} size="sm" showTable={false} />
+          </PageToolbar>
         </div>
 
         {canManage && activeSelectedIds.size > 0 ? (

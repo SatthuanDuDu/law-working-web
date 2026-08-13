@@ -8,6 +8,7 @@ import {
   CalendarClock,
   CheckCircle2,
   ListTodo,
+  ListChecks,
 } from "lucide-react";
 import {
   ExpandableStatCard,
@@ -18,12 +19,14 @@ import {
   type DashboardMatterItem,
 } from "@/components/dashboard/expandable-matters-card";
 import { Badge } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { SectionPanel } from "@/components/ui/section-panel";
 import {
   UpcomingDeadlineList,
   type UpcomingDeadlineItem,
 } from "@/components/dashboard/upcoming-deadline-list";
 import { MatterStatusBadge } from "@/components/matters/matter-status-control";
+import { OpenPersonalTodoButton } from "@/components/personal-todo/open-personal-todo-button";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
 import { isManagerOrAbove } from "@/lib/permissions";
@@ -118,21 +121,6 @@ function ActionLink({ href, children }: { href: string; children: ReactNode }) {
   );
 }
 
-function EmptyState({
-  children,
-  action,
-}: {
-  children: ReactNode;
-  action?: ReactNode;
-}) {
-  return (
-    <div className="flex flex-col items-center justify-center gap-2 rounded-md border border-dashed border-border bg-muted/80 px-4 py-8 text-center text-sm text-muted-foreground">
-      <p>{children}</p>
-      {action}
-    </div>
-  );
-}
-
 function shortenCode(code: string | null | undefined) {
   if (!code) return null;
   if (code.length <= 18) return code;
@@ -176,6 +164,7 @@ export default async function DashboardPage() {
     upcomingDeadlines,
     upcomingPlanSteps,
     matterStatusGroups,
+    personalTodos,
   ] = await Promise.all([
     prisma.task.count({ where: openTaskWhere }),
     prisma.task.count({
@@ -281,6 +270,17 @@ export default async function DashboardPage() {
       by: ["status"],
       where: matterWhere,
       _count: { _all: true },
+    }),
+    prisma.personalTodo.findMany({
+      where: { ownerId: user.id, isDone: false },
+      select: {
+        id: true,
+        title: true,
+        dueDate: true,
+        items: { select: { id: true, isDone: true } },
+      },
+      orderBy: [{ position: "asc" }, { createdAt: "desc" }],
+      take: 6,
     }),
   ]);
 
@@ -518,7 +518,7 @@ export default async function DashboardPage() {
         </SectionPanel>
       </div>
 
-      <div className="grid min-w-0 gap-4 lg:grid-cols-2">
+      <div className="grid min-w-0 gap-4 lg:grid-cols-3">
         <SectionPanel
           title={t("myMatters")}
           icon={<Briefcase className="h-4 w-4" />}
@@ -563,6 +563,7 @@ export default async function DashboardPage() {
         <SectionPanel
           title={t("recentTasks")}
           icon={<ListTodo className="h-4 w-4" />}
+          action={<ActionLink href="/tasks">{tCommon("all")}</ActionLink>}
           className="min-w-0"
         >
           {recentTasks.length === 0 ? (
@@ -590,6 +591,40 @@ export default async function DashboardPage() {
                       : ""}
                   </p>
                 </Link>
+              ))}
+            </div>
+          )}
+        </SectionPanel>
+
+        <SectionPanel
+          title={t("personalTodos")}
+          icon={<ListChecks className="h-4 w-4" />}
+          action={
+            <OpenPersonalTodoButton>{tCommon("all")}</OpenPersonalTodoButton>
+          }
+          className="min-w-0"
+        >
+          {personalTodos.length === 0 ? (
+            <EmptyState
+              action={
+                <OpenPersonalTodoButton>{tCommon("all")}</OpenPersonalTodoButton>
+              }
+            >
+              {t("noPersonalTodos")}
+            </EmptyState>
+          ) : (
+            <div className={listDivideClass}>
+              {personalTodos.map((todo) => (
+                <OpenPersonalTodoButton
+                  key={todo.id}
+                  showArrow={false}
+                  className={cn(
+                    listRowClass,
+                    "w-full max-w-full text-left font-medium text-foreground",
+                  )}
+                >
+                  {todo.title}
+                </OpenPersonalTodoButton>
               ))}
             </div>
           )}

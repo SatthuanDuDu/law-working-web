@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { ListViewToggle } from "@/components/ui/list-view-toggle";
+import { PageToolbar } from "@/components/layout/page-toolbar";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { useListViewMode } from "@/hooks/use-list-view-mode";
 import { useLabelMaps } from "@/i18n/use-label-maps";
@@ -179,8 +180,29 @@ export function UsersList({
             {tNav("users")}
           </CardTitle>
 
-          <div className="flex items-end gap-2">
-            <div className="grid min-w-0 flex-1 grid-cols-2 gap-2 lg:grid-cols-4">
+          <PageToolbar
+            actions={
+              <>
+                <Button
+                  type="button"
+                  size="icon"
+                  className="h-10 w-10 shrink-0 rounded-md p-0 [&_svg]:h-4 [&_svg]:w-4"
+                  onClick={() => setCreateOpen(true)}
+                  aria-label={t("createUser")}
+                  title={t("createUser")}
+                >
+                  <Plus />
+                </Button>
+                <ListViewToggle
+                  mode={mode}
+                  onChange={setMode}
+                  size="sm"
+                  showTable={false}
+                />
+              </>
+            }
+          >
+            <div className="grid min-w-0 w-full flex-1 grid-cols-2 gap-2 lg:grid-cols-4">
               <div className="relative col-span-2 min-w-0 lg:col-span-1">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -230,22 +252,8 @@ export function UsersList({
                 ]}
               />
             </div>
-            <Button
-              type="button"
-              size="icon"
-              className="h-10 w-10 shrink-0 rounded-md p-0 [&_svg]:h-4 [&_svg]:w-4"
-              onClick={() => setCreateOpen(true)}
-              aria-label={t("createUser")}
-              title={t("createUser")}
-            >
-              <Plus />
-            </Button>
-          </div>
+          </PageToolbar>
         </CardHeader>
-
-        <div className="flex justify-end px-3.5 pt-2.5 sm:px-4 sm:pt-3">
-          <ListViewToggle mode={mode} onChange={setMode} size="sm" showTable={false} />
-        </div>
 
         {users.length === 0 ? (
           <CardContent className="p-0">

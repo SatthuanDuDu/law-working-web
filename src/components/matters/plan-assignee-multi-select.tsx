@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 const outlinedFieldInputClass =
-  "interactive-field min-h-11 min-w-0 max-w-full w-full rounded-[5px] border border-border bg-surface px-3 text-sm leading-normal text-foreground";
+  "interactive-field min-h-11 min-w-0 max-w-full w-full rounded-md border border-border bg-surface px-3 text-sm leading-normal text-foreground";
 
 export type PlanAssigneeOption = {
   id: string;

@@ -23,7 +23,7 @@ import { Label, Select } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 const matterTypeControlClass =
-  "interactive-field h-full w-full appearance-none rounded-[5px] border-0 bg-surface pl-5 pr-12 text-base font-bold text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40";
+  "interactive-field h-full w-full appearance-none rounded-md border-0 bg-surface pl-5 pr-12 text-base font-bold text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40";
 
 const matterTypeChevronClass =
   "absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground";
@@ -32,7 +32,7 @@ const outlinedFieldLabelClass =
   "pointer-events-none absolute left-3 top-0 z-[1] -translate-y-1/2 bg-surface px-1.5 text-sm font-medium text-foreground";
 
 const outlinedFieldInputClass =
-  "interactive-field w-full rounded-[5px] border border-border bg-surface px-3 pb-2.5 pt-3 text-sm leading-normal text-foreground";
+  "interactive-field w-full rounded-md border border-border bg-surface px-3 pb-2.5 pt-3 text-sm leading-normal text-foreground";
 
 function OutlinedField({
   label,
@@ -179,7 +179,7 @@ function CityAutocompleteInput({
         <ul
           id={`${id}-suggestions`}
           role="listbox"
-          className="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-y-auto rounded-[5px] border border-border bg-surface py-1 shadow-lg"
+          className="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-y-auto rounded-md border border-border bg-surface py-1 shadow-lg"
         >
           {suggestions.map((city, index) => (
             <li key={city} role="option" aria-selected={index === highlightIndex}>
@@ -306,7 +306,7 @@ function CreateMatterSummaryTable({
   rows: { label: string; value: string }[];
 }) {
   return (
-    <div className="mt-3 max-h-[min(50vh,420px)] overflow-y-auto rounded-[5px] border border-border">
+    <div className="mt-3 max-h-[min(50vh,420px)] overflow-y-auto rounded-md border border-border">
       <table className="w-full text-sm">
         <tbody>
           {rows.map((row) => (
@@ -754,7 +754,7 @@ export function CreateMatterModal({
               <input type="hidden" name="clientMode" value={clientMode} />
               <input type="hidden" name="leadLawyerId" value={leadLawyerId} />
 
-              <div className="grid w-full grid-cols-1 gap-4 rounded-[5px] bg-primary px-4 py-4 shadow-md md:grid-cols-2 md:items-center md:gap-6">
+              <div className="grid w-full grid-cols-1 gap-4 rounded-md bg-primary px-4 py-4 shadow-md md:grid-cols-2 md:items-center md:gap-6">
                 <div className="flex flex-col justify-center">
                   <p className="break-all font-mono text-2xl font-bold leading-tight tracking-tight text-white sm:text-3xl">
                     {previewCode}
@@ -865,7 +865,7 @@ export function CreateMatterModal({
                 </Label>
               </div>
 
-              <div className="relative rounded-[5px] border border-border p-4">
+              <div className="relative rounded-md border border-border p-4">
                 <div className="mb-6 flex flex-wrap items-center justify-between gap-2 text-sm font-semibold text-foreground">
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 shrink-0 text-primary" aria-hidden />
@@ -891,7 +891,7 @@ export function CreateMatterModal({
                       <input type="hidden" name="clientName" value={clientName} />
                       <input type="hidden" name="clientAddress" value={clientAddress} />
                       <input type="hidden" name="clientCity" value={clientCity} />
-                      <div className="rounded-[5px] border border-primary/20 bg-primary-muted px-4 py-3">
+                      <div className="rounded-md border border-primary/20 bg-primary-muted px-4 py-3">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div className="min-w-0 space-y-1">
                             <p className="text-xs font-medium uppercase tracking-wide text-primary/70">
@@ -1023,7 +1023,7 @@ export function CreateMatterModal({
                           variant="outline"
                           disabled={clientFieldsDisabled}
                           onClick={commitPhoneDraft}
-                          className="interactive-press h-auto w-10 shrink-0 self-stretch rounded-[5px] p-0"
+                          className="interactive-press h-auto w-10 shrink-0 self-stretch rounded-md p-0"
                           aria-label={t("addPhone")}
                         >
                           <Plus className="h-4 w-4" />
@@ -1058,9 +1058,9 @@ export function CreateMatterModal({
                 </div>
               </div>
 
-              <div className="relative rounded-[5px] border border-border px-4 pb-5 pt-8">
+              <div className="relative rounded-md border border-border px-4 pb-5 pt-8">
                 <div className="absolute left-3 top-0 -translate-y-1/2">
-                  <div className="flex items-center gap-2 rounded-[5px] bg-primary px-3 py-1.5 text-base font-semibold text-white shadow-sm">
+                  <div className="flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-base font-semibold text-white shadow-sm">
                     <Scale className="h-4 w-4 shrink-0" aria-hidden />
                     {tMatters("leadLawyer")}
                   </div>
@@ -1246,7 +1246,7 @@ export function CreateMatterModal({
                   type="button"
                   variant="outline"
                   onClick={commitDraftPhone}
-                  className="interactive-press h-auto w-10 shrink-0 self-stretch rounded-[5px] p-0"
+                  className="interactive-press h-auto w-10 shrink-0 self-stretch rounded-md p-0"
                   aria-label={t("addPhone")}
                 >
                   <Plus className="h-4 w-4" />

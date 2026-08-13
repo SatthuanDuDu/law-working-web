@@ -92,7 +92,8 @@
     "websiteTraffic": "Lượt truy cập web",
     "matterDetail": "Chi tiết vụ việc",
     "plan": "Lên kế hoạch",
-    "report": "Báo cáo"
+    "report": "Báo cáo",
+    "myWork": "Việc của tôi"
   },
   "pages": {
     "dashboard": {
@@ -182,6 +183,10 @@
     },
     "fallback": {
       "title": "NSLAW Work Manager"
+    },
+    "myWork": {
+      "title": "Việc của tôi",
+      "description": "Nhiệm vụ được giao và checklist cá nhân"
     }
   },
   "labels": {
@@ -242,6 +247,7 @@
       "TASK_DUE": "Hạn công việc",
       "PLAN_ASSIGNED": "Giao kế hoạch",
       "PLAN_DUE": "Hạn bước kế hoạch",
+      "PERSONAL_TODO_DUE": "Hạn To-do",
       "GENERAL": "Chung",
       "MENTION": "Nhắc đến",
       "CHAT_MESSAGE": "Tin nhắn",
@@ -712,7 +718,10 @@
     "noMyMatters": "Không có vụ việc nào.",
     "updatedAt": "Cập nhật {date}",
     "expandCard": "Mở rộng {label}",
-    "collapseCard": "Thu gọn {label}"
+    "collapseCard": "Thu gọn {label}",
+    "personalTodos": "To-do",
+    "noPersonalTodos": "Chưa có việc trong To-do.",
+    "personalTodoDoneCount": "{done}/{total} mục"
   },
   "workload": {
     "openWork": "Việc đang mở",
@@ -993,7 +1002,10 @@
     "noMatter": "-- Không gắn vụ việc --",
     "priorityLabel": "Ưu tiên",
     "statusLabel": "Trạng thái",
-    "dueDateLabel": "Hạn hoàn thành"
+    "dueDateLabel": "Hạn hoàn thành",
+    "detailTitle": "Chi tiết công việc",
+    "confirmDeleteTitle": "Xác nhận xóa công việc",
+    "confirmDeleteMessage": "Bạn có chắc muốn xóa công việc \"{title}\"?"
   },
   "comments": {
     "placeholder": "Viết bình luận... dùng @ để nhắc",
@@ -1336,11 +1348,11 @@
       "default": [
         "Dùng menu bên trái để chuyển giữa vụ việc, chat, lịch và chi phí.",
         "Nút + góc dưới phải mở thao tác nhanh: hướng dẫn, nhận tiền khách, chi từ ví.",
-        "Nếu không thấy một chức năng, có thể do quyền vai trò của bạn."
+        "To-do: icon checklist trên header (panel phải). Giao việc công ty vẫn ở menu Giao việc."
       ],
       "dashboard": [
         "Dashboard tóm tắt việc cần làm hôm nay và hạn sắp tới.",
-        "Vào Vụ việc để mở hồ sơ; vào Lịch để xem hạn kế hoạch/công việc.",
+        "Bấm icon checklist trên header để mở To-do (panel phải, kiểu Gmail).",
         "Bấm nút + góc phải: $ để chi từ ví, mũi tên xuống để nhận tiền khách."
       ],
       "mattersList": [
@@ -1371,7 +1383,7 @@
       "tasks": [
         "Giao việc gán người nhận và hạn; gắn với vụ việc khi cần.",
         "Theo dõi trạng thái TODO / đang làm / xong trên danh sách.",
-        "Hạn công việc cũng hiện trên trang Lịch."
+        "To-do (checklist) mở bằng icon trên header, không phải trang này."
       ],
       "calendar": [
         "Xem hạn kế hoạch và công việc theo tuần hoặc tháng.",
@@ -1392,6 +1404,11 @@
         "Khu vực quản trị: nhân viên, phòng ban, loại công việc, nhãn tài liệu…",
         "Chỉ Admin (và một số mục Quản lý) mới thấy đủ menu này.",
         "Cẩn thận khi đổi vai trò — ảnh hưởng quyền upload/xem dữ liệu."
+      ],
+      "myWork": [
+        "To-do mở bằng icon checklist trên header (panel phải).",
+        "Thêm việc, đặt hạn/giờ, lặp lại; tick để hoàn thành.",
+        "Giao việc công ty vẫn ở menu Giao việc (/tasks)."
       ]
     },
     "faq": {
@@ -1486,5 +1503,47 @@
     "assigneePlaceholder": "Chọn người nhận",
     "amount": "Số tiền (VND)",
     "note": "Ghi chú"
+  },
+  "myWork": {
+    "tabsLabel": "Chế độ xem việc",
+    "tabAssigned": "Được giao",
+    "tabPersonal": "Cá nhân"
+  },
+  "personalTodo": {
+    "panelTitle": "To-do",
+    "togglePanel": "Mở To-do",
+    "closePanel": "Đóng To-do",
+    "addTask": "Thêm việc…",
+    "titlePlaceholder": "Tiêu đề",
+    "detailsPlaceholder": "Chi tiết",
+    "today": "Hôm nay",
+    "tomorrow": "Ngày mai",
+    "setTime": "Đặt giờ",
+    "repeat": "Lặp lại",
+    "repeatNone": "Không",
+    "repeatDaily": "Hàng ngày",
+    "repeatWeekly": "Hàng tuần",
+    "repeatMonthly": "Hàng tháng",
+    "emptyTitle": "Chưa có việc cần làm",
+    "emptyHint": "Thêm việc bạn cần làm và theo dõi hạn ngay trong To-do.",
+    "done": "Xong",
+    "saveTask": "Lưu",
+    "cancelComposer": "Hủy",
+    "prevMonth": "Tháng trước",
+    "nextMonth": "Tháng sau",
+    "weekdayMon": "T2",
+    "weekdayTue": "T3",
+    "weekdayWed": "T4",
+    "weekdayThu": "T5",
+    "weekdayFri": "T6",
+    "weekdaySat": "T7",
+    "weekdaySun": "CN",
+    "quickAddPlaceholder": "Thêm việc…",
+    "add": "Thêm",
+    "empty": "Chưa có việc. Gõ rồi Enter để thêm.",
+    "markDone": "Hoàn thành",
+    "markOpen": "Mở lại",
+    "editTitle": "Sửa tiêu đề",
+    "doneHidden": "Đã hoàn thành ({count})"
   }
 }

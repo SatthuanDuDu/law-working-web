@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
+import { PageToolbar } from "@/components/layout/page-toolbar";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { useOverlayAnimation } from "@/hooks/use-overlay-animation";
 import { cn, formatDateTime } from "@/lib/utils";
@@ -335,7 +336,7 @@ export function AuditLogsList({
 
   return (
     <>
-      <Card className="rounded-[5px]">
+      <Card className="rounded-md">
         <CardHeader className="gap-3 space-y-0 pb-3">
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <div>
@@ -389,66 +390,68 @@ export function AuditLogsList({
             </div>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-            <div className="relative min-w-0 sm:col-span-2 lg:col-span-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder={t("searchPlaceholder")}
-                className="h-9 pl-9"
-                aria-label={t("searchLabel")}
+          <PageToolbar>
+            <div className="grid w-full min-w-0 gap-2 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="relative min-w-0 sm:col-span-2 lg:col-span-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder={t("searchPlaceholder")}
+                  className="h-9 pl-9"
+                  aria-label={t("searchLabel")}
+                />
+              </div>
+              <FilterSelect
+                value={userFilter}
+                onChange={setUserFilter}
+                aria-label={t("filterUser")}
+                options={[
+                  { value: "all", label: t("allUsers") },
+                  { value: "system", label: tAdmin("systemUser") },
+                  ...actors.map((actor) => ({
+                    value: actor.id,
+                    label: actor.name,
+                  })),
+                ]}
+              />
+              <FilterSelect
+                value={actionFilter}
+                onChange={(next) =>
+                  setActionFilter(next as AuditAction | "all")
+                }
+                aria-label={t("filterAction")}
+                options={[
+                  { value: "all", label: t("allActions") },
+                  ...(Object.keys(actionLabels) as AuditAction[]).map((action) => ({
+                    value: action,
+                    label: actionLabels[action],
+                  })),
+                ]}
+              />
+              <FilterSelect
+                value={entityFilter}
+                onChange={setEntityFilter}
+                aria-label={t("filterEntity")}
+                options={[
+                  { value: "all", label: t("allEntities") },
+                  ...entityTypes.map((type) => ({
+                    value: type,
+                    label: entityLabel(type),
+                  })),
+                ]}
+              />
+              {/* Single time-range filter (start + end inside one picker) */}
+              <DateRangeFilter
+                dateFrom={dateFrom}
+                dateTo={dateTo}
+                onChange={({ dateFrom: nextFrom, dateTo: nextTo }) => {
+                  setDateFrom(nextFrom);
+                  setDateTo(nextTo);
+                }}
               />
             </div>
-            <FilterSelect
-              value={userFilter}
-              onChange={setUserFilter}
-              aria-label={t("filterUser")}
-              options={[
-                { value: "all", label: t("allUsers") },
-                { value: "system", label: tAdmin("systemUser") },
-                ...actors.map((actor) => ({
-                  value: actor.id,
-                  label: actor.name,
-                })),
-              ]}
-            />
-            <FilterSelect
-              value={actionFilter}
-              onChange={(next) =>
-                setActionFilter(next as AuditAction | "all")
-              }
-              aria-label={t("filterAction")}
-              options={[
-                { value: "all", label: t("allActions") },
-                ...(Object.keys(actionLabels) as AuditAction[]).map((action) => ({
-                  value: action,
-                  label: actionLabels[action],
-                })),
-              ]}
-            />
-            <FilterSelect
-              value={entityFilter}
-              onChange={setEntityFilter}
-              aria-label={t("filterEntity")}
-              options={[
-                { value: "all", label: t("allEntities") },
-                ...entityTypes.map((type) => ({
-                  value: type,
-                  label: entityLabel(type),
-                })),
-              ]}
-            />
-            {/* Single time-range filter (start + end inside one picker) */}
-            <DateRangeFilter
-              dateFrom={dateFrom}
-              dateTo={dateTo}
-              onChange={({ dateFrom: nextFrom, dateTo: nextTo }) => {
-                setDateFrom(nextFrom);
-                setDateTo(nextTo);
-              }}
-            />
-          </div>
+          </PageToolbar>
         </CardHeader>
 
         <CardContent className="divide-y divide-border/70 p-0">

@@ -2,6 +2,16 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+
+import {
+  Table,
+  TBody,
+  TD,
+  TH,
+  THead,
+  TR,
+  TableEmptyRow,
+} from "@/components/ui/table";
 import { Field, Input, Textarea } from "@/components/ui/field";
 import { LocalePair } from "@/components/website-cms/locale-pair";
 import { slugify } from "@/lib/utils";
@@ -171,26 +181,29 @@ export default async function WebsiteOfficesPage({
       ) : null}
 
       <div className="overflow-hidden rounded-md border border-border bg-surface">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-border bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
-            <tr>
-              <th className="px-4 py-3">Tên (VI)</th>
-              <th className="px-4 py-3">Điện thoại</th>
-              <th className="px-4 py-3">Chính</th>
-              <th className="px-4 py-3">Thứ tự</th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {offices.map((office) => {
+        <Table>
+          <THead className="border-b border-border bg-muted/50">
+            <TR>
+              <TH className="px-4 py-3">Tên (VI)</TH>
+              <TH className="px-4 py-3">Điện thoại</TH>
+              <TH className="px-4 py-3">Chính</TH>
+              <TH className="px-4 py-3">Thứ tự</TH>
+              <TH className="px-4 py-3" />
+            </TR>
+          </THead>
+          <TBody>
+            {offices.length === 0 ? (
+              <TableEmptyRow colSpan={5}>Chưa có văn phòng nào.</TableEmptyRow>
+            ) : (
+              offices.map((office) => {
               const name = office.translations.find((t) => t.locale === "vi")?.name ?? "—";
               return (
-                <tr key={office.id}>
-                  <td className="px-4 py-3 font-medium">{name}</td>
-                  <td className="px-4 py-3">{office.phone ?? "—"}</td>
-                  <td className="px-4 py-3">{office.isPrimary ? "Có" : "—"}</td>
-                  <td className="px-4 py-3">{office.order}</td>
-                  <td className="px-4 py-3 text-right">
+                <TR key={office.id}>
+                  <TD className="px-4 py-3 font-medium">{name}</TD>
+                  <TD className="px-4 py-3">{office.phone ?? "—"}</TD>
+                  <TD className="px-4 py-3">{office.isPrimary ? "Có" : "—"}</TD>
+                  <TD className="px-4 py-3">{office.order}</TD>
+                  <TD className="px-4 py-3 text-right">
                     <div className="flex flex-wrap items-center justify-end gap-3">
                       <Link
                         href={`/website/offices?edit=${office.id}`}
@@ -205,12 +218,13 @@ export default async function WebsiteOfficesPage({
                         </button>
                       </form>
                     </div>
-                  </td>
-                </tr>
+                  </TD>
+                </TR>
               );
-            })}
-          </tbody>
-        </table>
+              })
+            )}
+          </TBody>
+        </Table>
       </div>
     </div>
   );

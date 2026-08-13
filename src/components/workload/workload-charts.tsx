@@ -38,7 +38,7 @@ export function WorkloadCharts({ rows }: { rows: WorkloadRow[] }) {
 
   if (taskData.length === 0) {
     return (
-      <Card className="rounded-[5px]">
+      <Card className="rounded-md">
         <CardHeader>
           <CardTitle>Biểu đồ tải việc</CardTitle>
         </CardHeader>
@@ -50,7 +50,7 @@ export function WorkloadCharts({ rows }: { rows: WorkloadRow[] }) {
   }
 
   return (
-    <Card className="rounded-[5px]">
+    <Card className="rounded-md">
       <CardHeader>
         <CardTitle>Biểu đồ tải việc</CardTitle>
       </CardHeader>

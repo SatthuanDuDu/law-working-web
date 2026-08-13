@@ -19,6 +19,12 @@ Quy tắc: một slice = một việc end-to-end nhỏ. Chỉ một slice active
 - [x] Deploy/docs sync — `DEPLOY.md` + `.env.example` khớp `work.nslaw.vn`
 - [x] Dashboard Tổng quan baseline — chốt docs `ai/docs/dashboard-overview-baseline.md`
 - [x] Budget dual confirmation + client cash handoff + ACL cấp bậc — xem `ai/docs/budget-confirmation.md`
+- [x] Personal Todo + `/my-work` (riêng tư, không audit) — `ai/docs/personal-todo.md`
+- [x] Sticky personal todo panel (Gmail-style, đẩy layout desktop) — `ai/docs/personal-todo.md`
+- [x] To-do: animation + hạn/giờ + lặp lại + nhắc cron — `ai/docs/personal-todo.md`
+- [x] Task core: sửa/xoá + panel chi tiết + `/tasks` sidebar + tasks trên matter hub
+- [x] UI primitives + áp dụng (StatusChip, EmptyState, Table, PageToolbar, skeleton, error) — `ai/docs/ui-primitives.md`
+- [x] Mobile table fallback + a11y (aria / focus-visible) + loading expenses/wallet/website
 
 ## Budget wallet slices (checklist)
 - [x] Schema `StaffWallet` + `WalletTransaction` + migrate legacy `MatterExpense`

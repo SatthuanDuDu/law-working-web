@@ -15,6 +15,7 @@ import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label, Select } from "@/components/ui/card";
 import { SectionPanel } from "@/components/ui/section-panel";
+import { EmptyState } from "@/components/ui/empty-state";
 import { AddExpenseModal } from "@/components/expenses/add-expense-modal";
 import type { WalletTxListItem } from "@/lib/wallet-actions";
 import type { MoneyConfirmationListItem } from "@/lib/money-confirmation-actions";
@@ -278,9 +279,9 @@ export function WalletView({
         </div>
 
         {filtered.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">
+          <EmptyState className="border-0 bg-transparent py-6">
             {t("empty")}
-          </p>
+          </EmptyState>
         ) : (
           <ul className={cn(listDivideClass, "rounded-md border border-border")}>
             {filtered.map((tx) => (

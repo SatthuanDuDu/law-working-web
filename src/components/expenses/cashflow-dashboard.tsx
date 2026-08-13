@@ -14,10 +14,12 @@ import {
 } from "date-fns";
 import { useTranslations } from "next-intl";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
+import { PageToolbar } from "@/components/layout/page-toolbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label, Select } from "@/components/ui/card";
 import { SectionPanel } from "@/components/ui/section-panel";
+import { EmptyState } from "@/components/ui/empty-state";
 import { allocateBudgetAction, type WalletTxListItem } from "@/lib/wallet-actions";
 import type { MoneyConfirmationListItem } from "@/lib/money-confirmation-actions";
 import { WalletReceiptLinks } from "@/components/wallet/wallet-receipt-links";
@@ -147,7 +149,24 @@ export function CashflowDashboard({
 
   return (
     <div className={cn("space-y-4", pending && "opacity-70")}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <PageToolbar
+        actions={
+          <>
+            {presets.map((p) => (
+              <Button
+                key={p.key}
+                type="button"
+                variant="outline"
+                size="sm"
+                className="interactive-press"
+                onClick={() => pushRange(p.from, p.to)}
+              >
+                {p.label}
+              </Button>
+            ))}
+          </>
+        }
+      >
         <div className="min-w-0 max-w-sm flex-1">
           <p className="mb-1.5 text-xs text-muted-foreground">{t("filterLabel")}</p>
           <DateRangeFilter
@@ -156,21 +175,7 @@ export function CashflowDashboard({
             onChange={({ dateFrom, dateTo }) => pushRange(dateFrom, dateTo)}
           />
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          {presets.map((p) => (
-            <Button
-              key={p.key}
-              type="button"
-              variant="outline"
-              size="sm"
-              className="interactive-press"
-              onClick={() => pushRange(p.from, p.to)}
-            >
-              {p.label}
-            </Button>
-          ))}
-        </div>
-      </div>
+      </PageToolbar>
 
       <div className="grid gap-3 sm:grid-cols-3">
         {kpis.map((kpi) => (
@@ -230,7 +235,7 @@ export function CashflowDashboard({
 
         <SectionPanel title={t("tableByCategory")}>
           {stats.byCategory.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("empty")}</p>
+            <EmptyState>{t("empty")}</EmptyState>
           ) : (
             <ul className={cn(listDivideClass)}>
               {stats.byCategory.map((row) => (
@@ -254,37 +259,58 @@ export function CashflowDashboard({
 
       <SectionPanel title={t("tableByUser")}>
         {stats.byUser.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("empty")}</p>
+          <EmptyState>{t("empty")}</EmptyState>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[28rem] text-left text-sm">
-              <thead>
-                <tr className="border-b border-border text-muted-foreground">
-                  <th className="py-2 pr-3 font-medium">{t("colUser")}</th>
-                  <th className="py-2 pr-3 font-medium">{t("colBalance")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.byUser.map((u) => (
-                  <tr key={u.userId} className="border-b border-border/60">
-                    <td className="py-2 pr-3">
-                      {u.name}
-                      <span className="text-muted-foreground"> @{u.username}</span>
-                    </td>
-                    <td className="py-2 pr-3 tabular-nums font-medium">
-                      {formatVndDigits(u.balanceVnd)} ₫
-                    </td>
+          <>
+            <div className="hidden overflow-x-auto sm:block">
+              <table className="w-full min-w-[28rem] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-border text-muted-foreground">
+                    <th className="py-2 pr-3 font-medium">{t("colUser")}</th>
+                    <th className="py-2 pr-3 font-medium">{t("colBalance")}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {stats.byUser.map((u) => (
+                    <tr key={u.userId} className="border-b border-border/60">
+                      <td className="py-2 pr-3">
+                        {u.name}
+                        <span className="text-muted-foreground"> @{u.username}</span>
+                      </td>
+                      <td className="py-2 pr-3 tabular-nums font-medium">
+                        {formatVndDigits(u.balanceVnd)} ₫
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <ul className={cn(listDivideClass, "sm:hidden")}>
+              {stats.byUser.map((u) => (
+                <li
+                  key={u.userId}
+                  className={cn(
+                    listRowClass,
+                    "flex items-baseline justify-between gap-2 text-sm",
+                  )}
+                >
+                  <span className="min-w-0 truncate">
+                    {u.name}
+                    <span className="text-muted-foreground"> @{u.username}</span>
+                  </span>
+                  <span className="shrink-0 tabular-nums font-medium">
+                    {formatVndDigits(u.balanceVnd)} ₫
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </>
         )}
       </SectionPanel>
 
       <SectionPanel title={t("tableTransactions")}>
         {transactions.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("emptyTx")}</p>
+          <EmptyState>{t("emptyTx")}</EmptyState>
         ) : (
           <ul className={cn(listDivideClass, "rounded-md border border-border")}>
             {transactions.map((tx) => (

@@ -16,26 +16,15 @@ import {
 } from "@/lib/list-surface";
 import type { MatterPlanStepStatus, MatterStatus } from "@prisma/client";
 import type { DashboardPerson } from "@/components/dashboard/expandable-stat-card";
+import {
+  matterStatusChipClass,
+  planStepStatusChipClass,
+} from "@/components/ui/status-chip";
 
 const STAT_TONES = {
   primary: "bg-primary-muted text-primary",
   sky: "bg-primary-muted text-primary",
 } as const;
-
-const MATTER_STATUS_CHIP: Record<MatterStatus, string> = {
-  NEW: "bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300",
-  IN_PROGRESS: "bg-amber-100 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200",
-  ON_HOLD: "bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300",
-  CLOSED: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300",
-  ARCHIVED: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200",
-};
-
-const PLAN_STATUS_CHIP: Record<MatterPlanStepStatus, string> = {
-  NOT_STARTED: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200",
-  IN_PROGRESS: "bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300",
-  DONE: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300",
-  BLOCKED: "bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300",
-};
 
 export type DashboardMatterPlanStep = {
   id: string;
@@ -205,8 +194,8 @@ export function ExpandableMattersCard({
                           </p>
                           <span
                             className={cn(
-                              "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold",
-                              MATTER_STATUS_CHIP[matter.status],
+                              matterStatusChipClass(matter.status),
+                              "shrink-0 px-2 text-[10px] font-semibold",
                             )}
                           >
                             {labels.matterStatus[matter.status]}
@@ -247,8 +236,8 @@ export function ExpandableMattersCard({
                                   </p>
                                   <span
                                     className={cn(
-                                      "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
-                                      PLAN_STATUS_CHIP[step.status],
+                                      planStepStatusChipClass(step.status),
+                                      "shrink-0 px-1.5 text-[10px] font-semibold",
                                     )}
                                   >
                                     {labels.planStepStatus[step.status]}

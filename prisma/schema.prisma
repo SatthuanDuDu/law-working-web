@@ -79,6 +79,7 @@ enum NotificationType {
   TASK_DUE
   PLAN_ASSIGNED
   PLAN_DUE
+  PERSONAL_TODO_DUE
   GENERAL
   MENTION
   CHAT_MESSAGE
@@ -86,6 +87,13 @@ enum NotificationType {
   WALLET_BUDGET_UPDATE
   WALLET_CLIENT_PENDING
   WALLET_CLIENT_UPDATE
+}
+
+enum PersonalTodoRecurrence {
+  NONE
+  DAILY
+  WEEKLY
+  MONTHLY
 }
 
 enum MoneyConfirmationKind {
@@ -156,6 +164,7 @@ model User {
   updatedAt              DateTime             @updatedAt
   assignedTasks          Task[]               @relation("AssignedTasks")
   createdTasks           Task[]               @relation("CreatedTasks")
+  personalTodos          PersonalTodo[]       @relation("PersonalTodos")
   planStepAssignments    MatterPlanStepAssignee[]
   ledMatters             Matter[]             @relation("LeadLawyer")
   matterMembers          MatterMember[]
@@ -215,6 +224,7 @@ model Matter {
   members      MatterMember[]
   planSteps    MatterPlanStep[]
   tasks        Task[]
+  personalTodos PersonalTodo[]
   attachments  Attachment[]
   folders      MatterFolder[]
   comments            Comment[]
@@ -431,6 +441,44 @@ model Task {
   @@index([status])
   @@index([matterId])
   @@index([assigneeId, status, dueDate])
+}
+
+/** Private personal checklist — only visible to ownerId. No audit log. */
+model PersonalTodo {
+  id             String                  @id @default(cuid())
+  ownerId        String
+  owner          User                    @relation("PersonalTodos", fields: [ownerId], references: [id], onDelete: Cascade)
+  title          String
+  note           String?
+  isDone         Boolean                 @default(false)
+  dueDate        DateTime?
+  hasTime        Boolean                 @default(false)
+  recurrence     PersonalTodoRecurrence  @default(NONE)
+  /** ISO weekdays 1=Mon … 7=Sun; used when recurrence is WEEKLY. */
+  recurrenceDays Int[]
+  reminderSentAt DateTime?
+  position       Int                     @default(0)
+  matterId       String?
+  matter         Matter?                 @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  completedAt    DateTime?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  items          PersonalTodoItem[]
+
+  @@index([ownerId, isDone, position])
+  @@index([ownerId, isDone, dueDate])
+  @@index([matterId])
+}
+
+model PersonalTodoItem {
+  id       String       @id @default(cuid())
+  todoId   String
+  todo     PersonalTodo @relation(fields: [todoId], references: [id], onDelete: Cascade)
+  title    String
+  isDone   Boolean      @default(false)
+  position Int          @default(0)
+
+  @@index([todoId, position])
 }
 
 model Attachment {

@@ -2,6 +2,16 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+
+import {
+  Table,
+  TBody,
+  TD,
+  TH,
+  THead,
+  TR,
+  TableEmptyRow,
+} from "@/components/ui/table";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { LocalePair } from "@/components/website-cms/locale-pair";
 import { slugify } from "@/lib/utils";
@@ -171,24 +181,27 @@ export default async function WebsitePagesPage({
       ) : null}
 
       <div className="overflow-hidden rounded-md border border-border bg-surface">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-border bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
-            <tr>
-              <th className="px-4 py-3">Tiêu đề (VI)</th>
-              <th className="px-4 py-3">Trạng thái</th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {pages.map((page) => {
+        <Table>
+          <THead className="border-b border-border bg-muted/50">
+            <TR>
+              <TH className="px-4 py-3">Tiêu đề (VI)</TH>
+              <TH className="px-4 py-3">Trạng thái</TH>
+              <TH className="px-4 py-3" />
+            </TR>
+          </THead>
+          <TBody>
+            {pages.length === 0 ? (
+              <TableEmptyRow colSpan={3}>Chưa có trang nào.</TableEmptyRow>
+            ) : (
+              pages.map((page) => {
               const title = page.translations.find((t) => t.locale === "vi")?.title ?? "—";
               return (
-                <tr key={page.id}>
-                  <td className="px-4 py-3 font-medium">{title}</td>
-                  <td className="px-4 py-3">
+                <TR key={page.id}>
+                  <TD className="px-4 py-3 font-medium">{title}</TD>
+                  <TD className="px-4 py-3">
                     {page.status === "PUBLISHED" ? "Công khai" : "Nháp"}
-                  </td>
-                  <td className="px-4 py-3 text-right">
+                  </TD>
+                  <TD className="px-4 py-3 text-right">
                     <div className="flex flex-wrap items-center justify-end gap-3">
                       <Link
                         href={`/website/pages?edit=${page.id}`}
@@ -203,12 +216,13 @@ export default async function WebsitePagesPage({
                         </button>
                       </form>
                     </div>
-                  </td>
-                </tr>
+                  </TD>
+                </TR>
               );
-            })}
-          </tbody>
-        </table>
+              })
+            )}
+          </TBody>
+        </Table>
       </div>
     </div>
   );

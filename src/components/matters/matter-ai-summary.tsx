@@ -54,7 +54,7 @@ export function MatterAiSummary({
   }
 
   return (
-    <Card className={cn("rounded-[5px]", className)}>
+    <Card className={cn("rounded-md", className)}>
       <button
         type="button"
         onClick={handleToggle}
@@ -62,7 +62,7 @@ export function MatterAiSummary({
         aria-expanded={open}
       >
         <span className="inline-flex min-w-0 items-center gap-2.5">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[5px] bg-primary-muted text-primary">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary-muted text-primary">
             <Sparkles className="h-4 w-4" />
           </span>
           <span>
@@ -92,7 +92,7 @@ export function MatterAiSummary({
           ) : null}
           {error ? (
             <div className="space-y-3">
-              <p className="rounded-[5px] bg-red-50 px-3 py-2 text-sm text-red-600">
+              <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
                 {error}
               </p>
               <Button

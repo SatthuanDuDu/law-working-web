@@ -2,6 +2,16 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+
+import {
+  Table,
+  TBody,
+  TD,
+  TH,
+  THead,
+  TR,
+  TableEmptyRow,
+} from "@/components/ui/table";
 import { LocalePair } from "@/components/website-cms/locale-pair";
 import { MediaUploadField } from "@/components/website-cms/media-upload-field";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
@@ -164,28 +174,31 @@ export default async function WebsiteTestimonialsPage({
       ) : null}
 
       <div className="overflow-hidden rounded-md border border-border bg-surface">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-border bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
-            <tr>
-              <th className="px-4 py-3">Tên</th>
-              <th className="px-4 py-3">Vai trò (VI)</th>
-              <th className="px-4 py-3">Đánh giá</th>
-              <th className="px-4 py-3">Trạng thái</th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {testimonials.map((item) => {
+        <Table>
+          <THead className="border-b border-border bg-muted/50">
+            <TR>
+              <TH className="px-4 py-3">Tên</TH>
+              <TH className="px-4 py-3">Vai trò (VI)</TH>
+              <TH className="px-4 py-3">Đánh giá</TH>
+              <TH className="px-4 py-3">Trạng thái</TH>
+              <TH className="px-4 py-3" />
+            </TR>
+          </THead>
+          <TBody>
+            {testimonials.length === 0 ? (
+              <TableEmptyRow colSpan={5}>Chưa có đánh giá nào.</TableEmptyRow>
+            ) : (
+              testimonials.map((item) => {
               const role = item.translations.find((t) => t.locale === "vi")?.authorRole ?? "—";
               return (
-                <tr key={item.id}>
-                  <td className="px-4 py-3 font-medium">{item.authorName}</td>
-                  <td className="px-4 py-3">{role}</td>
-                  <td className="px-4 py-3">{item.rating}</td>
-                  <td className="px-4 py-3">
+                <TR key={item.id}>
+                  <TD className="px-4 py-3 font-medium">{item.authorName}</TD>
+                  <TD className="px-4 py-3">{role}</TD>
+                  <TD className="px-4 py-3">{item.rating}</TD>
+                  <TD className="px-4 py-3">
                     {item.status === "PUBLISHED" ? "Công khai" : "Nháp"}
-                  </td>
-                  <td className="px-4 py-3 text-right">
+                  </TD>
+                  <TD className="px-4 py-3 text-right">
                     <div className="flex flex-wrap items-center justify-end gap-3">
                       <Link
                         href={`/website/testimonials?edit=${item.id}`}
@@ -200,12 +213,13 @@ export default async function WebsiteTestimonialsPage({
                         </button>
                       </form>
                     </div>
-                  </td>
-                </tr>
+                  </TD>
+                </TR>
               );
-            })}
-          </tbody>
-        </table>
+              })
+            )}
+          </TBody>
+        </Table>
       </div>
     </div>
   );

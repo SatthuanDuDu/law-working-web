@@ -26,10 +26,12 @@ import { cn } from "@/lib/utils";
 function TaskCreateForm({
   users,
   matters,
+  defaultMatterId,
   onClose,
 }: {
   users: { id: string; name: string }[];
   matters: { id: string; code: string; title: string }[];
+  defaultMatterId?: string;
   onClose: () => void;
 }) {
   const t = useTranslations("tasks");
@@ -106,7 +108,12 @@ function TaskCreateForm({
               </option>
             ))}
           </OutlinedSelect>
-          <OutlinedSelect id="matterId" name="matterId" label={t("matterLabel")}>
+          <OutlinedSelect
+            id="matterId"
+            name="matterId"
+            label={t("matterLabel")}
+            defaultValue={defaultMatterId ?? ""}
+          >
             <option value="">{t("noMatter")}</option>
             {matters.map((m) => (
               <option key={m.id} value={m.id}>
@@ -173,9 +180,11 @@ function TaskCreateForm({
 export function TaskForm({
   users,
   matters,
+  defaultMatterId,
 }: {
   users: { id: string; name: string }[];
   matters: { id: string; code: string; title: string }[];
+  defaultMatterId?: string;
 }) {
   const t = useTranslations("tasks");
   const tCommon = useTranslations("common");
@@ -246,6 +255,7 @@ export function TaskForm({
                   key={open ? "open" : "closed"}
                   users={users}
                   matters={matters}
+                  defaultMatterId={defaultMatterId}
                   onClose={() => setOpen(false)}
                 />
               </div>

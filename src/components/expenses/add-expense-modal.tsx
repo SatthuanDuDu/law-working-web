@@ -19,6 +19,11 @@ import {
   recordWalletSpendAction,
   type SpendCategoryOption,
 } from "@/lib/wallet-actions";
+import {
+  listMyOpenPackagesAction,
+  requestTopupAction,
+} from "@/lib/budget-package-actions";
+import type { BudgetPackageDto } from "@/lib/budget-package";
 import { getOpenMattersForExpenseAction } from "@/lib/actions";
 import { EXPENSE_TYPES } from "@/lib/validations";
 import { useLabelMaps } from "@/i18n/use-label-maps";
@@ -65,17 +70,22 @@ function WalletSpendForm({
   matters,
   loadingMatters,
   categories,
+  packages,
+  loadingPackages,
   balanceVnd,
   onClose,
 }: {
   matters: ExpenseMatterOption[];
   loadingMatters: boolean;
   categories: SpendCategoryOption[];
+  packages: BudgetPackageDto[];
+  loadingPackages: boolean;
   balanceVnd: string;
   onClose: () => void;
 }) {
   const router = useRouter();
   const t = useTranslations("expense");
+  const tPkg = useTranslations("budgetPackage");
   const tCommon = useTranslations("common");
   const { expenseType } = useLabelMaps();
   const [error, setError] = useState("");
@@ -85,6 +95,12 @@ function WalletSpendForm({
   const [matterId, setMatterId] = useState("");
   const [steps, setSteps] = useState<{ id: string; title: string }[]>([]);
   const [amountDigits, setAmountDigits] = useState("");
+  const [packageId, setPackageId] = useState("");
+  const [splitFromPackageId, setSplitFromPackageId] = useState("");
+  const [showTopup, setShowTopup] = useState(false);
+  const [topupAmount, setTopupAmount] = useState("");
+  const [topupReason, setTopupReason] = useState("");
+  const [topupHint, setTopupHint] = useState("");
   const [receiptFiles, setReceiptFiles] = useState<File[]>([]);
   const [uploadHint, setUploadHint] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -95,6 +111,14 @@ function WalletSpendForm({
     categories.find((c) => c.id === effectiveCategoryId) ?? null;
   const requiresMatter = selectedCategory?.requiresMatter ?? false;
   const suggestions = useMemo(() => buildSuggestions(amountDigits), [amountDigits]);
+
+  const effectivePackageId = packageId || packages[0]?.id || "";
+  const selectedPackage =
+    packages.find((p) => p.id === effectivePackageId) ?? null;
+  const remaining = selectedPackage ? BigInt(selectedPackage.remainingVnd) : BigInt(0);
+  const amountBig = amountDigits ? BigInt(amountDigits) : BigInt(0);
+  const overRemaining = amountBig > remaining && amountBig > BigInt(0);
+  const splitOptions = packages.filter((p) => p.id !== effectivePackageId);
 
   function handleMatterChange(nextId: string) {
     setMatterId(nextId);
@@ -176,6 +200,12 @@ function WalletSpendForm({
     const formData = new FormData(form);
     formData.set("amountVnd", amountDigits);
     formData.set("spendCategoryId", effectiveCategoryId);
+    formData.set("budgetPackageId", effectivePackageId);
+    if (splitFromPackageId) {
+      formData.set("splitFromPackageId", splitFromPackageId);
+    } else {
+      formData.delete("splitFromPackageId");
+    }
     const filesToUpload = [...receiptFiles];
 
     setError("");
@@ -209,6 +239,27 @@ function WalletSpendForm({
     });
   }
 
+  function handleRequestTopup() {
+    if (!effectivePackageId) return;
+    setTopupHint("");
+    setError("");
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.set("packageId", effectivePackageId);
+      fd.set("amountVnd", digitsOnly(topupAmount));
+      fd.set("reason", topupReason.trim());
+      const result = await requestTopupAction(fd);
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
+      setTopupHint(tPkg("topupRequested"));
+      setShowTopup(false);
+      setTopupAmount("");
+      setTopupReason("");
+    });
+  }
+
   return (
     <form onSubmit={handleSubmit} className="mt-4 space-y-3">
       <p className="rounded-md bg-muted/60 px-3 py-2 text-sm text-muted-foreground">
@@ -217,6 +268,44 @@ function WalletSpendForm({
           {formatVndDigits(balanceVnd)} ₫
         </span>
       </p>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="spend-package">{tPkg("selectLabel")}</Label>
+        <Select
+          id="spend-package"
+          name="budgetPackageId"
+          required
+          disabled={loadingPackages}
+          value={effectivePackageId}
+          onChange={(e) => {
+            setPackageId(e.target.value);
+            setSplitFromPackageId("");
+            setShowTopup(false);
+          }}
+        >
+          {loadingPackages ? (
+            <option value="">{tCommon("loading")}</option>
+          ) : packages.length === 0 ? (
+            <option value="">{tPkg("noOpenPackages")}</option>
+          ) : (
+            packages.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} — {tPkg("remainingShort", {
+                  amount: formatVndDigits(p.remainingVnd),
+                })}
+              </option>
+            ))
+          )}
+        </Select>
+        {selectedPackage ? (
+          <p className="text-xs text-muted-foreground">
+            {tPkg("remaining")}:{" "}
+            <span className="font-medium tabular-nums text-foreground">
+              {formatVndDigits(selectedPackage.remainingVnd)} ₫
+            </span>
+          </p>
+        ) : null}
+      </div>
 
       <div className="space-y-1.5">
         <Label htmlFor="spend-category">{t("category")}</Label>
@@ -354,6 +443,79 @@ function WalletSpendForm({
             ))}
           </div>
         ) : null}
+        {overRemaining ? (
+          <div className="mt-2 space-y-2 rounded-md border border-amber-200 bg-amber-50/80 p-2.5">
+            <p className="text-xs text-amber-900">{tPkg("overRemainingWarn")}</p>
+            {splitOptions.length > 0 ? (
+              <div className="space-y-1">
+                <Label htmlFor="spend-split-package">{tPkg("splitPackage")}</Label>
+                <Select
+                  id="spend-split-package"
+                  name="splitFromPackageId"
+                  value={splitFromPackageId}
+                  onChange={(e) => setSplitFromPackageId(e.target.value)}
+                >
+                  <option value="">{tPkg("splitOptional")}</option>
+                  {splitOptions.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} — {formatVndDigits(p.remainingVnd)} ₫
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">{tPkg("noSplitPackages")}</p>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="interactive-press"
+                disabled={isPending || !effectivePackageId}
+                onClick={() => setShowTopup((v) => !v)}
+              >
+                {tPkg("requestTopup")}
+              </Button>
+            </div>
+            {showTopup ? (
+              <div className="space-y-2 rounded-md border border-border bg-surface p-2">
+                <div className="space-y-1">
+                  <Label htmlFor="topup-amount">{tPkg("topupAmount")}</Label>
+                  <Input
+                    id="topup-amount"
+                    inputMode="numeric"
+                    value={formatVndDigits(topupAmount)}
+                    onChange={(e) => setTopupAmount(digitsOnly(e.target.value))}
+                    placeholder={tPkg("topupAmountPlaceholder")}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="topup-reason">{tPkg("topupReason")}</Label>
+                  <Input
+                    id="topup-reason"
+                    value={topupReason}
+                    onChange={(e) => setTopupReason(e.target.value)}
+                    placeholder={tPkg("topupReasonPlaceholder")}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="interactive-press"
+                  disabled={
+                    isPending ||
+                    !digitsOnly(topupAmount) ||
+                    topupReason.trim().length < 3
+                  }
+                  onClick={handleRequestTopup}
+                >
+                  {tPkg("submitTopup")}
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       <div className="space-y-1.5">
@@ -412,6 +574,7 @@ function WalletSpendForm({
       </div>
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {topupHint ? <p className="text-sm text-emerald-700">{topupHint}</p> : null}
       {uploadHint ? <p className="text-sm text-muted-foreground">{uploadHint}</p> : null}
       {success ? <p className="text-sm text-emerald-700">{t("success")}</p> : null}
 
@@ -419,7 +582,15 @@ function WalletSpendForm({
         <Button type="button" variant="outline" onClick={onClose} disabled={isPending}>
           {tCommon("cancel")}
         </Button>
-        <Button type="submit" disabled={isPending || !amountDigits || !effectiveCategoryId}>
+        <Button
+          type="submit"
+          disabled={
+            isPending ||
+            !amountDigits ||
+            !effectiveCategoryId ||
+            !effectivePackageId
+          }
+        >
           {isPending ? t("saving") : t("confirm")}
         </Button>
       </div>
@@ -438,6 +609,7 @@ export function AddExpenseModal({
   const { mounted, active } = useOverlayAnimation(open);
   const [matters, setMatters] = useState<ExpenseMatterOption[] | null>(null);
   const [categories, setCategories] = useState<SpendCategoryOption[] | null>(null);
+  const [packages, setPackages] = useState<BudgetPackageDto[] | null>(null);
   const [balanceVnd, setBalanceVnd] = useState("0");
 
   useEffect(() => {
@@ -447,11 +619,13 @@ export function AddExpenseModal({
       getOpenMattersForExpenseAction(),
       getMyWalletAction(),
       listActiveSpendCategoriesAction(),
-    ]).then(([mattersRes, walletRes, catRes]) => {
+      listMyOpenPackagesAction(),
+    ]).then(([mattersRes, walletRes, catRes, pkgRes]) => {
       if (cancelled) return;
       setMatters(mattersRes.matters ?? []);
       setBalanceVnd(walletRes.balanceVnd ?? "0");
       setCategories(catRes.categories ?? []);
+      setPackages(pkgRes.packages ?? []);
     });
     return () => {
       cancelled = true;
@@ -463,6 +637,8 @@ export function AddExpenseModal({
   const loadingMatters = matters === null;
   const matterOptions = matters ?? [];
   const categoryOptions = categories ?? [];
+  const packageOptions = packages ?? [];
+  const loadingPackages = packages === null;
 
   return createPortal(
     <div
@@ -504,6 +680,8 @@ export function AddExpenseModal({
           matters={matterOptions}
           loadingMatters={loadingMatters}
           categories={categoryOptions}
+          packages={packageOptions}
+          loadingPackages={loadingPackages}
           balanceVnd={balanceVnd}
           onClose={onClose}
         />

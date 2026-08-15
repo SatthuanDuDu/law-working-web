@@ -63,7 +63,7 @@ export function SectionPanel({
     <Card
       solid={solid}
       className={cn(
-        "flex min-w-0 max-w-full flex-col overflow-hidden p-3 sm:p-3.5",
+        "flex min-w-0 max-w-full flex-col overflow-hidden p-2.5 sm:p-3",
         className,
       )}
     >
@@ -71,7 +71,7 @@ export function SectionPanel({
         title={title}
         icon={icon}
         action={action}
-        className="mb-3 min-w-0"
+        className="mb-2 min-w-0"
       />
       <div className="min-w-0 max-w-full flex-1 overflow-x-clip">{children}</div>
     </Card>

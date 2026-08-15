@@ -195,7 +195,7 @@ function ExpandableKpiCard({
         aria-label={
           open ? t("collapseCard", { label }) : t("expandCard", { label })
         }
-        className="interactive-press flex w-full min-w-0 items-center gap-3 p-4 text-left hover:[filter:none] active:[filter:none]"
+        className="interactive-press flex w-full min-w-0 items-center gap-3 p-3 text-left hover:[filter:none] active:[filter:none]"
       >
         <span
           className={cn(
@@ -223,7 +223,7 @@ function ExpandableKpiCard({
       {open ? (
         <div className="min-w-0 border-t border-border/60 px-1.5 pb-2 pt-0">
           {items.length === 0 ? (
-            <p className="px-2.5 py-3 text-sm text-muted-foreground">
+            <p className="px-2.5 py-2 text-sm text-muted-foreground">
               {emptyLabel}
             </p>
           ) : (
@@ -298,7 +298,7 @@ export function WorkloadKpiStrip({
   ] as const;
 
   return (
-    <div className="grid min-w-0 gap-3 sm:grid-cols-3">
+    <div className="grid min-w-0 gap-2 sm:grid-cols-3">
       {cards.map((card) => (
         <ExpandableKpiCard
           key={card.key}
@@ -333,7 +333,7 @@ export function WorkloadPersonCards({ rows }: { rows: WorkloadPersonRow[] }) {
         <CardTitle>{t("byPerson")}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
           {sorted.map((row) => (
             <PersonWorkloadCard key={row.userId} row={row} maxTotal={maxTotal} />
           ))}
@@ -518,7 +518,7 @@ export function WorkloadDepartmentCards({
         <CardTitle>{t("byDepartment")}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
           {sorted.map((dept) => (
             <DepartmentWorkloadCard
               key={dept.name}

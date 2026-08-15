@@ -17,7 +17,7 @@ export function PageToolbar({
   return (
     <div
       className={cn(
-        "flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between",
+        "flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end sm:justify-between",
         className,
       )}
     >

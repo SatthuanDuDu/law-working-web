@@ -31,11 +31,11 @@ export function DatetimeLocalWithNow({
   const t = useTranslations("common");
 
   return (
-    <div className={cn("min-w-0 space-y-1.5", className)}>
+    <div className={cn("min-w-0 max-w-full space-y-1.5", className)}>
       <Label htmlFor={id} className={labelClass}>
         {label}
       </Label>
-      <div className="relative">
+      <div className="relative min-w-0 max-w-full overflow-hidden">
         <Input
           id={id}
           type="datetime-local"

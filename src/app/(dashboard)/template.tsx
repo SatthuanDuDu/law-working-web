@@ -5,5 +5,9 @@ export default function DashboardTemplate({
 }: {
   children: React.ReactNode;
 }) {
-  return <div className="page-transition">{children}</div>;
+  return (
+    <div className="page-transition flex min-h-0 flex-1 flex-col">
+      {children}
+    </div>
+  );
 }

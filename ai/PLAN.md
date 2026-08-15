@@ -25,6 +25,8 @@ Quy tắc: một slice = một việc end-to-end nhỏ. Chỉ một slice active
 - [x] Task core: sửa/xoá + panel chi tiết + `/tasks` sidebar + tasks trên matter hub
 - [x] UI primitives + áp dụng (StatusChip, EmptyState, Table, PageToolbar, skeleton, error) — `ai/docs/ui-primitives.md`
 - [x] Mobile table fallback + a11y (aria / focus-visible) + loading expenses/wallet/website
+- [x] UI density pass (4 slices) — list cards + dashboard + chrome + admin/CMS — `ai/docs/ui-density.md` + `ai/docs/ui-primitives.md`
+- [x] Budget packages + thống kê + export + revision core + neutral-first tokens — `ai/docs/budget-packages.md` + `ai/docs/ui-style-reference.md`
 
 ## Budget wallet slices (checklist)
 - [x] Schema `StaffWallet` + `WalletTransaction` + migrate legacy `MatterExpense`
@@ -32,3 +34,7 @@ Quy tắc: một slice = một việc end-to-end nhỏ. Chỉ một slice active
 - [x] UI `/wallet` cho mọi user
 - [x] Dashboard `/expenses` + form phát budget (Admin/Manager)
 - [x] Cleanup luồng `MatterExpense` cũ + `ai/docs/budget-wallet.md`
+- [x] BudgetPackage schema + backfill + create/topup/spend-split/settle
+- [x] Expenses/wallet redesign theo gói + package detail + Excel/PDF/PNG export
+- [x] EntityRevision hạ tầng + RevisionHistory UI + quick revision trên matter/task status
+- [x] Neutral-first: Inter + `--action` buttons (list→table full restyle còn follow-up)

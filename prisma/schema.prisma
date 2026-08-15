@@ -87,6 +87,9 @@ enum NotificationType {
   WALLET_BUDGET_UPDATE
   WALLET_CLIENT_PENDING
   WALLET_CLIENT_UPDATE
+  WALLET_TOPUP_REQUEST
+  WALLET_TOPUP_UPDATE
+  WALLET_PACKAGE_SETTLE
 }
 
 enum PersonalTodoRecurrence {
@@ -99,6 +102,42 @@ enum PersonalTodoRecurrence {
 enum MoneyConfirmationKind {
   BUDGET_ALLOCATE
   CLIENT_RECEIPT
+  BUDGET_TOPUP
+  PACKAGE_SETTLE
+}
+
+enum BudgetPackageStatus {
+  PENDING_FUNDING
+  OPEN
+  PENDING_SETTLE
+  CLOSED
+  CANCELLED
+}
+
+enum BudgetSettleMode {
+  REFUND
+  CARRY_FORWARD
+}
+
+enum BudgetTopupRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum WalletTxKind {
+  ALLOCATE
+  SPEND
+  REFUND
+  CARRY_OUT
+  CARRY_IN
+  CLIENT_RECEIPT
+  LEGACY
+}
+
+enum RevisionSource {
+  FORM
+  QUICK
 }
 
 enum MoneyConfirmationStatus {
@@ -182,6 +221,11 @@ model User {
   walletTxAllocated       WalletTransaction[] @relation("WalletTxAllocatedBy")
   moneyConfirmationsFrom  MoneyConfirmation[] @relation("MoneyConfirmFrom")
   moneyConfirmationsTo    MoneyConfirmation[] @relation("MoneyConfirmTo")
+  budgetPackagesOwned     BudgetPackage[]     @relation("BudgetPackageOwner")
+  budgetPackagesCreated   BudgetPackage[]     @relation("BudgetPackageCreator")
+  budgetTopupRequests     BudgetTopupRequest[] @relation("BudgetTopupRequester")
+  budgetTopupDecisions    BudgetTopupRequest[] @relation("BudgetTopupDecider")
+  entityRevisions         EntityRevision[]
   attachmentAccessUpdates AttachmentAccess[]     @relation("AttachmentAccessUpdater")
   attachmentAccessEntries AttachmentAccessUser[]
   pushSubscriptions       PushSubscription[]
@@ -230,6 +274,7 @@ model Matter {
   comments            Comment[]
   walletTransactions  WalletTransaction[]
   moneyConfirmations  MoneyConfirmation[]
+  budgetPackages      BudgetPackage[]
   @@index([leadLawyerId])
   @@index([clientId])
   @@index([updatedAt])
@@ -269,6 +314,12 @@ model WalletTransaction {
   direction        WalletDirection
   amountVnd        BigInt
   balanceAfterVnd  BigInt
+  /** Semantic kind for reporting (carry-forward must not inflate totals). */
+  kind             WalletTxKind         @default(LEGACY)
+  budgetPackageId  String?
+  budgetPackage    BudgetPackage?       @relation(fields: [budgetPackageId], references: [id], onDelete: SetNull)
+  /** Groups split spends that hit multiple packages in one action. */
+  splitGroupId     String?
   spendCategoryId  String?
   spendCategory    SpendCategory?       @relation(fields: [spendCategoryId], references: [id], onDelete: SetNull)
   note             String?
@@ -294,6 +345,9 @@ model WalletTransaction {
   @@index([matterId])
   @@index([direction, createdAt])
   @@index([legacyImported])
+  @@index([budgetPackageId, createdAt])
+  @@index([kind, createdAt])
+  @@index([splitGroupId])
 }
 
 /** Dual-sided confirmation for budget allocate / client cash handoff. */
@@ -312,6 +366,8 @@ model MoneyConfirmation {
   matter               Matter?                  @relation(fields: [matterId], references: [id], onDelete: SetNull)
   matterPlanStepId     String?
   matterPlanStep       MatterPlanStep?          @relation(fields: [matterPlanStepId], references: [id], onDelete: SetNull)
+  budgetPackageId      String?
+  budgetPackage        BudgetPackage?           @relation(fields: [budgetPackageId], references: [id], onDelete: SetNull)
   recipientRespondedAt DateTime?
   allocatorConfirmedAt DateTime?
   walletTransactionId  String?                  @unique
@@ -324,6 +380,84 @@ model MoneyConfirmation {
   @@index([toUserId, status])
   @@index([kind, status])
   @@index([matterId])
+  @@index([budgetPackageId])
+}
+
+/** Named budget package — unit of allocation and spend. */
+model BudgetPackage {
+  id                 String              @id @default(cuid())
+  name               String
+  ownerUserId        String
+  owner              User                @relation("BudgetPackageOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  createdById        String
+  createdBy          User                @relation("BudgetPackageCreator", fields: [createdById], references: [id])
+  status             BudgetPackageStatus @default(PENDING_FUNDING)
+  matterId           String?
+  matter             Matter?             @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  note               String?
+  /** Counter cache: sum of ALLOCATE + CARRY_IN credits into this package. */
+  allocatedVnd       BigInt              @default(0)
+  /** Counter cache: sum of SPEND debits. */
+  spentVnd           BigInt              @default(0)
+  /** Counter cache: REFUND + CARRY_OUT amounts leaving the package. */
+  returnedVnd        BigInt              @default(0)
+  settleMode         BudgetSettleMode?
+  carryToPackageId   String?
+  carryToPackage     BudgetPackage?      @relation("BudgetCarryForward", fields: [carryToPackageId], references: [id], onDelete: SetNull)
+  carryFromPackages  BudgetPackage[]     @relation("BudgetCarryForward")
+  settleRequestedAt  DateTime?
+  closedAt           DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  transactions       WalletTransaction[]
+  moneyConfirmations MoneyConfirmation[]
+  topupRequests      BudgetTopupRequest[]
+
+  @@index([ownerUserId, status])
+  @@index([createdById, status])
+  @@index([status, createdAt])
+  @@index([matterId])
+}
+
+/** Owner requests additional funding for an open package. */
+model BudgetTopupRequest {
+  id            String                   @id @default(cuid())
+  packageId     String
+  package       BudgetPackage            @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  requestedById String
+  requestedBy   User                     @relation("BudgetTopupRequester", fields: [requestedById], references: [id], onDelete: Cascade)
+  amountVnd     BigInt
+  reason        String
+  status        BudgetTopupRequestStatus @default(PENDING)
+  decidedById   String?
+  decidedBy     User?                    @relation("BudgetTopupDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+  decidedAt     DateTime?
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+
+  @@index([packageId, status])
+  @@index([requestedById, status])
+  @@index([status, createdAt])
+}
+
+/** Field-level edit history with optional justification. */
+model EntityRevision {
+  id            String          @id @default(cuid())
+  entityType    String
+  entityId      String
+  version       Int
+  justification String?
+  source        RevisionSource
+  changedById   String?
+  changedBy     User?           @relation(fields: [changedById], references: [id], onDelete: SetNull)
+  /** Array of { field, label, from, to } with display-ready strings. */
+  changes       Json
+  createdAt     DateTime        @default(now())
+
+  @@unique([entityType, entityId, version])
+  @@index([entityType, entityId, createdAt])
+  @@index([changedById, createdAt])
+  @@index([createdAt])
 }
 
 /** Admin/Manager-managed spend groups (vụ việc, văn phòng phẩm, …). */

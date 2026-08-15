@@ -35,6 +35,10 @@ export type WalletTxListItem = {
   direction: WalletDirection;
   amountVnd: string;
   balanceAfterVnd: string;
+  kind: string;
+  budgetPackageId: string | null;
+  budgetPackageName: string | null;
+  splitGroupId: string | null;
   spendCategoryId: string | null;
   spendCategoryName: string | null;
   spendCategoryCode: string | null;
@@ -60,6 +64,10 @@ function serializeTx(
     direction: WalletDirection;
     amountVnd: bigint;
     balanceAfterVnd: bigint;
+    kind: string;
+    budgetPackageId: string | null;
+    budgetPackage: { name: string } | null;
+    splitGroupId: string | null;
     spendCategoryId: string | null;
     spendCategory: { name: string; code: string | null } | null;
     note: string | null;
@@ -87,6 +95,10 @@ function serializeTx(
     direction: tx.direction,
     amountVnd: tx.amountVnd.toString(),
     balanceAfterVnd: tx.balanceAfterVnd.toString(),
+    kind: tx.kind,
+    budgetPackageId: tx.budgetPackageId,
+    budgetPackageName: tx.budgetPackage?.name ?? null,
+    splitGroupId: tx.splitGroupId,
     spendCategoryId: tx.spendCategoryId,
     spendCategoryName: tx.spendCategory?.name ?? null,
     spendCategoryCode: tx.spendCategory?.code ?? null,
@@ -118,6 +130,7 @@ const txInclude = {
   matter: { select: { code: true, title: true } },
   matterPlanStep: { select: { title: true } },
   spendCategory: { select: { name: true, code: true } },
+  budgetPackage: { select: { name: true } },
   wallet: { include: { user: { select: { name: true } } } },
   attachments: {
     where: { isLatest: true },
@@ -187,6 +200,8 @@ export async function recordWalletSpendAction(formData: FormData) {
   const parsed = walletSpendSchema.safeParse({
     spendCategoryId,
     amountVnd: formData.get("amountVnd"),
+    budgetPackageId: formData.get("budgetPackageId"),
+    splitFromPackageId: formData.get("splitFromPackageId") || null,
     detail: formData.get("detail"),
     matterId: formData.get("matterId") || null,
     matterPlanStepId: formData.get("matterPlanStepId") || null,
@@ -206,6 +221,8 @@ export async function recordWalletSpendAction(formData: FormData) {
   let customTypeLabel: string | null = null;
   const detail = parsed.data.detail?.trim() || null;
   const note = parsed.data.note?.trim() || null;
+  const primaryPackageId = parsed.data.budgetPackageId.trim();
+  const splitFromPackageId = parsed.data.splitFromPackageId?.trim() || null;
 
   if (categoryRow.requiresMatter) {
     matterId = parsed.data.matterId!.trim();
@@ -245,6 +262,9 @@ export async function recordWalletSpendAction(formData: FormData) {
     }
   }
 
+  const { packageRemainingVnd } = await import("@/lib/budget-package");
+  const { randomUUID } = await import("crypto");
+
   try {
     const created = await prisma.$transaction(async (db) => {
       await ensureStaffWallet(db, user.id);
@@ -254,16 +274,68 @@ export async function recordWalletSpendAction(formData: FormData) {
       if (wallet.balanceVnd < amountVnd) {
         throw new Error("INSUFFICIENT_BALANCE");
       }
+
+      const primary = await db.budgetPackage.findUnique({
+        where: { id: primaryPackageId },
+      });
+      if (
+        !primary ||
+        primary.ownerUserId !== user.id ||
+        primary.status !== "OPEN"
+      ) {
+        throw new Error("INVALID_PACKAGE");
+      }
+
+      const primaryRemaining = packageRemainingVnd(primary);
+      let primaryDebit = amountVnd;
+      let splitDebit = BigInt(0);
+      let splitPkgId: string | null = null;
+      let splitGroupId: string | null = null;
+
+      if (amountVnd > primaryRemaining) {
+        if (!splitFromPackageId) {
+          throw new Error("PACKAGE_OVERSPEND");
+        }
+        const splitPkg = await db.budgetPackage.findUnique({
+          where: { id: splitFromPackageId },
+        });
+        if (
+          !splitPkg ||
+          splitPkg.ownerUserId !== user.id ||
+          splitPkg.status !== "OPEN"
+        ) {
+          throw new Error("INVALID_SPLIT_PACKAGE");
+        }
+        const splitRemaining = packageRemainingVnd(splitPkg);
+        const shortfall = amountVnd - primaryRemaining;
+        if (shortfall > splitRemaining) {
+          throw new Error("PACKAGE_OVERSPEND");
+        }
+        primaryDebit = primaryRemaining;
+        splitDebit = shortfall;
+        splitPkgId = splitPkg.id;
+        splitGroupId = randomUUID();
+      }
+
       const updated = await db.staffWallet.update({
         where: { userId: user.id },
         data: { balanceVnd: { decrement: amountVnd } },
       });
-      return db.walletTransaction.create({
+
+      // After full decrement, balance is updated.balanceVnd.
+      // First row (primary): balance after primary portion =
+      // (updated.balanceVnd + amountVnd) - primaryDebit = updated.balanceVnd + splitDebit
+      const afterPrimary = updated.balanceVnd + splitDebit;
+
+      const primaryTx = await db.walletTransaction.create({
         data: {
           walletUserId: user.id,
           direction: "DEBIT",
-          amountVnd,
-          balanceAfterVnd: updated.balanceVnd,
+          kind: "SPEND",
+          amountVnd: primaryDebit,
+          balanceAfterVnd: afterPrimary,
+          budgetPackageId: primary.id,
+          splitGroupId,
           spendCategoryId: categoryRow.id,
           detail,
           note,
@@ -275,6 +347,39 @@ export async function recordWalletSpendAction(formData: FormData) {
         },
         include: txInclude,
       });
+
+      await db.budgetPackage.update({
+        where: { id: primary.id },
+        data: { spentVnd: { increment: primaryDebit } },
+      });
+
+      if (splitDebit > BigInt(0) && splitPkgId && splitGroupId) {
+        await db.walletTransaction.create({
+          data: {
+            walletUserId: user.id,
+            direction: "DEBIT",
+            kind: "SPEND",
+            amountVnd: splitDebit,
+            balanceAfterVnd: updated.balanceVnd,
+            budgetPackageId: splitPkgId,
+            splitGroupId,
+            spendCategoryId: categoryRow.id,
+            detail,
+            note: note ? `${note} (bù gói)` : "Bù từ gói khác",
+            matterId,
+            matterPlanStepId,
+            expenseType,
+            customTypeLabel,
+            createdById: user.id,
+          },
+        });
+        await db.budgetPackage.update({
+          where: { id: splitPkgId },
+          data: { spentVnd: { increment: splitDebit } },
+        });
+      }
+
+      return primaryTx;
     });
 
     await createAuditLog({
@@ -282,11 +387,15 @@ export async function recordWalletSpendAction(formData: FormData) {
       action: "CREATE",
       entityType: "WalletTransaction",
       entityId: created.id,
-      details: `DEBIT ${categoryRow.name} ${amountVnd.toString()} VND`,
+      details: `DEBIT ${categoryRow.name} ${amountVnd.toString()} VND package=${primaryPackageId}`,
     });
 
     revalidatePath("/wallet");
     revalidatePath("/expenses");
+    revalidatePath(`/expenses/packages/${primaryPackageId}`);
+    if (splitFromPackageId) {
+      revalidatePath(`/expenses/packages/${splitFromPackageId}`);
+    }
     if (matterId) {
       revalidatePath(`/matters/${matterId}`);
       revalidatePath("/matters");
@@ -295,6 +404,16 @@ export async function recordWalletSpendAction(formData: FormData) {
   } catch (error) {
     if (error instanceof Error && error.message === "INSUFFICIENT_BALANCE") {
       return { error: await actionError("insufficientBalance") };
+    }
+    if (error instanceof Error && error.message === "PACKAGE_OVERSPEND") {
+      return { error: await actionError("budgetPackageOverspend") };
+    }
+    if (
+      error instanceof Error &&
+      (error.message === "INVALID_PACKAGE" ||
+        error.message === "INVALID_SPLIT_PACKAGE")
+    ) {
+      return { error: await actionError("budgetPackageInvalid") };
     }
     console.error("recordWalletSpendAction failed:", error);
     return { error: await actionError("cannotRecordSpend") };

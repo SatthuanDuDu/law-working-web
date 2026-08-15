@@ -5,10 +5,14 @@ import {
   startOfDay,
   startOfMonth,
 } from "date-fns";
+import type { BudgetPackageStatus, Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ensureStaffWallet } from "@/lib/wallet";
 import { canManageWalletUser, type SessionUser } from "@/lib/permissions";
-import type { Role } from "@prisma/client";
+import { packageRemainingVnd } from "@/lib/budget-package";
+
+/** Internal transfers — exclude from cashflow credit/debit totals. */
+const CARRY_KINDS = ["CARRY_OUT", "CARRY_IN"] as const;
 
 export type WalletUserBalance = {
   userId: string;
@@ -26,6 +30,19 @@ export type WalletCategoryStat = {
   pct: number;
 };
 
+export type WalletPackageStat = {
+  packageId: string;
+  name: string;
+  ownerName: string;
+  status: BudgetPackageStatus;
+  allocatedVnd: string;
+  spentVnd: string;
+  remainingVnd: string;
+  returnedVnd: string;
+  pctSpent: number;
+  matterCode: string | null;
+};
+
 export type CashflowStatsDto = {
   from: string;
   to: string;
@@ -34,7 +51,16 @@ export type CashflowStatsDto = {
   creditCount: number;
   debitCount: number;
   walletsTotalBalanceVnd: string;
+  /** Sum of CLIENT_RECEIPT credits (approx. client cash held). */
+  clientCashHeldVnd: string;
+  /** Sum of package remaining for packages in range / filter. */
+  packagesRemainingVnd: string;
+  packagesAllocatedVnd: string;
+  packagesSpentVnd: string;
+  openPackageCount: number;
+  pendingTopupCount: number;
   byCategory: WalletCategoryStat[];
+  byPackage: WalletPackageStat[];
   byUser: WalletUserBalance[];
 };
 
@@ -79,6 +105,9 @@ export async function getCashflowStats(
     to: Date;
   },
   actor?: Pick<SessionUser, "id" | "role">,
+  options?: {
+    packageStatus?: BudgetPackageStatus | "ALL" | "ACTIVE" | null;
+  },
 ): Promise<CashflowStatsDto> {
   const createdAt = { gte: range.from, lte: range.to };
 
@@ -95,20 +124,40 @@ export async function getCashflowStats(
       ? { walletUserId: { in: allowedUserIds } }
       : { walletUserId: { in: ["__none__"] } };
 
+  const notCarry = { kind: { notIn: [...CARRY_KINDS] } };
+
   const baseDebit = {
     direction: "DEBIT" as const,
     legacyImported: false,
     createdAt,
     ...walletUserFilter,
+    ...notCarry,
   };
   const baseCredit = {
     direction: "CREDIT" as const,
     legacyImported: false,
     createdAt,
     ...walletUserFilter,
+    ...notCarry,
   };
 
-  const [creditAgg, debitAgg, byCategory] = await Promise.all([
+  const packageStatusFilter = options?.packageStatus;
+  const packageWhereStatus =
+    packageStatusFilter === "ACTIVE"
+      ? { status: { in: ["PENDING_FUNDING", "OPEN", "PENDING_SETTLE"] as BudgetPackageStatus[] } }
+      : packageStatusFilter && packageStatusFilter !== "ALL"
+        ? { status: packageStatusFilter }
+        : {};
+
+  const [
+    creditAgg,
+    debitAgg,
+    byCategory,
+    clientCashAgg,
+    packagesInRange,
+    openPackageCount,
+    pendingTopupCount,
+  ] = await Promise.all([
     prisma.walletTransaction.aggregate({
       where: baseCredit,
       _sum: { amountVnd: true },
@@ -124,6 +173,42 @@ export async function getCashflowStats(
       where: { ...baseDebit, spendCategoryId: { not: null } },
       _sum: { amountVnd: true },
       _count: true,
+    }),
+    prisma.walletTransaction.aggregate({
+      where: {
+        direction: "CREDIT",
+        kind: "CLIENT_RECEIPT",
+        legacyImported: false,
+        ...walletUserFilter,
+      },
+      _sum: { amountVnd: true },
+    }),
+    prisma.budgetPackage.findMany({
+      where: {
+        ownerUserId: { in: allowedUserIds.length ? allowedUserIds : ["__none__"] },
+        createdAt,
+        ...packageWhereStatus,
+      },
+      include: {
+        owner: { select: { name: true } },
+        matter: { select: { code: true } },
+      },
+      orderBy: [{ status: "asc" }, { updatedAt: "desc" }],
+      take: 200,
+    }),
+    prisma.budgetPackage.count({
+      where: {
+        ownerUserId: { in: allowedUserIds.length ? allowedUserIds : ["__none__"] },
+        status: { in: ["PENDING_FUNDING", "OPEN", "PENDING_SETTLE"] },
+      },
+    }),
+    prisma.budgetTopupRequest.count({
+      where: {
+        status: "PENDING",
+        package: {
+          ownerUserId: { in: allowedUserIds.length ? allowedUserIds : ["__none__"] },
+        },
+      },
     }),
   ]);
 
@@ -156,6 +241,7 @@ export async function getCashflowStats(
     (acc, w) => acc + w.balanceVnd,
     BigInt(0),
   );
+  const clientCashHeld = clientCashAgg._sum.amountVnd ?? BigInt(0);
 
   const byCategoryStats: WalletCategoryStat[] = byCategory
     .filter((row) => row.spendCategoryId != null)
@@ -176,6 +262,33 @@ export async function getCashflowStats(
     })
     .sort((a, b) => Number(BigInt(b.amountVnd) - BigInt(a.amountVnd)));
 
+  let packagesAllocated = BigInt(0);
+  let packagesSpent = BigInt(0);
+  let packagesRemaining = BigInt(0);
+
+  const byPackageStats: WalletPackageStat[] = packagesInRange.map((pkg) => {
+    const remaining = packageRemainingVnd(pkg);
+    packagesAllocated += pkg.allocatedVnd;
+    packagesSpent += pkg.spentVnd;
+    packagesRemaining += remaining;
+    const pctSpent =
+      pkg.allocatedVnd > BigInt(0)
+        ? Number((pkg.spentVnd * BigInt(10000)) / pkg.allocatedVnd) / 100
+        : 0;
+    return {
+      packageId: pkg.id,
+      name: pkg.name,
+      ownerName: pkg.owner.name,
+      status: pkg.status,
+      allocatedVnd: pkg.allocatedVnd.toString(),
+      spentVnd: pkg.spentVnd.toString(),
+      remainingVnd: remaining.toString(),
+      returnedVnd: pkg.returnedVnd.toString(),
+      pctSpent: Math.min(100, pctSpent),
+      matterCode: pkg.matter?.code ?? null,
+    };
+  });
+
   return {
     from: toIsoDate(range.from),
     to: toIsoDate(range.to),
@@ -184,7 +297,14 @@ export async function getCashflowStats(
     creditCount: creditAgg._count,
     debitCount: debitAgg._count,
     walletsTotalBalanceVnd: walletsTotal.toString(),
+    clientCashHeldVnd: clientCashHeld.toString(),
+    packagesRemainingVnd: packagesRemaining.toString(),
+    packagesAllocatedVnd: packagesAllocated.toString(),
+    packagesSpentVnd: packagesSpent.toString(),
+    openPackageCount,
+    pendingTopupCount,
     byCategory: byCategoryStats,
+    byPackage: byPackageStats,
     byUser: walletsFresh.map((w) => ({
       userId: w.userId,
       name: w.user.name,

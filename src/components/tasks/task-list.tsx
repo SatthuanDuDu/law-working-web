@@ -164,6 +164,15 @@ export function TaskList({
     );
   }
 
+  /** Matter-linked tasks open the matter plan; standalone tasks open the edit panel. */
+  function openTaskDestination(task: TaskListItem) {
+    if (task.matterId) {
+      router.push(`/matters/${task.matterId}/plan`);
+      return;
+    }
+    setSelectedTask(task);
+  }
+
   const assigneeOptions = useMemo(() => {
     const map = new Map<string, string>();
     for (const task of tasks) {
@@ -278,21 +287,27 @@ export function TaskList({
     return (
       <div
         key={task.id}
+        role="button"
+        tabIndex={0}
+        onClick={() => openTaskDestination(task)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            openTaskDestination(task);
+          }
+        }}
         className={cn(
+          "interactive-press cursor-pointer text-left",
           compact
-            ? "flex h-full flex-col rounded-md border border-border/40 bg-[color-mix(in_oklab,var(--muted)_6%,var(--surface))] p-4"
-            : "px-1 py-3.5 first:pt-0 last:pb-0",
+            ? "flex flex-col rounded-md border border-border/40 bg-[color-mix(in_oklab,var(--muted)_6%,var(--surface))] p-3"
+            : "px-1 py-2.5 first:pt-0 last:pb-0",
         )}
       >
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <button
-              type="button"
-              className="interactive-press text-left font-medium text-foreground hover:text-primary"
-              onClick={() => setSelectedTask(task)}
-            >
+            <p className="font-medium text-foreground hover:text-primary">
               {task.title}
-            </button>
+            </p>
             {task.description ? (
               <p
                 className={cn(
@@ -303,7 +318,7 @@ export function TaskList({
                 {task.description}
               </p>
             ) : null}
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="mt-1.5 text-sm text-muted-foreground">
               {t("assignedTo", {
                 name: `${task.assignee.name}${task.matter ? ` • ${task.matter.code}` : ""}`,
               })}
@@ -322,7 +337,11 @@ export function TaskList({
             className={cn(taskPriorityChipClass(task.priority), "w-fit shrink-0")}
           />
         </div>
-        <div className={cn("mt-3 flex items-center gap-3", compact && "mt-auto pt-3")}>
+        <div
+          className="mt-2.5 flex items-center gap-2"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
           {canUpdate ? (
             <Select
               value={task.status}
@@ -330,7 +349,7 @@ export function TaskList({
               onChange={(e) =>
                 handleStatusChange(task.id, e.target.value, task.title)
               }
-              className="w-full min-w-0 sm:max-w-xs"
+              className="h-8 w-auto max-w-full min-w-0 px-2 text-xs sm:max-w-[9.5rem]"
             >
               {Object.entries(taskStatus).map(([value, label]) => (
                 <option key={value} value={value}>
@@ -376,7 +395,7 @@ export function TaskList({
           <button
             type="button"
             className="interactive-press block max-w-full truncate text-left font-medium text-foreground hover:text-primary"
-            onClick={() => setSelectedTask(task)}
+            onClick={() => openTaskDestination(task)}
           >
             {task.title}
           </button>
@@ -669,7 +688,7 @@ export function TaskList({
               </div>
             </>
           ) : mode === "grid" ? (
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
               {visibleTasks.map((task) => renderTaskCard(task, true))}
             </div>
           ) : (

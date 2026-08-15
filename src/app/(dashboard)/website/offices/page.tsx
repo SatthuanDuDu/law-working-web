@@ -111,7 +111,7 @@ export default async function WebsiteOfficesPage({
         <form
           id={WEBSITE_CMS_FORM_ID}
           action={saveOffice}
-          className="space-y-4 rounded-md border border-border bg-surface p-6"
+          className="space-y-4 rounded-md border border-border bg-surface p-4"
         >
           {editing ? (
             <>

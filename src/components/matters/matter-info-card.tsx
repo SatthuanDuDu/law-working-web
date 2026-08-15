@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { MatterStatusControl } from "@/components/matters/matter-status-control";
 import { MatterMembersEditor } from "@/components/matters/matter-members-editor";
+import { RevisionHistory } from "@/components/history/revision-history";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getMatterTypeDisplay } from "@/lib/matter-code";
 import { cn, formatDateTime } from "@/lib/utils";
@@ -188,6 +189,11 @@ export async function MatterInfoCard({
           <p className="mt-0.5 break-all font-mono text-[11px] font-medium tabular-nums tracking-tight text-primary sm:text-xs">
             {matter.code}
           </p>
+          <RevisionHistory
+            entityType="Matter"
+            entityId={matter.id}
+            className="mt-1"
+          />
         </div>
 
         <dl className="grid min-w-0 grid-cols-2 gap-x-3 gap-y-2">

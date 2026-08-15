@@ -245,7 +245,7 @@ export function SpendCategoriesList({ items }: { items: SpendCategoryListItem[] 
         </CardHeader>
         <CardContent className="divide-y divide-border/70 p-0">
           {visibleItems.length === 0 ? (
-            <div className="p-4 sm:p-6">
+            <div className="p-3 sm:p-4">
               <EmptyState>{t("emptyHint")}</EmptyState>
             </div>
           ) : (

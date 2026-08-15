@@ -92,11 +92,11 @@ export function DepartmentsList({ items }: { items: DepartmentListItem[] }) {
 
         <CardContent className="divide-y divide-border/70 p-0">
           {items.length === 0 ? (
-            <div className="p-4 sm:p-6">
+            <div className="p-3 sm:p-4">
               <EmptyState>{t("emptyHint")}</EmptyState>
             </div>
           ) : visibleItems.length === 0 ? (
-            <div className="p-4 sm:p-6">
+            <div className="p-3 sm:p-4">
               <EmptyState>{t("noFilterMatch")}</EmptyState>
             </div>
           ) : (

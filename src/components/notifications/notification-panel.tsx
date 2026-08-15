@@ -370,18 +370,28 @@ export function NotificationPanel({
         type="button"
         variant="ghost"
         size="icon"
-        aria-label={t("title")}
+        aria-label={
+          displayedUnread > 0
+            ? `${t("title")} (${displayedUnread})`
+            : t("title")
+        }
         aria-expanded={open}
         className={cn(HEADER_TOOLBAR_BTN, "relative")}
         onClick={() => (open ? closePanel() : openPanel())}
       >
         <Bell />
-        {displayedUnread > 0 && (
-          <span className="absolute right-1.5 top-1.5 flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+        {displayedUnread > 0 ? (
+          <span
+            className={cn(
+              "absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center",
+              "rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-none",
+              "text-white tabular-nums shadow-sm ring-2 ring-canvas",
+            )}
+            aria-hidden
+          >
+            {displayedUnread > 99 ? "99+" : displayedUnread}
           </span>
-        )}
+        ) : null}
       </Button>
 
       {panelMounted &&

@@ -137,7 +137,7 @@ export function EditWorkTypeModal({
             onSubmit={handleSubmit}
             className="flex min-h-0 flex-1 flex-col"
           >
-            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5 sm:px-6">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5 sm:px-6">
               <OutlinedField label={t("nameLabel")} htmlFor="edit-work-type-name" className="mt-1">
                 <Input
                   id="edit-work-type-name"

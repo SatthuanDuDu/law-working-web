@@ -4,57 +4,67 @@
   --background: #ffffff;
   --foreground: #0f172a;
   --muted-foreground: #64748b;
-  /* Soft sage / moss pastel (SaaS) — less harsh than deep forest */
-  --primary: #3f6f5a;
+  /*
+   * Cases reference: selected chips / CTAs = deep slate (#0f172a).
+   * Soft sky is NOT the brand chrome — only optional info tint via status tokens.
+   */
+  --primary: #0f172a;
   --primary-foreground: #ffffff;
-  --primary-hover: color-mix(in oklab, black 8%, #3f6f5a);
-  --primary-muted: #e8f0ec;
-  --primary-muted-hover: #dce8e2;
-  --accent: #8f7a2e;
-  --accent-muted: #f5f0de;
+  --primary-hover: #020617;
+  --primary-muted: #f1f5f9;
+  --primary-muted-hover: #e2e8f0;
+  --accent: #475569;
+  --accent-muted: #f8fafc;
+  /* Same family as primary — filled Selected chips / main CTAs */
+  --action: #0f172a;
+  --action-foreground: #ffffff;
+  --action-hover: #020617;
   --muted: #f1f5f9;
-  --border: #e2e8f0;
+  --border: #e5e7eb;
   /* Surface layers */
-  --canvas: #f8fafc;
+  --canvas: #f8f9fa;
   --surface: #ffffff;
   --surface-elevated: #ffffff;
-  --sidebar: #f1f5f9;
-  --glass-border: #e2e8f0;
-  --field-hover-bg: #e8f0ec;
-  --row-hover-bg: #dce8e2;
+  --sidebar: #f3f4f6;
+  --glass-border: #e5e7eb;
+  --field-hover-bg: #f1f5f9;
+  --row-hover-bg: #f8fafc;
   /* Sync radius: 8–12px outer / mid scale */
   --radius-sm: 0.375rem; /* 6px */
   --radius-md: 0.5rem; /* 8px */
   --radius-lg: 0.75rem; /* 12px */
   --radius-xl: 0.75rem; /* 12px */
   /* Ultra-thin SaaS shadow */
-  --shadow-overlay: 0 4px 20px rgba(0, 0, 0, 0.03);
-  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.03);
+  --shadow-overlay: 0 4px 20px rgba(15, 23, 42, 0.06);
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.04);
   /* Flat canvas — no heavy radial wash */
   --body-gradient: none;
 }
 
 .dark {
-  --background: #0f1712;
-  --foreground: #f5f7f5;
-  --muted-foreground: #a8b5b0;
-  --primary: #1a6b3a;
-  --primary-foreground: #f0fdf4;
-  --primary-hover: color-mix(in oklab, white 12%, #1a6b3a);
-  --primary-muted: #163024;
-  --primary-muted-hover: color-mix(in oklab, var(--primary) 18%, #163024);
-  --accent: #c4a035;
-  --accent-muted: #3d3418;
-  --muted: #1e2a22;
-  --border: #2a3a30;
-  --canvas: #0c1210;
-  --surface: #141c17;
-  --surface-elevated: #141c17;
-  --sidebar: #121a15;
-  --glass-border: #2a3a30;
-  --field-hover-bg: rgb(30 42 34 / 0.95);
-  --row-hover-bg: rgb(30 42 34 / 0.98);
-  --shadow-overlay: 0 4px 20px rgba(0, 0, 0, 0.35);
+  --background: #0b1220;
+  --foreground: #f8fafc;
+  --muted-foreground: #94a3b8;
+  --primary: #e2e8f0;
+  --primary-foreground: #0f172a;
+  --primary-hover: #ffffff;
+  --primary-muted: #1e293b;
+  --primary-muted-hover: #334155;
+  --accent: #94a3b8;
+  --accent-muted: #1e293b;
+  --action: #e2e8f0;
+  --action-foreground: #0f172a;
+  --action-hover: #ffffff;
+  --muted: #1e293b;
+  --border: #334155;
+  --canvas: #020617;
+  --surface: #0f172a;
+  --surface-elevated: #0f172a;
+  --sidebar: #0b1220;
+  --glass-border: #334155;
+  --field-hover-bg: rgb(148 163 184 / 0.12);
+  --row-hover-bg: rgb(148 163 184 / 0.08);
+  --shadow-overlay: 0 4px 20px rgba(0, 0, 0, 0.45);
   --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.35);
   --body-gradient: none;
 }
@@ -72,13 +82,16 @@
   --color-primary-muted-hover: var(--primary-muted-hover);
   --color-accent: var(--accent);
   --color-accent-muted: var(--accent-muted);
+  --color-action: var(--action);
+  --color-action-foreground: var(--action-foreground);
+  --color-action-hover: var(--action-hover);
   --color-muted: var(--muted);
   --color-border: var(--border);
   --color-canvas: var(--canvas);
   --color-surface: var(--surface);
   --color-surface-elevated: var(--surface-elevated);
   --color-sidebar: var(--sidebar);
-  --font-sans: var(--font-open-sans);
+  --font-sans: var(--font-sans-app);
 }
 
 html {
@@ -127,7 +140,7 @@ body {
   overscroll-behavior-y: none;
   background-color: var(--canvas);
   color: var(--foreground);
-  font-family: var(--font-open-sans), "Open Sans", Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans-app), Inter, system-ui, Arial, Helvetica, sans-serif;
 }
 
 /* Locked while dragging the utility FAB so the page cannot rubber-band. */

@@ -9,20 +9,26 @@ import {
   useTransition,
 } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { ChevronDown } from "lucide-react";
+import type { BudgetPackageStatus } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { Label, Select } from "@/components/ui/card";
 import { SectionPanel } from "@/components/ui/section-panel";
 import { EmptyState } from "@/components/ui/empty-state";
+import { StatusChip } from "@/components/ui/status-chip";
 import { AddExpenseModal } from "@/components/expenses/add-expense-modal";
 import type { WalletTxListItem } from "@/lib/wallet-actions";
 import type { MoneyConfirmationListItem } from "@/lib/money-confirmation-actions";
+import type { BudgetPackageDto } from "@/lib/budget-package";
 import { WalletReceiptLinks } from "@/components/wallet/wallet-receipt-links";
 import { MoneyConfirmationsPanel } from "@/components/wallet/money-confirmations-panel";
 import { ClientReceiptModal } from "@/components/wallet/client-receipt-modal";
+import { budgetPackageStatusTone } from "@/lib/budget-package-ui";
 import { formatVndDigits } from "@/lib/wallet";
+import { liquidPanelClass } from "@/lib/liquid-panel";
 import { listDivideClass, listRowClass } from "@/lib/list-surface";
 import { cn } from "@/lib/utils";
 
@@ -39,14 +45,21 @@ function formatWhen(iso: string) {
 
 export function WalletView({
   balanceVnd,
+  packageRemainingSumVnd,
+  clientCashHeldVnd,
+  packages,
   initialTransactions,
   confirmations = [],
 }: {
   balanceVnd: string;
+  packageRemainingSumVnd: string;
+  clientCashHeldVnd: string;
+  packages: BudgetPackageDto[];
   initialTransactions: WalletTxListItem[];
   confirmations?: MoneyConfirmationListItem[];
 }) {
   const t = useTranslations("wallet");
+  const tPkg = useTranslations("budgetPackage");
   const router = useRouter();
   const [spendOpen, setSpendOpen] = useState(false);
   const [receiptOpen, setReceiptOpen] = useState(false);
@@ -60,6 +73,7 @@ export function WalletView({
   const txTriggerRef = useRef<HTMLButtonElement>(null);
   const [direction, setDirection] = useState<"ALL" | "CREDIT" | "DEBIT">("ALL");
   const [categoryId, setCategoryId] = useState<string>("ALL");
+  const [packageId, setPackageId] = useState<string>("ALL");
   const [sort, setSort] = useState<"newest" | "oldest" | "amount_desc" | "amount_asc">(
     "newest",
   );
@@ -126,11 +140,25 @@ export function WalletView({
     return [...map.entries()].map(([id, name]) => ({ id, name }));
   }, [initialTransactions]);
 
+  const packageOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of packages) {
+      map.set(p.id, p.name);
+    }
+    for (const tx of initialTransactions) {
+      if (tx.budgetPackageId && tx.budgetPackageName) {
+        map.set(tx.budgetPackageId, tx.budgetPackageName);
+      }
+    }
+    return [...map.entries()].map(([id, name]) => ({ id, name }));
+  }, [packages, initialTransactions]);
+
   const filtered = useMemo(() => {
     let rows = initialTransactions.filter((tx) => {
       if (!includeLegacy && tx.legacyImported) return false;
       if (direction !== "ALL" && tx.direction !== direction) return false;
       if (categoryId !== "ALL" && tx.spendCategoryId !== categoryId) return false;
+      if (packageId !== "ALL" && tx.budgetPackageId !== packageId) return false;
       return true;
     });
     rows = [...rows];
@@ -144,79 +172,157 @@ export function WalletView({
       rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     }
     return rows;
-  }, [initialTransactions, direction, categoryId, sort, includeLegacy]);
+  }, [
+    initialTransactions,
+    direction,
+    categoryId,
+    packageId,
+    sort,
+    includeLegacy,
+  ]);
 
   return (
     <div className="space-y-4">
-      <SectionPanel title={t("balance")}>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-2xl font-semibold tracking-tight text-primary">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div
+          className={cn(liquidPanelClass, "rounded-md border border-border p-4")}
+        >
+          <p className="text-xs text-muted-foreground">{t("balance")}</p>
+          <p className="mt-1 text-xl font-semibold tracking-tight text-primary tabular-nums">
             {formatVndDigits(balanceVnd)} ₫
           </p>
-          <div className="relative w-full sm:w-auto">
-            <Button
-              ref={txTriggerRef}
-              type="button"
-              className="interactive-press w-full sm:w-auto"
-              aria-haspopup="menu"
-              aria-expanded={txMenuOpen}
-              onClick={() => setTxMenuOpen((v) => !v)}
-            >
-              {t("addTransaction")}
-              <ChevronDown
-                className={cn(
-                  "size-4 transition-transform",
-                  txMenuOpen && "rotate-180",
-                )}
-                aria-hidden
-              />
-            </Button>
-            {txMenuOpen && txMenuBox
-              ? createPortal(
-                  <div
-                    ref={txMenuRef}
-                    role="menu"
-                    className="fixed z-[70] overflow-hidden rounded-md border border-border bg-surface py-1 shadow-[var(--shadow-overlay)]"
-                    style={{
-                      top: txMenuBox.top,
-                      left: txMenuBox.left,
-                      width: txMenuBox.width,
+        </div>
+        <div
+          className={cn(liquidPanelClass, "rounded-md border border-border p-4")}
+        >
+          <p className="text-xs text-muted-foreground">{t("packageBalance")}</p>
+          <p className="mt-1 text-xl font-semibold tracking-tight tabular-nums">
+            {formatVndDigits(packageRemainingSumVnd)} ₫
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {t("packageRemainingHint")}
+          </p>
+        </div>
+        <div
+          className={cn(liquidPanelClass, "rounded-md border border-border p-4")}
+        >
+          <p className="text-xs text-muted-foreground">{t("clientCashHeld")}</p>
+          <p className="mt-1 text-xl font-semibold tracking-tight tabular-nums">
+            {formatVndDigits(clientCashHeldVnd)} ₫
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {t("clientCashHeldHint")}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex justify-end">
+        <div className="relative w-full sm:w-auto">
+          <Button
+            ref={txTriggerRef}
+            type="button"
+            className="interactive-press w-full sm:w-auto"
+            aria-haspopup="menu"
+            aria-expanded={txMenuOpen}
+            onClick={() => setTxMenuOpen((v) => !v)}
+          >
+            {t("addTransaction")}
+            <ChevronDown
+              className={cn(
+                "size-4 transition-transform",
+                txMenuOpen && "rotate-180",
+              )}
+              aria-hidden
+            />
+          </Button>
+          {txMenuOpen && txMenuBox
+            ? createPortal(
+                <div
+                  ref={txMenuRef}
+                  role="menu"
+                  className="fixed z-[70] overflow-hidden rounded-md border border-border bg-surface py-1 shadow-[var(--shadow-overlay)]"
+                  style={{
+                    top: txMenuBox.top,
+                    left: txMenuBox.left,
+                    width: txMenuBox.width,
+                  }}
+                >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="interactive-press flex w-full items-center px-3 py-2.5 text-left text-sm text-foreground transition-colors duration-150 hover:bg-primary-muted hover:text-primary focus-visible:bg-primary-muted focus-visible:text-primary focus-visible:outline-none"
+                    onClick={() => {
+                      setTxMenuOpen(false);
+                      setReceiptOpen(true);
                     }}
                   >
-                    <button
-                      type="button"
-                      role="menuitem"
-                      className="interactive-press flex w-full items-center px-3 py-2.5 text-left text-sm text-foreground transition-colors duration-150 hover:bg-primary-muted hover:text-primary focus-visible:bg-primary-muted focus-visible:text-primary focus-visible:outline-none"
-                      onClick={() => {
-                        setTxMenuOpen(false);
-                        setReceiptOpen(true);
-                      }}
-                    >
-                      {t("addReceive")}
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      className="interactive-press flex w-full items-center px-3 py-2.5 text-left text-sm text-foreground transition-colors duration-150 hover:bg-primary-muted hover:text-primary focus-visible:bg-primary-muted focus-visible:text-primary focus-visible:outline-none"
-                      onClick={() => {
-                        setTxMenuOpen(false);
-                        setSpendOpen(true);
-                      }}
-                    >
-                      {t("addSpend")}
-                    </button>
-                  </div>,
-                  document.body,
-                )
-              : null}
-          </div>
+                    {t("addReceive")}
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="interactive-press flex w-full items-center px-3 py-2.5 text-left text-sm text-foreground transition-colors duration-150 hover:bg-primary-muted hover:text-primary focus-visible:bg-primary-muted focus-visible:text-primary focus-visible:outline-none"
+                    onClick={() => {
+                      setTxMenuOpen(false);
+                      setSpendOpen(true);
+                    }}
+                  >
+                    {t("addSpend")}
+                  </button>
+                </div>,
+                document.body,
+              )
+            : null}
         </div>
-      </SectionPanel>
+      </div>
 
       <MoneyConfirmationsPanel confirmations={confirmations} />
 
+      <SectionPanel title={t("myPackages")}>
+        {packages.length === 0 ? (
+          <EmptyState className="border-0 bg-transparent py-4">
+            {tPkg("noOpenPackages")}
+          </EmptyState>
+        ) : (
+          <ul className={cn(listDivideClass)}>
+            {packages.map((pkg) => (
+              <li
+                key={pkg.id}
+                className={cn(
+                  listRowClass,
+                  "flex flex-wrap items-center justify-between gap-2",
+                )}
+              >
+                <div className="min-w-0">
+                  <Link
+                    href={`/expenses/packages/${pkg.id}`}
+                    className="text-sm font-medium text-primary hover:underline"
+                  >
+                    {pkg.name}
+                  </Link>
+                  <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                    <StatusChip
+                      label={tPkg(`status.${pkg.status as BudgetPackageStatus}`)}
+                      tone={budgetPackageStatusTone(pkg.status)}
+                    />
+                    {pkg.matterCode ? (
+                      <span className="text-xs text-muted-foreground">
+                        {pkg.matterCode}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+                <p className="text-sm font-semibold tabular-nums">
+                  {formatVndDigits(pkg.remainingVnd)} ₫
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </SectionPanel>
+
       <SectionPanel title={t("history")}>
-        <div className="mb-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
           <div className="space-y-1">
             <Label htmlFor="wallet-dir">{t("filterDirection")}</Label>
             <Select
@@ -229,6 +335,21 @@ export function WalletView({
               <option value="ALL">{t("all")}</option>
               <option value="CREDIT">{t("credit")}</option>
               <option value="DEBIT">{t("debit")}</option>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="wallet-pkg">{t("filterPackage")}</Label>
+            <Select
+              id="wallet-pkg"
+              value={packageId}
+              onChange={(e) => setPackageId(e.target.value)}
+            >
+              <option value="ALL">{t("all")}</option>
+              {packageOptions.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
             </Select>
           </div>
           <div className="space-y-1">
@@ -289,6 +410,7 @@ export function WalletView({
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <span className="text-sm font-medium">
                     {tx.direction === "CREDIT" ? t("credit") : t("debit")}
+                    {tx.budgetPackageName ? ` · ${tx.budgetPackageName}` : ""}
                     {tx.spendCategoryName ? ` · ${tx.spendCategoryName}` : ""}
                     {tx.legacyImported ? ` (${t("legacy")})` : ""}
                   </span>

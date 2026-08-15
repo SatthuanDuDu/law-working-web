@@ -106,7 +106,7 @@ export default async function WebsiteSectionCopyPage({
         <form
           id={WEBSITE_CMS_FORM_ID}
           action={saveSectionCopy}
-          className="space-y-4 rounded-md border border-border bg-surface p-6"
+          className="space-y-4 rounded-md border border-border bg-surface p-4"
         >
           <input type="hidden" name="id" value={editing.id} />
           <p className="text-sm font-semibold text-foreground">{editing.label}</p>

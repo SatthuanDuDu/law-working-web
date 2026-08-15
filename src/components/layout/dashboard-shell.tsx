@@ -68,6 +68,8 @@ export function DashboardShell({
   // Sticky toolbars under page header — no main top padding (calendar + website CMS).
   const flushTopUnderHeader =
     pathname.startsWith("/calendar") || pathname.startsWith("/website");
+  // Calendar: lock main scroll so toolbar + grid stay fixed; only inner panels scroll.
+  const lockMainToViewport = pathname.startsWith("/calendar");
 
   return (
     <SidebarProvider>
@@ -88,10 +90,13 @@ export function DashboardShell({
                 <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
                   <main
                     className={cn(
-                      "min-w-0 flex-1 overflow-y-auto px-4 pb-4 sm:px-6 sm:pb-6 lg:px-8 lg:pb-8",
+                      "min-w-0 flex-1 px-3 sm:px-5 lg:px-6",
                       flushTopUnderHeader
                         ? "pt-0"
-                        : "pt-4 sm:pt-6 lg:pt-8",
+                        : "pt-3 sm:pt-4 lg:pt-5",
+                      lockMainToViewport
+                        ? "flex flex-col overflow-hidden pb-3 sm:pb-4 lg:pb-5"
+                        : "overflow-y-auto pb-3 sm:pb-5 lg:pb-6",
                     )}
                   >
                     {children}

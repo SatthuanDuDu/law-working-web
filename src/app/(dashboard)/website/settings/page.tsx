@@ -136,7 +136,7 @@ export default async function WebsiteSettingsPage({
       <form
         id={WEBSITE_CMS_FORM_ID}
         action={saveSettings}
-        className="space-y-8 rounded-md border border-border bg-surface p-6"
+        className="space-y-5 rounded-md border border-border bg-surface p-4"
       >
         <section id="contact" className={ANCHOR}>
           <h2 className="font-semibold text-foreground">Liên hệ &amp; đánh giá</h2>

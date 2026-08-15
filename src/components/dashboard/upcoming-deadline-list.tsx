@@ -154,7 +154,7 @@ export function UpcomingDeadlineList({
           {error}
         </p>
       ) : null}
-      <ul className="min-w-0 space-y-4">
+      <ul className="min-w-0 space-y-2">
         {items.map((item) => {
           const showPlanSelect =
             item.kind === "plan" &&

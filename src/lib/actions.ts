@@ -1534,9 +1534,26 @@ export async function updateMatterStatusAction(matterId: string, status: string)
   }
 
   const previousStatus = matter.status;
-  const updated = await prisma.matter.update({
-    where: { id: matterId },
-    data: { status: nextStatus },
+
+  const updated = await prisma.$transaction(async (db) => {
+    const row = await db.matter.update({
+      where: { id: matterId },
+      data: { status: nextStatus },
+    });
+    const { recordRevision, diffFields } = await import("@/lib/revisions");
+    await recordRevision(db, {
+      entityType: "Matter",
+      entityId: matterId,
+      changedById: user.id,
+      justification: null,
+      source: "QUICK",
+      changes: diffFields(
+        { status: previousStatus },
+        { status: nextStatus },
+        [{ field: "status", label: "Trạng thái" }],
+      ),
+    });
+    return row;
   });
 
   if (previousStatus === "NEW" && updated.status === "IN_PROGRESS") {
@@ -1772,9 +1789,25 @@ export async function updateTaskStatusAction(id: string, status: string) {
     return { error: "Không có quyền cập nhật" };
   }
 
-  await prisma.task.update({
-    where: { id },
-    data: { status: status as "TODO" | "IN_PROGRESS" | "DONE" | "CANCELLED" },
+  const nextStatus = status as "TODO" | "IN_PROGRESS" | "DONE" | "CANCELLED";
+  await prisma.$transaction(async (db) => {
+    await db.task.update({
+      where: { id },
+      data: { status: nextStatus },
+    });
+    const { recordRevision, diffFields } = await import("@/lib/revisions");
+    await recordRevision(db, {
+      entityType: "Task",
+      entityId: id,
+      changedById: user.id,
+      justification: null,
+      source: "QUICK",
+      changes: diffFields(
+        { status: task.status },
+        { status: nextStatus },
+        [{ field: "status", label: "Trạng thái" }],
+      ),
+    });
   });
 
   await createAuditLog({

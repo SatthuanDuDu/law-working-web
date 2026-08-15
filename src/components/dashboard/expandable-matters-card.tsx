@@ -109,7 +109,7 @@ export function ExpandableMattersCard({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-label={open ? t("collapseCard", { label }) : t("expandCard", { label })}
-        className="interactive-press flex w-full min-w-0 max-w-full items-center gap-2 p-3 text-left hover:[filter:none] active:[filter:none] sm:p-4"
+        className="interactive-press flex w-full min-w-0 max-w-full items-center gap-2 p-3 text-left hover:[filter:none] active:[filter:none]"
       >
         <div className="min-w-0 flex-1">
           <span className="block truncate text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">

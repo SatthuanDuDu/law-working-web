@@ -24,7 +24,7 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Check, Circle, CircleDot, Ban, Clock, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/card";
 import {
   CalendarAddPlanDialog,
   type CalendarMatterOption,
@@ -1203,7 +1203,7 @@ function DayCellScrollList({ children }: { children: ReactNode }) {
         ref={scrollRef}
         onScroll={onScroll}
         onWheel={onWheel}
-        className="max-h-[3.25rem] space-y-0.5 overflow-y-auto overscroll-contain sm:max-h-[6.5rem] sm:space-y-1 [scrollbar-width:thin]"
+        className="h-full min-h-0 space-y-0.5 overflow-y-auto overscroll-contain sm:space-y-1 [scrollbar-width:thin]"
       >
         {children}
       </div>
@@ -1430,7 +1430,6 @@ export function CalendarMonth({
 }) {
   const router = useRouter();
   const t = useTranslations("calendar");
-  const labels = useLabelMaps();
   const [viewMode, setViewMode] = useState<"week" | "month">("week");
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
   const [weekAnchor, setWeekAnchor] = useState(() =>
@@ -1483,21 +1482,10 @@ export function CalendarMonth({
     const end = endOfWeek(endOfMonth(month), { weekStartsOn: 1 });
     return eachDayOfInterval({ start, end });
   }, [month]);
+  const monthWeekCount = Math.max(4, Math.ceil(monthDays.length / 7));
 
   const filteredTasks = tasks;
   const filteredPlans = planSteps;
-
-  const periodStart = useMemo(
-    () => (viewMode === "week" ? weekAnchor : startOfMonth(month)),
-    [viewMode, weekAnchor, month],
-  );
-  const periodEnd = useMemo(
-    () =>
-      viewMode === "week"
-        ? endOfWeek(weekAnchor, { weekStartsOn: 1 })
-        : endOfMonth(month),
-    [viewMode, weekAnchor, month],
-  );
 
   const gridStart = useMemo(
     () =>
@@ -1513,32 +1501,6 @@ export function CalendarMonth({
         : endOfWeek(endOfMonth(month), { weekStartsOn: 1 }),
     [viewMode, agendaEnd, month],
   );
-
-  const periodTasks = useMemo(() => {
-    return filteredTasks
-      .filter((task) => {
-        const due = new Date(task.dueDate);
-        return due >= periodStart && due <= periodEnd;
-      })
-      .sort(
-        (a, b) =>
-          new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime() ||
-          a.title.localeCompare(b.title),
-      );
-  }, [filteredTasks, periodStart, periodEnd]);
-
-  const periodPlans = useMemo(() => {
-    return filteredPlans
-      .filter((step) => {
-        const due = new Date(step.dueAt);
-        return due >= periodStart && due <= periodEnd;
-      })
-      .sort(
-        (a, b) =>
-          new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime() ||
-          a.title.localeCompare(b.title),
-      );
-  }, [filteredPlans, periodStart, periodEnd]);
 
   const tasksByDay = useMemo(() => {
     const map = new Map<string, CalendarTask[]>();
@@ -1565,36 +1527,6 @@ export function CalendarMonth({
     }
     return map;
   }, [filteredPlans, gridStart, gridEnd]);
-
-  type DeadlineItem =
-    | { kind: "task"; sortAt: number; task: CalendarTask }
-    | { kind: "plan"; sortAt: number; step: CalendarPlanStep };
-
-  const periodDeadlines = useMemo(() => {
-    const items: DeadlineItem[] = [
-      ...periodTasks.map(
-        (task): DeadlineItem => ({
-          kind: "task",
-          sortAt: new Date(task.dueDate).getTime(),
-          task,
-        }),
-      ),
-      ...periodPlans.map(
-        (step): DeadlineItem => ({
-          kind: "plan",
-          sortAt: new Date(step.dueAt).getTime(),
-          step,
-        }),
-      ),
-    ];
-    return items.sort(
-      (a, b) =>
-        a.sortAt - b.sortAt ||
-        (a.kind === "task" ? a.task.title : a.step.title).localeCompare(
-          b.kind === "task" ? b.task.title : b.step.title,
-        ),
-    );
-  }, [periodTasks, periodPlans]);
 
   const weekRangeLabel = t("weekRange", {
     start: format(weekAnchor, "dd/MM"),
@@ -1708,7 +1640,7 @@ export function CalendarMonth({
   }, [agendaDays, viewMode]);
 
   return (
-    <div className="min-w-0 space-y-3 sm:space-y-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden overscroll-none sm:gap-3">
       <CalendarAddPlanDialog
         open={!!addPlanDay}
         day={addPlanDay}
@@ -1718,8 +1650,8 @@ export function CalendarMonth({
         onClose={() => setAddPlanDay(null)}
       />
 
-      {/* Full-bleed sticky scrubber under header (main has pt-0 on /calendar) */}
-      <div className="sticky top-0 z-10 -mx-4 min-w-0 border-b border-border/60 bg-canvas px-4 pb-2 pt-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+      {/* Toolbar fixed in layout — does not move with wheel scroll */}
+      <div className="shrink-0 -mx-3 min-w-0 bg-canvas px-3 pt-2 sm:-mx-5 sm:px-5 sm:pt-2.5 lg:-mx-6 lg:px-6">
         <div
           className={cn(liquidPanelClass, "min-w-0 rounded-md p-2 sm:p-2.5")}
         >
@@ -1854,13 +1786,14 @@ export function CalendarMonth({
           aria-label={t("weekAgenda")}
           className={cn(
             liquidPanelClass,
-            "min-w-0 overflow-hidden rounded-md shadow-[var(--shadow-overlay)]",
+            "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-md shadow-[var(--shadow-overlay)]",
           )}
         >
           <div
             ref={weekScrollerRef}
             onScroll={handleWeekScroll}
-            className="max-h-[min(70dvh,42rem)] snap-y snap-proximity space-y-3.5 overflow-y-auto overscroll-contain px-3 py-3 scroll-smooth sm:space-y-4 sm:px-4"
+            onWheel={(event) => event.stopPropagation()}
+            className="min-h-0 flex-1 snap-y snap-proximity space-y-3.5 overflow-y-auto overscroll-contain px-3 py-3 scroll-smooth sm:space-y-4 sm:px-4"
           >
             {agendaDays.map((day) => {
               const key = format(day, "yyyy-MM-dd");
@@ -2015,19 +1948,23 @@ export function CalendarMonth({
           aria-label={t("monthGrid")}
           className={cn(
             liquidPanelClass,
-            "min-w-0 overflow-hidden rounded-md p-2 shadow-[var(--shadow-overlay)] sm:p-3",
+            "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-md p-2 shadow-[var(--shadow-overlay)] sm:p-3",
           )}
         >
-          <div className="overflow-x-auto">
-            <div className="min-w-0 p-0.5 sm:p-1">
-              <div className="grid min-w-0 grid-cols-7 gap-0.5 text-center text-[10px] font-semibold uppercase text-muted-foreground sm:gap-2 sm:text-xs">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            <div className="grid min-w-0 shrink-0 grid-cols-7 gap-0.5 text-center text-[10px] font-semibold uppercase text-muted-foreground sm:gap-2 sm:text-xs">
                 {weekdayLabels.map((d) => (
                   <div key={d} className="py-1 sm:py-2">
                     {d}
                   </div>
                 ))}
               </div>
-              <div className="mt-1 grid min-w-0 grid-cols-7 gap-0.5 sm:mt-0 sm:gap-2">
+              <div
+                className="mt-1 grid min-h-0 min-w-0 flex-1 grid-cols-7 gap-0.5 sm:mt-0 sm:gap-2"
+                style={{
+                  gridTemplateRows: `repeat(${monthWeekCount}, minmax(0, 1fr))`,
+                }}
+              >
                 {monthDays.map((day) => {
                   const key = format(day, "yyyy-MM-dd");
                   const dayTasks = tasksByDay.get(key) ?? [];
@@ -2058,7 +1995,7 @@ export function CalendarMonth({
                         }
                       }}
                       className={cn(
-                        "interactive-press flex min-h-20 cursor-pointer flex-col rounded-md border p-0.5 text-left transition-colors duration-200 sm:min-h-36 sm:rounded-lg sm:p-2.5",
+                        "interactive-press flex h-full min-h-0 cursor-pointer flex-col overflow-hidden rounded-md border p-0.5 text-left transition-colors duration-200 sm:rounded-lg sm:p-2.5",
                         inMonth
                           ? "border-border bg-surface/80 hover:border-primary/30 hover:bg-primary-muted-hover"
                           : "border-border/50 bg-muted/40 text-muted-foreground hover:bg-primary-muted/40",
@@ -2101,83 +2038,9 @@ export function CalendarMonth({
                   );
                 })}
               </div>
-            </div>
           </div>
         </section>
       )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {viewMode === "week"
-              ? t("deadlineListTitleWeek")
-              : t("deadlineListTitle")}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {periodDeadlines.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {viewMode === "week"
-                ? t("noDeadlinesThisWeek")
-                : t("noDeadlinesThisMonth")}
-            </p>
-          ) : (
-            periodDeadlines.map((item) =>
-              item.kind === "task" ? (
-                <div
-                  key={`task-${item.task.id}`}
-                  className="rounded-lg border border-border p-3"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="font-medium">{item.task.title}</p>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <Badge variant="default">{t("kindTask")}</Badge>
-                      <Badge variant="info">
-                        {labels.taskStatus[item.task.status]}
-                      </Badge>
-                    </div>
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {t("dueAt", {
-                      date: format(new Date(item.task.dueDate), "dd/MM/yyyy"),
-                    })}{" "}
-                    • {item.task.assigneeName}
-                    {item.task.clientName ? ` • ${item.task.clientName}` : ""}
-                    {item.task.matterCode ? ` • ${item.task.matterCode}` : ""}
-                  </p>
-                  <Badge variant="warning" className="mt-2">
-                    {labels.taskPriority[item.task.priority]}
-                  </Badge>
-                </div>
-              ) : (
-                <div
-                  key={`plan-${item.step.id}`}
-                  className="rounded-lg border border-border p-3"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="font-medium">{item.step.title}</p>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <Badge variant="default">{t("kindPlan")}</Badge>
-                      <Badge variant="info">
-                        {labels.planStepStatus[item.step.status]}
-                      </Badge>
-                    </div>
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {t("dueAt", {
-                      date: format(new Date(item.step.dueAt), "dd/MM/yyyy HH:mm"),
-                    })}{" "}
-                    • {item.step.matterCode} — {item.step.matterTitle}
-                  </p>
-                  <Badge variant="warning" className="mt-2">
-                    {labels.taskPriority[item.step.priority]}
-                  </Badge>
-                </div>
-              ),
-            )
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }

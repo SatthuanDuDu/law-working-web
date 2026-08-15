@@ -407,8 +407,8 @@ export function MattersList({
   function renderListCard(matter: MatterListItem) {
     return (
       <Card key={matter.id} solid className="rounded-md border-border/50">
-        <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0 flex-1 space-y-2">
+        <CardHeader className="flex flex-col gap-2 space-y-0 p-3 sm:flex-row sm:items-start sm:justify-between sm:p-4">
+          <div className="min-w-0 flex-1 space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
               <input
                 type="checkbox"
@@ -437,8 +437,8 @@ export function MattersList({
           {renderMatterActions(matter)}
         </CardHeader>
 
-        <CardContent className="space-y-4 pt-3">
-          <dl className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <CardContent className="space-y-3 p-3 pt-0 sm:p-4 sm:pt-0">
+          <dl className="grid min-w-0 gap-2 sm:grid-cols-2 lg:grid-cols-4">
             <div className="min-w-0">
               <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                 {t("fieldType")}
@@ -482,8 +482,8 @@ export function MattersList({
 
   function renderGridCard(matter: MatterListItem) {
     return (
-      <Card key={matter.id} solid className="flex h-full flex-col rounded-md border-border/50">
-        <CardHeader className="space-y-2 pb-2">
+      <Card key={matter.id} solid className="flex flex-col rounded-md border-border/50">
+        <CardHeader className="space-y-1.5 p-3 pb-2">
           <div className="flex flex-wrap items-start gap-2">
             <input
               type="checkbox"
@@ -509,8 +509,8 @@ export function MattersList({
             {matter.client.name}
           </p>
         </CardHeader>
-        <CardContent className="mt-auto flex flex-1 flex-col gap-3 pt-0">
-          <dl className="grid gap-2 text-sm">
+        <CardContent className="flex flex-col gap-2 p-3 pt-0">
+          <dl className="grid gap-1.5 text-sm">
             <div className="min-w-0">
               <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                 {t("leadLawyer")}
@@ -748,16 +748,16 @@ export function MattersList({
         ) : mode === "table" ? (
           <>
             <div className="hidden sm:block">{renderTableView()}</div>
-            <div className="space-y-4 sm:hidden">
+            <div className="space-y-2 sm:hidden">
               {visibleMatters.map((matter) => renderListCard(matter))}
             </div>
           </>
         ) : mode === "grid" ? (
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
             {visibleMatters.map((matter) => renderGridCard(matter))}
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-2">
             {visibleMatters.map((matter) => renderListCard(matter))}
           </div>
         )}

@@ -9,12 +9,15 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground hover:bg-primary-hover",
+          "bg-action text-action-foreground hover:bg-action-hover",
         secondary: "bg-primary-muted text-primary hover:bg-primary-muted-hover",
         outline:
           "border border-border bg-surface text-foreground hover:border-primary/45 hover:bg-muted",
         destructive: "bg-red-600 text-white hover:bg-red-700",
         ghost: "text-foreground hover:bg-muted hover:text-foreground",
+        /** Brand-tinted CTA when primary green is intentional */
+        brand:
+          "bg-primary text-primary-foreground hover:bg-primary-hover",
       },
       size: {
         default: "h-10 px-4 py-2",

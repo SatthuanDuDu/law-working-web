@@ -168,30 +168,40 @@ export function MattersFiltersBar({
             type="date"
             value={filters.dateFrom}
             onChange={(event) => onChange({ ...filters, dateFrom: event.target.value })}
-            className="cursor-pointer hover:border-primary/35 hover:bg-muted/90"
+            className="min-w-0 cursor-pointer hover:border-primary/35 hover:bg-muted/90"
           />
         </div>
-        <div className="min-w-[10rem] flex-1 sm:max-w-[12rem]">
+        <div className="min-w-[9rem] flex-1 sm:max-w-[11rem]">
           <label
             htmlFor="matter-filter-to"
             className="mb-1 block truncate text-xs text-muted-foreground"
           >
             {tFilters("dateTo")}
           </label>
-          <div className="relative">
-            <Input
-              id="matter-filter-to"
-              type="date"
-              value={filters.dateTo}
-              onChange={(event) => onChange({ ...filters, dateTo: event.target.value })}
-              className="cursor-pointer pr-9 hover:border-primary/35 hover:bg-muted/90"
-            />
+          <Input
+            id="matter-filter-to"
+            type="date"
+            value={filters.dateTo}
+            onChange={(event) => onChange({ ...filters, dateTo: event.target.value })}
+            className="min-w-0 cursor-pointer hover:border-primary/35 hover:bg-muted/90"
+          />
+        </div>
+        <div className="w-[4.75rem] shrink-0">
+          <p className="mb-1 truncate text-xs text-muted-foreground">
+            {t("filterCreatedAt")}
+          </p>
+          <div
+            className={cn(
+              "flex h-10 items-center justify-center rounded-md border border-border bg-surface",
+              filters.sortBy === "createdAt" &&
+                "border-primary/40 bg-primary-muted/40",
+            )}
+          >
             <SortToggle
               active={filters.sortBy === "createdAt"}
               sortDir={filters.sortDir}
               onToggle={() => onChange(toggleSort(filters, "createdAt"))}
               label={t("filterCreatedAt")}
-              className="absolute top-1/2 right-1.5 -translate-y-1/2"
             />
           </div>
         </div>

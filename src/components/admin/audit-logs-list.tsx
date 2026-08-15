@@ -123,7 +123,7 @@ function AuditDetailPanel({
           </Button>
         </div>
 
-        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5 sm:px-6">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5 sm:px-6">
           <dl className="grid gap-4 sm:grid-cols-2">
             <div className="min-w-0 sm:col-span-2">
               <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">

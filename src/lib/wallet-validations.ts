@@ -1,13 +1,74 @@
 import { z } from "zod";
 import { EXPENSE_TYPES } from "@/lib/validations";
 
+const positiveVnd = z
+  .string()
+  .trim()
+  .regex(/^\d+$/, "Số tiền không hợp lệ")
+  .refine((v) => BigInt(v) > BigInt(0), "Số tiền phải lớn hơn 0");
+
 export const allocateBudgetSchema = z.object({
   walletUserId: z.string().min(1, "Vui lòng chọn nhân viên"),
-  amountVnd: z
-    .string()
-    .trim()
-    .regex(/^\d+$/, "Số tiền không hợp lệ")
-    .refine((v) => BigInt(v) > BigInt(0), "Số tiền phải lớn hơn 0"),
+  amountVnd: positiveVnd,
+  note: z.string().max(500).optional().nullable(),
+  /** Optional: when set, allocate into an existing PENDING_FUNDING/OPEN package. */
+  budgetPackageId: z.string().optional().nullable(),
+  /** Optional: create a named package instead of legacy allocate-only. */
+  packageName: z.string().trim().max(200).optional().nullable(),
+});
+
+export const createBudgetPackageSchema = z.object({
+  name: z.string().trim().min(1, "Vui lòng nhập tên gói").max(200),
+  ownerUserId: z.string().min(1, "Vui lòng chọn nhân viên"),
+  amountVnd: positiveVnd,
+  note: z.string().max(500).optional().nullable(),
+  matterId: z.string().optional().nullable(),
+});
+
+export const updateBudgetPackageSchema = z.object({
+  packageId: z.string().min(1),
+  name: z.string().trim().min(1, "Vui lòng nhập tên gói").max(200),
+  note: z.string().max(500).optional().nullable(),
+});
+
+export const topupBudgetPackageSchema = z.object({
+  packageId: z.string().min(1),
+  amountVnd: positiveVnd,
+  note: z.string().max(500).optional().nullable(),
+});
+
+export const requestTopupSchema = z.object({
+  packageId: z.string().min(1),
+  amountVnd: positiveVnd,
+  reason: z.string().trim().min(3, "Vui lòng nhập lý do").max(500),
+});
+
+export const decideTopupSchema = z.object({
+  requestId: z.string().min(1),
+  decision: z.enum(["APPROVE", "REJECT"]),
+  note: z.string().max(500).optional().nullable(),
+});
+
+export const requestSettlePackageSchema = z
+  .object({
+    packageId: z.string().min(1),
+    settleMode: z.enum(["REFUND", "CARRY_FORWARD"]),
+    carryToPackageId: z.string().optional().nullable(),
+    note: z.string().max(500).optional().nullable(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.settleMode === "CARRY_FORWARD" && !data.carryToPackageId?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Vui lòng chọn gói đích để chuyển số dư",
+        path: ["carryToPackageId"],
+      });
+    }
+  });
+
+export const decideSettlePackageSchema = z.object({
+  confirmationId: z.string().min(1),
+  decision: z.enum(["APPROVE", "REJECT"]),
   note: z.string().max(500).optional().nullable(),
 });
 
@@ -43,11 +104,10 @@ export const spendCategorySchema = z.object({
 export const walletSpendSchema = z
   .object({
     spendCategoryId: z.string().min(1, "Vui lòng chọn nhóm chi"),
-    amountVnd: z
-      .string()
-      .trim()
-      .regex(/^\d+$/, "Số tiền không hợp lệ")
-      .refine((v) => BigInt(v) > BigInt(0), "Số tiền phải lớn hơn 0"),
+    amountVnd: positiveVnd,
+    budgetPackageId: z.string().min(1, "Vui lòng chọn gói chi phí"),
+    /** Optional second package to cover overspend. */
+    splitFromPackageId: z.string().optional().nullable(),
     detail: z.string().max(2000).optional().nullable(),
     matterId: z.string().optional().nullable(),
     matterPlanStepId: z.string().optional().nullable(),
@@ -66,6 +126,16 @@ export const walletSpendSchema = z
         code: z.ZodIssueCode.custom,
         message: "Vui lòng mô tả chi tiết chi phí",
         path: ["detail"],
+      });
+    }
+    if (
+      data.splitFromPackageId?.trim() &&
+      data.splitFromPackageId.trim() === data.budgetPackageId
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Gói bù phải khác gói chính",
+        path: ["splitFromPackageId"],
       });
     }
     if (data.requiresMatter) {

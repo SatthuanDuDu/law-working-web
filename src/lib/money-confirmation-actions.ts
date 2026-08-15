@@ -47,12 +47,14 @@ export type MoneyConfirmationListItem = {
   matterCode: string | null;
   matterTitle: string | null;
   planStepTitle: string | null;
+  budgetPackageId: string | null;
+  budgetPackageName: string | null;
   recipientRespondedAt: string | null;
   allocatorConfirmedAt: string | null;
   walletTransactionId: string | null;
   createdAt: string;
   /** What the current user can do. */
-  myAction: "recipient" | "allocator" | "view" | null;
+  myAction: "recipient" | "allocator" | "settle_approver" | "view" | null;
 };
 
 const confirmationInclude = {
@@ -60,6 +62,7 @@ const confirmationInclude = {
   toUser: { select: { id: true, name: true, role: true } },
   matter: { select: { id: true, code: true, title: true } },
   matterPlanStep: { select: { title: true } },
+  budgetPackage: { select: { id: true, name: true } },
 } satisfies Prisma.MoneyConfirmationInclude;
 
 function serializeConfirmation(
@@ -80,11 +83,21 @@ function serializeConfirmation(
     toUser: { id: string; name: string; role: Role };
     matter: { id: string; code: string; title: string } | null;
     matterPlanStep: { title: string } | null;
+    budgetPackage: { id: string; name: string } | null;
   },
   viewerId: string,
 ): MoneyConfirmationListItem {
   let myAction: MoneyConfirmationListItem["myAction"] = "view";
-  if (
+  if (row.kind === "PACKAGE_SETTLE") {
+    if (row.status === "PENDING_RECIPIENT" && row.toUserId === viewerId) {
+      myAction = "settle_approver";
+    } else if (
+      row.status !== "PENDING_RECIPIENT" &&
+      row.status !== "PENDING_ALLOCATOR"
+    ) {
+      myAction = null;
+    }
+  } else if (
     row.status === "PENDING_RECIPIENT" &&
     row.toUserId === viewerId
   ) {
@@ -118,6 +131,8 @@ function serializeConfirmation(
     matterCode: row.matter?.code ?? null,
     matterTitle: row.matter?.title ?? null,
     planStepTitle: row.matterPlanStep?.title ?? null,
+    budgetPackageId: row.budgetPackage?.id ?? null,
+    budgetPackageName: row.budgetPackage?.name ?? null,
     recipientRespondedAt: row.recipientRespondedAt?.toISOString() ?? null,
     allocatorConfirmedAt: row.allocatorConfirmedAt?.toISOString() ?? null,
     walletTransactionId: row.walletTransactionId,
@@ -148,6 +163,7 @@ async function creditWalletFromConfirmation(params: {
   kind: MoneyConfirmationKind;
   matterId: string | null;
   matterPlanStepId: string | null;
+  budgetPackageId: string | null;
 }) {
   const {
     confirmationId,
@@ -158,12 +174,15 @@ async function creditWalletFromConfirmation(params: {
     kind,
     matterId,
     matterPlanStepId,
+    budgetPackageId,
   } = params;
+
+  const { applyPackageFundingInTx } = await import("@/lib/budget-package");
 
   return prisma.$transaction(async (db) => {
     const current = await db.moneyConfirmation.findUnique({
       where: { id: confirmationId },
-      select: { status: true, walletTransactionId: true },
+      select: { status: true, walletTransactionId: true, budgetPackageId: true },
     });
     if (!current || current.status !== "PENDING_ALLOCATOR") {
       throw new Error("INVALID_STATUS");
@@ -177,15 +196,26 @@ async function creditWalletFromConfirmation(params: {
       where: { userId: toUserId },
       data: { balanceVnd: { increment: amountVnd } },
     });
+
+    const txKind =
+      kind === "CLIENT_RECEIPT"
+        ? ("CLIENT_RECEIPT" as const)
+        : ("ALLOCATE" as const);
+
     const creditNote =
       note ||
       (kind === "BUDGET_ALLOCATE"
         ? "Budget (đã xác nhận 2 phía)"
-        : "Tiền khách bàn giao (đã xác nhận 2 phía)");
+        : kind === "BUDGET_TOPUP"
+          ? "Bổ sung gói (đã xác nhận 2 phía)"
+          : "Tiền khách bàn giao (đã xác nhận 2 phía)");
+
+    const pkgId = budgetPackageId ?? current.budgetPackageId;
     const tx = await db.walletTransaction.create({
       data: {
         walletUserId: toUserId,
         direction: "CREDIT",
+        kind: txKind,
         amountVnd,
         balanceAfterVnd: updated.balanceVnd,
         note: creditNote,
@@ -193,8 +223,17 @@ async function creditWalletFromConfirmation(params: {
         createdById: fromUserId,
         matterId,
         matterPlanStepId,
+        budgetPackageId: kind === "CLIENT_RECEIPT" ? null : pkgId,
       },
     });
+
+    if (pkgId && (kind === "BUDGET_ALLOCATE" || kind === "BUDGET_TOPUP")) {
+      await applyPackageFundingInTx(db, {
+        budgetPackageId: pkgId,
+        amountVnd,
+      });
+    }
+
     const confirmed = await db.moneyConfirmation.update({
       where: { id: confirmationId },
       data: {
@@ -411,31 +450,43 @@ export async function respondMoneyConfirmationAction(formData: FormData) {
   if (row.status !== "PENDING_RECIPIENT") {
     return { error: await actionError("confirmationWrongStatus") };
   }
+  if (row.kind === "PACKAGE_SETTLE") {
+    return { error: await actionError("useSettleDecideAction") };
+  }
 
   const amountLabel = formatVndDigits(row.amountVnd.toString());
   const disputeNote = parsed.data.disputeNote?.trim() || null;
 
   if (parsed.data.response === "REJECT") {
-    const updated = await prisma.moneyConfirmation.update({
-      where: { id: row.id },
-      data: {
-        status: "REJECTED",
-        recipientRespondedAt: new Date(),
-        disputeNote,
-      },
-      include: confirmationInclude,
+    const { cancelPackageIfUnfundedInTx } = await import("@/lib/budget-package");
+    const updated = await prisma.$transaction(async (db) => {
+      await cancelPackageIfUnfundedInTx(db, row.budgetPackageId);
+      return db.moneyConfirmation.update({
+        where: { id: row.id },
+        data: {
+          status: "REJECTED",
+          recipientRespondedAt: new Date(),
+          disputeNote,
+        },
+        include: confirmationInclude,
+      });
     });
     await notifyWallet(
       row.fromUserId,
-      row.kind === "BUDGET_ALLOCATE"
-        ? "WALLET_BUDGET_UPDATE"
-        : "WALLET_CLIENT_UPDATE",
+      row.kind === "CLIENT_RECEIPT"
+        ? "WALLET_CLIENT_UPDATE"
+        : row.kind === "BUDGET_TOPUP"
+          ? "WALLET_TOPUP_UPDATE"
+          : "WALLET_BUDGET_UPDATE",
       "Từ chối nhận tiền",
       `${user.name} từ chối khoản ${amountLabel} ₫.`,
       "/wallet#confirmations",
     );
     revalidatePath("/wallet");
     revalidatePath("/expenses");
+    if (row.budgetPackageId) {
+      revalidatePath(`/expenses/packages/${row.budgetPackageId}`);
+    }
     return { success: true, confirmation: serializeConfirmation(updated, user.id) };
   }
 
@@ -478,12 +529,14 @@ export async function respondMoneyConfirmationAction(formData: FormData) {
 
   await notifyWallet(
     row.fromUserId,
-    row.kind === "BUDGET_ALLOCATE"
-      ? "WALLET_BUDGET_PENDING"
-      : "WALLET_CLIENT_PENDING",
+    row.kind === "CLIENT_RECEIPT"
+      ? "WALLET_CLIENT_PENDING"
+      : row.kind === "BUDGET_TOPUP"
+        ? "WALLET_TOPUP_UPDATE"
+        : "WALLET_BUDGET_PENDING",
     "Chờ bạn xác nhận số tiền",
     `${user.name} đã xác nhận nhận ${amountLabel} ₫. Vui lòng xác nhận lại số tiền.`,
-    row.kind === "BUDGET_ALLOCATE" ? "/expenses#confirmations" : "/wallet#confirmations",
+    row.kind === "CLIENT_RECEIPT" ? "/wallet#confirmations" : "/expenses#confirmations",
   );
 
   revalidatePath("/wallet");
@@ -525,6 +578,7 @@ export async function finalizeMoneyConfirmationAction(formData: FormData) {
       kind: row.kind,
       matterId: row.matterId,
       matterPlanStepId: row.matterPlanStepId,
+      budgetPackageId: row.budgetPackageId,
     });
 
     await createAuditLog({
@@ -536,11 +590,15 @@ export async function finalizeMoneyConfirmationAction(formData: FormData) {
     });
 
     const amountLabel = formatVndDigits(row.amountVnd.toString());
+    const notifType =
+      row.kind === "CLIENT_RECEIPT"
+        ? "WALLET_CLIENT_UPDATE"
+        : row.kind === "BUDGET_TOPUP"
+          ? "WALLET_TOPUP_UPDATE"
+          : "WALLET_BUDGET_UPDATE";
     await notifyWallet(
       row.toUserId,
-      row.kind === "BUDGET_ALLOCATE"
-        ? "WALLET_BUDGET_UPDATE"
-        : "WALLET_CLIENT_UPDATE",
+      notifType,
       "Đã cộng vào ví",
       `Khoản ${amountLabel} ₫ đã được xác nhận và cộng vào ví của bạn.`,
       "/wallet",
@@ -548,6 +606,9 @@ export async function finalizeMoneyConfirmationAction(formData: FormData) {
 
     revalidatePath("/wallet");
     revalidatePath("/expenses");
+    if (row.budgetPackageId) {
+      revalidatePath(`/expenses/packages/${row.budgetPackageId}`);
+    }
     if (row.matterId) revalidatePath(`/matters/${row.matterId}`);
     return {
       success: true,

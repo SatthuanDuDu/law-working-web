@@ -11,18 +11,27 @@ import {
 import { listMoneyConfirmationsAction } from "@/lib/money-confirmation-actions";
 import { requireRole } from "@/lib/session";
 import { getTranslations } from "next-intl/server";
+import type { BudgetPackageStatus } from "@prisma/client";
 
 export default async function ExpensesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; status?: string }>;
 }) {
   const actor = await requireRole(["ADMIN", "MANAGER"]);
   const tPages = await getTranslations("pages.expenses");
   const params = await searchParams;
   const range = resolveCashflowRange(params);
+  const packageStatus = params.status ?? "ACTIVE";
+  const statusOption =
+    packageStatus === "ALL" || packageStatus === "ACTIVE"
+      ? packageStatus
+      : (packageStatus as BudgetPackageStatus);
+
   const [stats, usersRes, txRes, confirmRes] = await Promise.all([
-    getCashflowStats({ from: range.from, to: range.to }, actor),
+    getCashflowStats({ from: range.from, to: range.to }, actor, {
+      packageStatus: statusOption,
+    }),
     listActiveUsersForBudgetAction(),
     listWalletTransactionsAction({
       scope: "company",
@@ -45,6 +54,7 @@ export default async function ExpensesPage({
         users={usersRes.users}
         transactions={txRes.transactions}
         confirmations={confirmRes.confirmations}
+        packageStatus={packageStatus}
       />
     </div>
   );

@@ -401,8 +401,8 @@ export default async function DashboardPage() {
   );
 
   return (
-    <div className="relative min-w-0 max-w-full space-y-4 sm:space-y-6">
-      <div className="grid min-w-0 gap-3 sm:grid-cols-2 sm:gap-4">
+    <div className="relative min-w-0 max-w-full space-y-4">
+      <div className="grid min-w-0 gap-3 sm:grid-cols-2">
         <ExpandableStatCard
           label={t("openTasks")}
           value={String(openTasks)}
@@ -445,7 +445,7 @@ export default async function DashboardPage() {
         />
       </div>
 
-      <div className="grid min-w-0 gap-4 lg:grid-cols-3">
+      <div className="grid min-w-0 gap-3 lg:grid-cols-3">
         <SectionPanel
           title={t("upcoming")}
           icon={<CalendarClock className="h-4 w-4" />}
@@ -478,14 +478,14 @@ export default async function DashboardPage() {
           {totalMatters === 0 ? (
             <EmptyState>{t("noMattersYet")}</EmptyState>
           ) : (
-            <div className="min-w-0 space-y-4">
+            <div className="min-w-0 space-y-3">
               <div className="min-w-0">
                 <p className="text-3xl font-bold tabular-nums text-foreground">
                   {totalMatters}
                 </p>
                 <p className="text-sm text-muted-foreground">{t("totalMattersLabel")}</p>
               </div>
-              <div className="min-w-0 space-y-3">
+              <div className="min-w-0 space-y-2.5">
                 {statusCounts.map(({ status, count }) => {
                   const pct = totalMatters
                     ? Math.round((count / totalMatters) * 100)
@@ -518,7 +518,7 @@ export default async function DashboardPage() {
         </SectionPanel>
       </div>
 
-      <div className="grid min-w-0 gap-4 lg:grid-cols-3">
+      <div className="grid min-w-0 gap-3 lg:grid-cols-3">
         <SectionPanel
           title={t("myMatters")}
           icon={<Briefcase className="h-4 w-4" />}

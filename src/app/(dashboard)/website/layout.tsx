@@ -9,7 +9,7 @@ export default async function WebsiteCmsLayout({
   await requireRole(["ADMIN", "MANAGER"]);
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-5">
       <WebsiteCmsNav />
       {children}
     </div>

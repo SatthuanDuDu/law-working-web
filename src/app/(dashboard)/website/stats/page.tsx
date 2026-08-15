@@ -96,7 +96,7 @@ export default async function WebsiteStatsPage({
         <form
           id={WEBSITE_CMS_FORM_ID}
           action={saveStat}
-          className="space-y-4 rounded-md border border-border bg-surface p-6"
+          className="space-y-4 rounded-md border border-border bg-surface p-4"
         >
           {editing ? (
             <>

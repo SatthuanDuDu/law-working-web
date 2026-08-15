@@ -87,7 +87,7 @@ export function WebsiteCmsNav() {
   }, [pathname]);
 
   return (
-    <div className="sticky top-0 z-10 -mx-4 min-w-0 border-b border-border/60 bg-canvas px-4 pb-2 pt-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+    <div className="sticky top-0 z-10 -mx-3 min-w-0 border-b border-border/60 bg-canvas px-3 pb-2 pt-2 sm:-mx-5 sm:px-5 lg:-mx-6 lg:px-6">
       <div className="flex min-w-0 items-center gap-2 rounded-md border border-border bg-surface p-2 shadow-sm">
         <nav
           aria-label="Điều hướng Website CMS"

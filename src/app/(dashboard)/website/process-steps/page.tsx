@@ -127,7 +127,7 @@ export default async function WebsiteProcessStepsPage({
         <form
           id={WEBSITE_CMS_FORM_ID}
           action={saveProcessStep}
-          className="space-y-4 rounded-md border border-border bg-surface p-6"
+          className="space-y-4 rounded-md border border-border bg-surface p-4"
         >
           {editing ? (
             <>

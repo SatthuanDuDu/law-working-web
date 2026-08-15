@@ -553,7 +553,7 @@ export function ClientsList({
           </div>
         ) : null}
 
-        <div className="min-h-0 flex-1 space-y-4">
+        <div className="min-h-0 flex-1 space-y-2">
           {clients.length === 0 ? (
             <Card solid>
               <CardContent className="py-10 text-center text-sm text-muted-foreground">
@@ -567,7 +567,7 @@ export function ClientsList({
               </CardContent>
             </Card>
           ) : mode === "grid" ? (
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
               {visibleClients.map((client) => {
                 const meta = [
                   client.phone,
@@ -580,7 +580,7 @@ export function ClientsList({
 
                 return (
                   <Card key={client.id} solid className="rounded-md border-border/50">
-                    <CardContent className="flex h-full flex-col gap-2 p-3 sm:gap-3 sm:p-4">
+                    <CardContent className="flex flex-col gap-2 p-3">
                       <div className="min-w-0 space-y-1">
                         <div className="flex flex-wrap items-center gap-1.5">
                           {canManage ? (
@@ -614,7 +614,7 @@ export function ClientsList({
                           </p>
                         ) : null}
                       </div>
-                      <div className="mt-auto">
+                      <div>
                         <ClientActions client={client} />
                       </div>
                     </CardContent>

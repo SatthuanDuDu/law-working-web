@@ -13,6 +13,7 @@ import {
   respondMoneyConfirmationAction,
   type MoneyConfirmationListItem,
 } from "@/lib/money-confirmation-actions";
+import { decideSettlePackageAction } from "@/lib/budget-package-actions";
 import { formatVndDigits } from "@/lib/wallet";
 import { listDivideClass, listRowClass } from "@/lib/list-surface";
 import { cn } from "@/lib/utils";
@@ -75,9 +76,14 @@ export function MoneyConfirmationsPanel({
                   <span className="text-sm font-medium">
                     {c.kind === "BUDGET_ALLOCATE"
                       ? t("kindBudget")
-                      : t("kindClient")}
+                      : c.kind === "BUDGET_TOPUP"
+                        ? t("kindTopup")
+                        : c.kind === "PACKAGE_SETTLE"
+                          ? t("kindSettle")
+                          : t("kindClient")}
                     {" · "}
                     {t(`status.${c.status}`)}
+                    {c.budgetPackageName ? ` · ${c.budgetPackageName}` : ""}
                   </span>
                   <span className="text-sm font-semibold tabular-nums">
                     {formatVndDigits(c.amountVnd)} ₫
@@ -197,6 +203,44 @@ export function MoneyConfirmationsPanel({
                       }
                     >
                       {t("finalize")}
+                    </Button>
+                  </div>
+                ) : null}
+
+                {c.myAction === "settle_approver" ? (
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="interactive-press"
+                      disabled={busy}
+                      onClick={() =>
+                        runAction(c.id, async () => {
+                          const fd = new FormData();
+                          fd.set("confirmationId", c.id);
+                          fd.set("decision", "APPROVE");
+                          return decideSettlePackageAction(fd);
+                        })
+                      }
+                    >
+                      {t("approveSettle")}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="interactive-press"
+                      disabled={busy}
+                      onClick={() =>
+                        runAction(c.id, async () => {
+                          const fd = new FormData();
+                          fd.set("confirmationId", c.id);
+                          fd.set("decision", "REJECT");
+                          return decideSettlePackageAction(fd);
+                        })
+                      }
+                    >
+                      {t("rejectSettle")}
                     </Button>
                   </div>
                 ) : null}

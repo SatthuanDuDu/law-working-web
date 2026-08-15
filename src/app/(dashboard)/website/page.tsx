@@ -60,7 +60,7 @@ export default async function WebsiteDashboardPage() {
   });
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-semibold text-foreground">Tổng quan Website</h1>
         <p className="mt-2 text-sm text-muted-foreground">

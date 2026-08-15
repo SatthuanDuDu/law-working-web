@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, useTransition, type FormEvent } from "react";
+import { useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   endOfMonth,
@@ -13,40 +14,39 @@ import {
   subMonths,
 } from "date-fns";
 import { useTranslations } from "next-intl";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { PageToolbar } from "@/components/layout/page-toolbar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label, Select } from "@/components/ui/card";
 import { SectionPanel } from "@/components/ui/section-panel";
 import { EmptyState } from "@/components/ui/empty-state";
-import { allocateBudgetAction, type WalletTxListItem } from "@/lib/wallet-actions";
-import type { MoneyConfirmationListItem } from "@/lib/money-confirmation-actions";
-import { WalletReceiptLinks } from "@/components/wallet/wallet-receipt-links";
+import { StatusChip } from "@/components/ui/status-chip";
+import { Table, TBody, TD, TH, THead } from "@/components/ui/table";
 import { MoneyConfirmationsPanel } from "@/components/wallet/money-confirmations-panel";
+import { CreatePackageModal } from "@/components/expenses/create-package-modal";
+import { ReportExportBar } from "@/components/reports/report-export-bar";
+import type { MoneyConfirmationListItem } from "@/lib/money-confirmation-actions";
+import type { WalletTxListItem } from "@/lib/wallet-actions";
 import type { CashflowStatsDto } from "@/lib/wallet-stats";
+import { budgetPackageStatusTone } from "@/lib/budget-package-ui";
+import { buildPeriodReport } from "@/lib/report-model";
 import { formatVndDigits } from "@/lib/wallet";
 import { liquidPanelClass } from "@/lib/liquid-panel";
 import { listDivideClass, listRowClass } from "@/lib/list-surface";
 import { cn } from "@/lib/utils";
+import type { BudgetPackageStatus } from "@prisma/client";
 
 function toIso(date: Date) {
   return format(date, "yyyy-MM-dd");
-}
-
-function formatWhen(iso: string) {
-  try {
-    return new Date(iso).toLocaleString("vi-VN", {
-      dateStyle: "short",
-      timeStyle: "short",
-    });
-  } catch {
-    return iso;
-  }
-}
-
-function digitsOnly(raw: string) {
-  return raw.replace(/\D/g, "");
 }
 
 export function CashflowDashboard({
@@ -54,20 +54,19 @@ export function CashflowDashboard({
   users,
   transactions,
   confirmations = [],
+  packageStatus = "ACTIVE",
 }: {
   stats: CashflowStatsDto;
   users: { id: string; name: string; username: string; role: string }[];
   transactions: WalletTxListItem[];
   confirmations?: MoneyConfirmationListItem[];
+  packageStatus?: string;
 }) {
   const t = useTranslations("expenses");
-  const tWallet = useTranslations("wallet");
+  const tPkg = useTranslations("budgetPackage");
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [amountDigits, setAmountDigits] = useState("");
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
-  const [allocPending, startAlloc] = useTransition();
+  const [createOpen, setCreateOpen] = useState(false);
 
   const presets = useMemo(() => {
     const now = new Date();
@@ -100,52 +99,77 @@ export function CashflowDashboard({
     ] as const;
   }, [t]);
 
-  function pushRange(from: string, to: string) {
+  function pushFilters(next: { from?: string; to?: string; status?: string }) {
     startTransition(() => {
       const params = new URLSearchParams();
-      params.set("from", from);
-      params.set("to", to);
+      params.set("from", next.from ?? stats.from);
+      params.set("to", next.to ?? stats.to);
+      const status = next.status ?? packageStatus;
+      if (status && status !== "ALL") params.set("status", status);
       router.push(`/expenses?${params.toString()}`);
-    });
-  }
-
-  function handleAllocate(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const form = e.currentTarget;
-    const formData = new FormData(form);
-    formData.set("amountVnd", amountDigits);
-    setError("");
-    setSuccess(false);
-    startAlloc(async () => {
-      const result = await allocateBudgetAction(formData);
-      if (result?.error) {
-        setError(result.error);
-        return;
-      }
-      setSuccess(true);
-      setAmountDigits("");
-      form.reset();
-      router.refresh();
     });
   }
 
   const kpis = [
     {
-      label: t("kpiCredited"),
-      value: `${formatVndDigits(stats.totalCreditedVnd)} ₫`,
-      sub: `${stats.creditCount} ${t("kpiCreditCount").toLowerCase()}`,
+      label: t("kpiAllocated"),
+      value: `${formatVndDigits(stats.packagesAllocatedVnd)} ₫`,
+      sub: t("kpiAllocatedSub"),
     },
     {
-      label: t("kpiDebited"),
-      value: `${formatVndDigits(stats.totalDebitedVnd)} ₫`,
+      label: t("kpiSpent"),
+      value: `${formatVndDigits(stats.packagesSpentVnd)} ₫`,
       sub: `${stats.debitCount} ${t("kpiDebitCount").toLowerCase()}`,
     },
     {
-      label: t("kpiWallets"),
-      value: `${formatVndDigits(stats.walletsTotalBalanceVnd)} ₫`,
-      sub: `${stats.byUser.length} users`,
+      label: t("kpiRemaining"),
+      value: `${formatVndDigits(stats.packagesRemainingVnd)} ₫`,
+      sub: t("kpiClientCash", {
+        amount: formatVndDigits(stats.clientCashHeldVnd),
+      }),
+    },
+    {
+      label: t("kpiOpenPackages"),
+      value: String(stats.openPackageCount),
+      sub:
+        stats.pendingTopupCount > 0
+          ? t("kpiPendingTopups", { count: stats.pendingTopupCount })
+          : t("kpiOpenPackagesSub"),
     },
   ];
+
+  const categoryChart = useMemo(
+    () =>
+      stats.byCategory.slice(0, 8).map((c) => ({
+        name: c.name.length > 14 ? `${c.name.slice(0, 12)}…` : c.name,
+        amount: Number(c.amountVnd) / 1_000_000,
+      })),
+    [stats.byCategory],
+  );
+
+  const packageChart = useMemo(
+    () =>
+      stats.byPackage.slice(0, 8).map((p) => ({
+        name: p.name.length > 14 ? `${p.name.slice(0, 12)}…` : p.name,
+        spent: Number(p.spentVnd) / 1_000_000,
+        remaining: Number(p.remainingVnd) / 1_000_000,
+      })),
+    [stats.byPackage],
+  );
+
+  const periodReport = useMemo(
+    () =>
+      buildPeriodReport({
+        title: t("reportTitle"),
+        periodFrom: stats.from,
+        periodTo: stats.to,
+        transactions,
+        allocatedVnd: stats.packagesAllocatedVnd,
+        spentVnd: stats.packagesSpentVnd,
+        remainingVnd: stats.packagesRemainingVnd,
+      }),
+    [stats, transactions, t],
+  );
 
   return (
     <div className={cn("space-y-4", pending && "opacity-70")}>
@@ -159,29 +183,58 @@ export function CashflowDashboard({
                 variant="outline"
                 size="sm"
                 className="interactive-press"
-                onClick={() => pushRange(p.from, p.to)}
+                onClick={() => pushFilters({ from: p.from, to: p.to })}
               >
                 {p.label}
               </Button>
             ))}
+            <Button
+              type="button"
+              size="sm"
+              className="interactive-press"
+              onClick={() => setCreateOpen(true)}
+            >
+              {tPkg("createCta")}
+            </Button>
           </>
         }
       >
-        <div className="min-w-0 max-w-sm flex-1">
-          <p className="mb-1.5 text-xs text-muted-foreground">{t("filterLabel")}</p>
-          <DateRangeFilter
-            dateFrom={stats.from}
-            dateTo={stats.to}
-            onChange={({ dateFrom, dateTo }) => pushRange(dateFrom, dateTo)}
-          />
+        <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-end">
+          <div className="min-w-0 max-w-sm flex-1">
+            <p className="mb-1.5 text-xs text-muted-foreground">{t("filterLabel")}</p>
+            <DateRangeFilter
+              dateFrom={stats.from}
+              dateTo={stats.to}
+              onChange={({ dateFrom, dateTo }) =>
+                pushFilters({ from: dateFrom, to: dateTo })
+              }
+            />
+          </div>
+          <div className="w-full sm:w-44">
+            <Label htmlFor="pkg-status-filter" className="mb-1.5 text-xs">
+              {t("filterPackageStatus")}
+            </Label>
+            <Select
+              id="pkg-status-filter"
+              value={packageStatus}
+              onChange={(e) => pushFilters({ status: e.target.value })}
+            >
+              <option value="ACTIVE">{tPkg("statusActive")}</option>
+              <option value="ALL">{tPkg("statusAll")}</option>
+              <option value="OPEN">{tPkg("status.OPEN")}</option>
+              <option value="PENDING_FUNDING">{tPkg("status.PENDING_FUNDING")}</option>
+              <option value="PENDING_SETTLE">{tPkg("status.PENDING_SETTLE")}</option>
+              <option value="CLOSED">{tPkg("status.CLOSED")}</option>
+            </Select>
+          </div>
         </div>
       </PageToolbar>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map((kpi) => (
           <div
             key={kpi.label}
-            className={cn(liquidPanelClass, "rounded-md border border-border p-4")}
+            className={cn(liquidPanelClass, "rounded-md border border-border p-3")}
           >
             <p className="text-xs text-muted-foreground">{kpi.label}</p>
             <p className="mt-1 text-lg font-semibold tabular-nums">{kpi.value}</p>
@@ -192,70 +245,156 @@ export function CashflowDashboard({
 
       <MoneyConfirmationsPanel confirmations={confirmations} />
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <SectionPanel title={t("allocateTitle")}>
-          <p className="mb-3 text-xs text-muted-foreground">{t("allocatePendingHint")}</p>
-          <form onSubmit={handleAllocate} className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="alloc-user">{t("allocateUser")}</Label>
-              <Select id="alloc-user" name="walletUserId" required defaultValue="">
-                <option value="" disabled>
-                  —
-                </option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name} (@{u.username})
-                  </option>
+      <SectionPanel title={t("tablePackages")}>
+        {stats.byPackage.length === 0 ? (
+          <EmptyState>{t("emptyPackages")}</EmptyState>
+        ) : (
+          <Table
+            minWidth="40rem"
+            mobileCards
+            mobileFallback={
+              <ul className={cn(listDivideClass)}>
+                {stats.byPackage.map((pkg) => (
+                  <li key={pkg.packageId} className={cn(listRowClass, "space-y-1.5")}>
+                    <div className="flex items-start justify-between gap-2">
+                      <Link
+                        href={`/expenses/packages/${pkg.packageId}`}
+                        className="text-sm font-medium text-primary hover:underline"
+                      >
+                        {pkg.name}
+                      </Link>
+                      <StatusChip
+                        label={tPkg(`status.${pkg.status}`)}
+                        tone={budgetPackageStatusTone(pkg.status)}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {pkg.ownerName}
+                      {pkg.matterCode ? ` · ${pkg.matterCode}` : ""}
+                    </p>
+                    <PackageProgress pct={pkg.pctSpent} />
+                    <div className="flex justify-between text-xs tabular-nums">
+                      <span>
+                        {t("colSpent")}: {formatVndDigits(pkg.spentVnd)}
+                      </span>
+                      <span>
+                        {t("colRemaining")}: {formatVndDigits(pkg.remainingVnd)}
+                      </span>
+                    </div>
+                  </li>
                 ))}
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="alloc-amount">{t("allocateAmount")}</Label>
-              <Input
-                id="alloc-amount"
-                inputMode="numeric"
-                required
-                value={formatVndDigits(amountDigits)}
-                onChange={(e) => setAmountDigits(digitsOnly(e.target.value))}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="alloc-note">{t("allocateNote")}</Label>
-              <Input id="alloc-note" name="note" />
-            </div>
-            {error ? <p className="text-sm text-destructive">{error}</p> : null}
-            {success ? (
-              <p className="text-sm text-emerald-700">{t("allocateSuccess")}</p>
-            ) : null}
-            <Button type="submit" disabled={allocPending || !amountDigits}>
-              {allocPending ? t("allocateSaving") : t("allocateSubmit")}
-            </Button>
-          </form>
-        </SectionPanel>
+              </ul>
+            }
+          >
+            <THead>
+              <tr>
+                <TH>{t("colPackage")}</TH>
+                <TH>{t("colUser")}</TH>
+                <TH>{t("colStatus")}</TH>
+                <TH>{t("colProgress")}</TH>
+                <TH className="text-right">{t("colAllocated")}</TH>
+                <TH className="text-right">{t("colSpent")}</TH>
+                <TH className="text-right">{t("colRemaining")}</TH>
+              </tr>
+            </THead>
+            <TBody>
+              {stats.byPackage.map((pkg) => (
+                <tr key={pkg.packageId} className="border-b border-border/60">
+                  <TD>
+                    <Link
+                      href={`/expenses/packages/${pkg.packageId}`}
+                      className="font-medium text-primary hover:underline"
+                    >
+                      {pkg.name}
+                    </Link>
+                    {pkg.matterCode ? (
+                      <span className="block text-xs text-muted-foreground">
+                        {pkg.matterCode}
+                      </span>
+                    ) : null}
+                  </TD>
+                  <TD>{pkg.ownerName}</TD>
+                  <TD>
+                    <StatusChip
+                      label={tPkg(`status.${pkg.status as BudgetPackageStatus}`)}
+                      tone={budgetPackageStatusTone(pkg.status)}
+                    />
+                  </TD>
+                  <TD className="min-w-[7rem]">
+                    <PackageProgress pct={pkg.pctSpent} />
+                  </TD>
+                  <TD className="text-right tabular-nums">
+                    {formatVndDigits(pkg.allocatedVnd)}
+                  </TD>
+                  <TD className="text-right tabular-nums">
+                    {formatVndDigits(pkg.spentVnd)}
+                  </TD>
+                  <TD className="text-right tabular-nums font-medium">
+                    {formatVndDigits(pkg.remainingVnd)}
+                  </TD>
+                </tr>
+              ))}
+            </TBody>
+          </Table>
+        )}
+      </SectionPanel>
 
-        <SectionPanel title={t("tableByCategory")}>
-          {stats.byCategory.length === 0 ? (
+      <div className="grid gap-4 lg:grid-cols-2">
+        <SectionPanel title={t("chartByCategory")}>
+          {categoryChart.length === 0 ? (
             <EmptyState>{t("empty")}</EmptyState>
           ) : (
-            <ul className={cn(listDivideClass)}>
-              {stats.byCategory.map((row) => (
-                <li
-                  key={row.spendCategoryId}
-                  className={cn(listRowClass, "flex justify-between gap-2 text-sm")}
-                >
-                  <span>
-                    {row.name}
-                    <span className="text-muted-foreground"> · {row.count}</span>
-                  </span>
-                  <span className="tabular-nums font-medium">
-                    {formatVndDigits(row.amountVnd)} ₫
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <div className="h-56 w-full min-w-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={categoryChart} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} />
+                  <YAxis tick={{ fontSize: 10 }} width={36} />
+                  <Tooltip
+                    formatter={(v) => [`${v} tr₫`, t("colAmount")]}
+                  />
+                  <Bar dataKey="amount" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </SectionPanel>
+
+        <SectionPanel title={t("chartByPackage")}>
+          {packageChart.length === 0 ? (
+            <EmptyState>{t("emptyPackages")}</EmptyState>
+          ) : (
+            <div className="h-56 w-full min-w-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={packageChart} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} />
+                  <YAxis tick={{ fontSize: 10 }} width={36} />
+                  <Tooltip />
+                  <Bar
+                    dataKey="spent"
+                    stackId="a"
+                    fill="var(--primary)"
+                    name={t("colSpent")}
+                    radius={[0, 0, 0, 0]}
+                  />
+                  <Bar
+                    dataKey="remaining"
+                    stackId="a"
+                    fill="var(--accent-muted)"
+                    name={t("colRemaining")}
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           )}
         </SectionPanel>
       </div>
+
+      <SectionPanel title={t("exportSection")}>
+        <ReportExportBar report={periodReport} filenameBase="cashflow-period" />
+      </SectionPanel>
 
       <SectionPanel title={t("tableByUser")}>
         {stats.byUser.length === 0 ? (
@@ -308,38 +447,28 @@ export function CashflowDashboard({
         )}
       </SectionPanel>
 
-      <SectionPanel title={t("tableTransactions")}>
-        {transactions.length === 0 ? (
-          <EmptyState>{t("emptyTx")}</EmptyState>
-        ) : (
-          <ul className={cn(listDivideClass, "rounded-md border border-border")}>
-            {transactions.map((tx) => (
-              <li key={tx.id} className={cn(listRowClass, "flex flex-col gap-0.5")}>
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className="text-sm font-medium">
-                    {tx.walletUserName}
-                    {" · "}
-                    {tx.direction === "CREDIT" ? tWallet("credit") : tWallet("debit")}
-                    {tx.spendCategoryName ? ` · ${tx.spendCategoryName}` : ""}
-                  </span>
-                  <span className="text-sm font-semibold tabular-nums">
-                    {tx.direction === "CREDIT" ? "+" : "−"}
-                    {formatVndDigits(tx.amountVnd)} ₫
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {formatWhen(tx.createdAt)}
-                  {tx.allocatedByName
-                    ? ` · ${tWallet("allocatedBy")} ${tx.allocatedByName}`
-                    : ""}
-                  {tx.detail ? ` · ${tx.detail}` : tx.note ? ` · ${tx.note}` : ""}
-                </p>
-                <WalletReceiptLinks attachments={tx.attachments ?? []} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </SectionPanel>
+      <CreatePackageModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        users={users}
+      />
+    </div>
+  );
+}
+
+function PackageProgress({ pct }: { pct: number }) {
+  const clamped = Math.max(0, Math.min(100, pct));
+  return (
+    <div className="space-y-0.5">
+      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+        <div
+          className="h-full rounded-full bg-primary transition-[width] duration-200"
+          style={{ width: `${clamped}%` }}
+        />
+      </div>
+      <p className="text-[10px] tabular-nums text-muted-foreground">
+        {clamped.toFixed(0)}%
+      </p>
     </div>
   );
 }

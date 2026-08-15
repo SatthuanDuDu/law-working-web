@@ -9,7 +9,7 @@ export const listRowHoverClass =
   "transition-[background-color,box-shadow,color] duration-150 hover:bg-primary-muted-hover hover:[filter:none] active:bg-primary-muted active:[filter:none]";
 
 export const listRowClass = cn(
-  "interactive-press block min-w-0 max-w-full rounded-md px-2.5 py-2.5 text-left",
+  "interactive-press block min-w-0 max-w-full rounded-md px-2.5 py-2 text-left",
   listRowHoverClass,
 );
 

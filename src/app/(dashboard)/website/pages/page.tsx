@@ -115,7 +115,7 @@ export default async function WebsitePagesPage({
         <form
           id={WEBSITE_CMS_FORM_ID}
           action={savePage}
-          className="space-y-4 rounded-md border border-border bg-surface p-6"
+          className="space-y-4 rounded-md border border-border bg-surface p-4"
         >
           {editing ? <input type="hidden" name="id" value={editing.id} /> : null}
           <Field label="Trạng thái" htmlFor="status">

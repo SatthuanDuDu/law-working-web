@@ -15,7 +15,8 @@ export type NotificationToastItem = {
   notificationId?: string;
 };
 
-const AUTO_DISMISS_MS = 5_000;
+const AUTO_DISMISS_MS = 6_000;
+const AUTO_DISMISS_TOUCH_MS = 8_000;
 const EXIT_MS = 320;
 const MAX_VISIBLE = 3;
 
@@ -29,7 +30,7 @@ function ToastCard({
   const t = useTranslations("notifications");
   const [entered, setEntered] = useState(false);
   const [exiting, setExiting] = useState(false);
-  const hoveredRef = useRef(false);
+  const pausedRef = useRef(false);
   const timerRef = useRef<number | null>(null);
   const exitTimerRef = useRef<number | null>(null);
 
@@ -49,12 +50,29 @@ function ToastCard({
     }, EXIT_MS);
   }
 
+  function dismissMs() {
+    const coarse =
+      typeof window !== "undefined" &&
+      window.matchMedia("(pointer: coarse)").matches;
+    return coarse ? AUTO_DISMISS_TOUCH_MS : AUTO_DISMISS_MS;
+  }
+
   function armTimer() {
     clearTimer();
-    if (hoveredRef.current || exiting) return;
+    if (pausedRef.current || exiting) return;
     timerRef.current = window.setTimeout(() => {
-      if (!hoveredRef.current) beginExit();
-    }, AUTO_DISMISS_MS);
+      if (!pausedRef.current) beginExit();
+    }, dismissMs());
+  }
+
+  function pause() {
+    pausedRef.current = true;
+    clearTimer();
+  }
+
+  function resume() {
+    pausedRef.current = false;
+    armTimer();
   }
 
   useEffect(() => {
@@ -77,19 +95,14 @@ function ToastCard({
     <div
       role="status"
       aria-live="polite"
-      onMouseEnter={() => {
-        hoveredRef.current = true;
-        clearTimer();
-      }}
-      onMouseLeave={() => {
-        hoveredRef.current = false;
-        armTimer();
-      }}
+      onPointerEnter={pause}
+      onPointerLeave={resume}
+      onPointerDown={pause}
       className={cn(
-        "pointer-events-auto w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-md border border-border bg-surface shadow-[var(--shadow-overlay)]",
+        "pointer-events-auto w-[min(22rem,calc(100dvw-1.5rem))] max-w-[calc(100%-0.5rem)] overflow-hidden rounded-md border border-border bg-surface shadow-[var(--shadow-overlay)]",
         "transition-transform duration-300 ease-out will-change-transform",
         "motion-reduce:transition-none",
-        // Hidden/rest position is off to the right of the viewport.
+        // Relative % avoids Chrome mobile horizontal overflow from 100vw.
         entered && !exiting ? "translate-x-0" : "translate-x-[110%]",
         "motion-reduce:translate-x-0",
         exiting && "motion-reduce:opacity-0 motion-reduce:translate-x-0",
@@ -120,7 +133,7 @@ function ToastCard({
           className="interactive-press -mr-1 -mt-1 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
           aria-label={t("toastDismiss")}
         >
-          <X className="h-3.5 w-3.5" aria-hidden />
+          <X className="h-3.5 w-3.5" />
         </button>
       </div>
     </div>
@@ -141,10 +154,11 @@ export function NotificationToastStack({
   return (
     <div
       className={cn(
-        "pointer-events-none fixed z-50 flex flex-col gap-2",
-        // Top-right under sticky header; keeps clear of help/expense FABs.
-        "top-[max(4.5rem,calc(env(safe-area-inset-top)+4rem))]",
-        "right-[max(0.75rem,env(safe-area-inset-right))]",
+        "pointer-events-none fixed z-[60] flex flex-col gap-2",
+        // Under sticky header; safe-area for notched phones / Chrome Android.
+        "top-[max(4.5rem,calc(env(safe-area-inset-top,0px)+4rem))]",
+        "right-[max(0.75rem,env(safe-area-inset-right,0px))]",
+        "left-auto max-w-[calc(100dvw-1.5rem)]",
       )}
       aria-label="Thông báo mới"
     >

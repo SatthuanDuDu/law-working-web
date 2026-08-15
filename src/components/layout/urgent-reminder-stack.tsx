@@ -257,10 +257,14 @@ function UrgentReminderList({
     const el = anchorRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
+    // visualViewport avoids Chrome Android address-bar width jumps / overflow.
+    const viewportWidth =
+      window.visualViewport?.width ?? document.documentElement.clientWidth;
+    const maxWidth = Math.min(rect.width, Math.max(0, viewportWidth - 16));
     const next = {
-      top: rect.top,
-      right: Math.max(0, window.innerWidth - rect.right),
-      width: rect.width,
+      top: Math.max(0, rect.top),
+      right: Math.max(8, viewportWidth - rect.right),
+      width: maxWidth,
     };
     setBox((prev) => {
       if (
@@ -287,7 +291,8 @@ function UrgentReminderList({
     if (!el) return;
 
     el.style.transition = "none";
-    el.style.transform = "translateX(100vw)";
+    // % of self — never 100vw (Chrome mobile creates horizontal scroll bleed).
+    el.style.transform = "translateX(calc(100% + 1.25rem))";
 
     let raf2 = 0;
     const raf1 = requestAnimationFrame(() => {
@@ -396,7 +401,7 @@ function UrgentReminderList({
     <>
       <div
         ref={anchorRef}
-        className="pointer-events-none h-0 w-[min(100vw-2rem,19.5rem)] sm:w-[21rem]"
+        className="pointer-events-none h-0 w-[min(calc(100dvw-2rem),19.5rem)] sm:w-[21rem]"
         aria-hidden
       />
       {panel}

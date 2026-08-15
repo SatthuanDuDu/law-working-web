@@ -87,48 +87,47 @@ export function WebsiteCmsNav() {
   }, [pathname]);
 
   return (
-    <div
-      className="sticky z-10 -mx-1 flex items-center gap-2 rounded-md border border-border bg-surface p-2 shadow-sm"
-      style={{ top: "var(--page-header-offset)" }}
-    >
-      <nav
-        aria-label="Điều hướng Website CMS"
-        className="flex min-w-0 flex-1 gap-1 overflow-x-auto"
-      >
-        {FLAT_NAV.map((item) => {
-          const isActive =
-            item.href === "/website"
-              ? pathname === "/website"
-              : pathname === item.href || pathname.startsWith(`${item.href}/`);
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "interactive-press flex shrink-0 items-center gap-1.5 rounded-md px-3 py-2 text-xs font-semibold whitespace-nowrap",
-                isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
-              )}
-            >
-              <Icon className="size-3.5 shrink-0" aria-hidden />
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
-      {canSave ? (
-        <Button
-          type="submit"
-          form={WEBSITE_CMS_FORM_ID}
-          size="sm"
-          className="shrink-0"
+    <div className="sticky top-0 z-10 -mx-4 min-w-0 border-b border-border/60 bg-canvas px-4 pb-2 pt-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+      <div className="flex min-w-0 items-center gap-2 rounded-md border border-border bg-surface p-2 shadow-sm">
+        <nav
+          aria-label="Điều hướng Website CMS"
+          className="flex min-w-0 flex-1 gap-1 overflow-x-auto"
         >
-          <Save className="size-3.5" aria-hidden />
-          Lưu
-        </Button>
-      ) : null}
+          {FLAT_NAV.map((item) => {
+            const isActive =
+              item.href === "/website"
+                ? pathname === "/website"
+                : pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "interactive-press flex shrink-0 items-center gap-1.5 rounded-md px-3 py-2 text-xs font-semibold whitespace-nowrap",
+                  isActive
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+              >
+                <Icon className="size-3.5 shrink-0" aria-hidden />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+        {canSave ? (
+          <Button
+            type="submit"
+            form={WEBSITE_CMS_FORM_ID}
+            size="sm"
+            className="shrink-0"
+          >
+            <Save className="size-3.5" aria-hidden />
+            Lưu
+          </Button>
+        ) : null}
+      </div>
     </div>
   );
 }

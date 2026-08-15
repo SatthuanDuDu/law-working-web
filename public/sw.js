@@ -42,11 +42,11 @@ function parsePushData(event) {
 }
 
 async function notifyOpenClients(data) {
-  const clients = await self.clients.matchAll({
+  const clientsList = await self.clients.matchAll({
     type: "window",
     includeUncontrolled: true,
   });
-  for (const client of clients) {
+  for (const client of clientsList) {
     client.postMessage({
       type: "NSLAW_NOTIFICATION",
       payload: {
@@ -58,6 +58,7 @@ async function notifyOpenClients(data) {
       },
     });
   }
+  return clientsList;
 }
 
 self.addEventListener("push", (event) => {
@@ -65,9 +66,33 @@ self.addEventListener("push", (event) => {
   const targetUrl = data.url || "/dashboard";
 
   event.waitUntil(
-    Promise.all([
-      notifyOpenClients(data),
-      self.registration.showNotification(data.title || "NSLAW", {
+    (async () => {
+      const clientsList = await notifyOpenClients(data);
+      const hasFocusedVisible = clientsList.some(
+        (client) => client.visibilityState === "visible" && client.focused,
+      );
+
+      // Chrome requires a notification for userVisibleOnly pushes. When the app
+      // tab is already focused, prefer the in-app toast and immediately close a
+      // silent system notification so users do not get a duplicate OS banner.
+      if (hasFocusedVisible) {
+        const silentTag = `nslaw-silent:${data.tag || "notification"}`;
+        await self.registration.showNotification(data.title || "NSLAW", {
+          body: data.body || "",
+          tag: silentTag,
+          silent: true,
+          renotify: false,
+          requireInteraction: false,
+          data: { url: targetUrl },
+        });
+        const notes = await self.registration.getNotifications({
+          tag: silentTag,
+        });
+        for (const note of notes) note.close();
+        return;
+      }
+
+      await self.registration.showNotification(data.title || "NSLAW", {
         body: data.body || "",
         icon: absoluteUrl("/icon-192.png"),
         badge: absoluteUrl("/favicon.png"),
@@ -75,8 +100,8 @@ self.addEventListener("push", (event) => {
         renotify: true,
         requireInteraction: false,
         data: { url: targetUrl },
-      }),
-    ]),
+      });
+    })(),
   );
 });
 
@@ -93,17 +118,14 @@ self.addEventListener("notificationclick", (event) => {
       });
 
       for (const client of allClients) {
-        if ("focus" in client) {
-          await client.focus();
-          if ("navigate" in client && typeof client.navigate === "function") {
-            try {
-              await client.navigate(targetUrl);
-            } catch {
-              // ignore navigate failures
-            }
-          }
-          return;
-        }
+        if (!("focus" in client)) continue;
+        await client.focus();
+        // Chrome mobile often ignores Client.navigate for SPA tabs — message the page.
+        client.postMessage({
+          type: "NSLAW_NAVIGATE",
+          url: targetUrl,
+        });
+        return;
       }
 
       if (self.clients.openWindow) {

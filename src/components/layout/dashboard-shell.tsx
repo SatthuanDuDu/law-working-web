@@ -17,6 +17,7 @@ import { ShellAlertsProvider } from "@/contexts/shell-alerts-context";
 import { SidebarProvider } from "@/contexts/sidebar-context";
 import { getPageMeta } from "@/lib/page-meta";
 import type { SessionUser } from "@/lib/permissions";
+import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
 import { Suspense, useLayoutEffect, useMemo, useRef } from "react";
@@ -64,6 +65,9 @@ export function DashboardShell({
   const tPages = useTranslations("pages");
   const clientMeta = useMemo(() => getPageMeta(pathname, tPages), [pathname, tPages]);
   const initialMeta = serverMeta ?? clientMeta;
+  // Sticky toolbars under page header — no main top padding (calendar + website CMS).
+  const flushTopUnderHeader =
+    pathname.startsWith("/calendar") || pathname.startsWith("/website");
 
   return (
     <SidebarProvider>
@@ -82,7 +86,14 @@ export function DashboardShell({
               <div className="liquid-glass-canvas flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-canvas">
                 <PageHeader />
                 <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
-                  <main className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+                  <main
+                    className={cn(
+                      "min-w-0 flex-1 overflow-y-auto px-4 pb-4 sm:px-6 sm:pb-6 lg:px-8 lg:pb-8",
+                      flushTopUnderHeader
+                        ? "pt-0"
+                        : "pt-4 sm:pt-6 lg:pt-8",
+                    )}
+                  >
                     {children}
                   </main>
                   <PersonalTodoPanel />

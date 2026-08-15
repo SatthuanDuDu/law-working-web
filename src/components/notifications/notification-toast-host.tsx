@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   NotificationToastStack,
   type NotificationToastItem,
@@ -20,12 +21,23 @@ function previewToToast(item: ShellNotificationPreview): NotificationToastItem {
   };
 }
 
+function toAppPath(url: string): string {
+  try {
+    const parsed = new URL(url, window.location.origin);
+    if (parsed.origin !== window.location.origin) return "/dashboard";
+    return `${parsed.pathname}${parsed.search}${parsed.hash}` || "/dashboard";
+  } catch {
+    return url.startsWith("/") ? url : "/dashboard";
+  }
+}
+
 /**
  * Watches shell-alerts + service-worker push messages and surfaces new
  * notifications as sliding toasts (right edge). Skips the first snapshot so
  * existing unread items do not toast on every page load.
  */
 export function NotificationToastHost() {
+  const router = useRouter();
   const { latestUnread, hydrated } = useShellAlerts();
   const [toasts, setToasts] = useState<NotificationToastItem[]>([]);
   const seededRef = useRef(false);
@@ -64,7 +76,14 @@ export function NotificationToastHost() {
   useEffect(() => {
     function onMessage(event: MessageEvent) {
       const data = event.data;
-      if (!data || data.type !== "NSLAW_NOTIFICATION") return;
+      if (!data || typeof data !== "object") return;
+
+      if (data.type === "NSLAW_NAVIGATE" && typeof data.url === "string") {
+        router.push(toAppPath(data.url));
+        return;
+      }
+
+      if (data.type !== "NSLAW_NOTIFICATION") return;
       const payload = data.payload as {
         title?: string;
         message?: string;
@@ -95,7 +114,7 @@ export function NotificationToastHost() {
     return () => {
       navigator.serviceWorker?.removeEventListener("message", onMessage);
     };
-  }, [pushToast]);
+  }, [pushToast, router]);
 
   return <NotificationToastStack items={toasts} onDismiss={dismissToast} />;
 }

@@ -24,7 +24,7 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Check, Circle, CircleDot, Ban, Clock, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge, Card, CardContent, CardHeader, CardTitle, Select } from "@/components/ui/card";
+import { Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   CalendarAddPlanDialog,
   type CalendarMatterOption,
@@ -1440,8 +1440,6 @@ export function CalendarMonth({
     startOfWeek(new Date(), { weekStartsOn: 1 }),
   );
   const [agendaPadWeeks, setAgendaPadWeeks] = useState(AGENDA_PAD_DEFAULT);
-  const [matterFilter, setMatterFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [addPlanDay, setAddPlanDay] = useState<Date | null>(null);
   const weekScrollerRef = useRef<HTMLDivElement>(null);
   const suppressWeekSyncRef = useRef(false);
@@ -1486,56 +1484,8 @@ export function CalendarMonth({
     return eachDayOfInterval({ start, end });
   }, [month]);
 
-  const matterOptions = useMemo(() => {
-    const map = new Map<string, { id: string; code: string; title: string }>();
-    for (const m of matters) {
-      map.set(m.id, { id: m.id, code: m.code, title: m.title });
-    }
-    for (const task of tasks) {
-      if (task.matterId && task.matterCode) {
-        map.set(task.matterId, {
-          id: task.matterId,
-          code: task.matterCode,
-          title: task.matterTitle ?? task.matterCode,
-        });
-      }
-    }
-    for (const step of planSteps) {
-      map.set(step.matterId, {
-        id: step.matterId,
-        code: step.matterCode,
-        title: step.matterTitle,
-      });
-    }
-    return Array.from(map.values()).sort((a, b) =>
-      a.code.localeCompare(b.code),
-    );
-  }, [matters, tasks, planSteps]);
-
-  const filteredTasks = useMemo(() => {
-    return tasks.filter((task) => {
-      if (matterFilter === "none") {
-        if (task.matterId) return false;
-      } else if (matterFilter !== "all" && task.matterId !== matterFilter) {
-        return false;
-      }
-      if (statusFilter === "all") return true;
-      if (!statusFilter.startsWith("task:")) return false;
-      return task.status === statusFilter.slice(5);
-    });
-  }, [tasks, matterFilter, statusFilter]);
-
-  const filteredPlans = useMemo(() => {
-    return planSteps.filter((step) => {
-      if (matterFilter === "none") return false;
-      if (matterFilter !== "all" && step.matterId !== matterFilter) {
-        return false;
-      }
-      if (statusFilter === "all") return true;
-      if (!statusFilter.startsWith("plan:")) return false;
-      return step.status === statusFilter.slice(5);
-    });
-  }, [planSteps, matterFilter, statusFilter]);
+  const filteredTasks = tasks;
+  const filteredPlans = planSteps;
 
   const periodStart = useMemo(
     () => (viewMode === "week" ? weekAnchor : startOfMonth(month)),
@@ -1757,11 +1707,8 @@ export function CalendarMonth({
     return () => observer.disconnect();
   }, [agendaDays, viewMode]);
 
-  const filterSelectClass =
-    "h-9 w-full min-w-0 rounded-md border border-border bg-surface px-2.5 text-sm text-foreground";
-
   return (
-    <div className="min-w-0 space-y-4 sm:space-y-6">
+    <div className="min-w-0 space-y-3 sm:space-y-4">
       <CalendarAddPlanDialog
         open={!!addPlanDay}
         day={addPlanDay}
@@ -1771,34 +1718,38 @@ export function CalendarMonth({
         onClose={() => setAddPlanDay(null)}
       />
 
-      <div
-        className="sticky z-10 min-w-0"
-        style={{ top: "var(--page-header-offset)" }}
-      >
+      {/* Full-bleed sticky scrubber under header (main has pt-0 on /calendar) */}
+      <div className="sticky top-0 z-10 -mx-4 min-w-0 border-b border-border/60 bg-canvas px-4 pb-2 pt-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         <div
-          className={cn(liquidPanelClass, "min-w-0 rounded-md p-2.5 sm:p-3")}
+          className={cn(liquidPanelClass, "min-w-0 rounded-md p-2 sm:p-2.5")}
         >
-          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-2">
             <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
               {viewMode === "week" ? (
                 <>
-                  <div className="inline-flex min-w-0 max-w-full items-center gap-1">
+                  <div
+                    data-calendar-date-cluster
+                    className="inline-flex items-center gap-1"
+                  >
                     <Button
                       variant="outline"
                       size="icon"
-                      className="h-9 w-9 shrink-0"
+                      className="h-8 w-8 shrink-0 sm:h-9 sm:w-9"
                       aria-label={t("prevWeek")}
                       onClick={() => jumpToWeek(subWeeks(weekAnchor, 1))}
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
-                    <span className="min-w-0 truncate px-0.5 text-sm font-semibold tabular-nums text-foreground sm:text-base">
+                    <span
+                      data-calendar-date-label
+                      className="whitespace-nowrap px-0.5 text-sm font-semibold tabular-nums text-foreground sm:text-base"
+                    >
                       {weekRangeLabel}
                     </span>
                     <Button
                       variant="outline"
                       size="icon"
-                      className="h-9 w-9 shrink-0"
+                      className="h-8 w-8 shrink-0 sm:h-9 sm:w-9"
                       aria-label={t("nextWeek")}
                       onClick={() => jumpToWeek(addWeeks(weekAnchor, 1))}
                     >
@@ -1808,7 +1759,7 @@ export function CalendarMonth({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-9 shrink-0"
+                    className="h-8 shrink-0 sm:h-9"
                     onClick={goToToday}
                   >
                     {t("today")}
@@ -1816,21 +1767,26 @@ export function CalendarMonth({
                 </>
               ) : (
                 <>
-                  <div className="inline-flex min-w-0 max-w-full items-center gap-1">
+                  <div
+                    data-calendar-date-cluster
+                    className="inline-flex items-center gap-1"
+                  >
                     <Button
                       variant="outline"
                       size="icon"
-                      className="h-9 w-9 shrink-0"
+                      className="h-8 w-8 shrink-0 sm:h-9 sm:w-9"
                       aria-label={t("prevMonth")}
                       onClick={() => setMonth(subMonths(month, 1))}
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
-                    <MonthYearPicker value={month} onChange={setMonth} />
+                    <span data-calendar-date-label className="inline-flex">
+                      <MonthYearPicker value={month} onChange={setMonth} />
+                    </span>
                     <Button
                       variant="outline"
                       size="icon"
-                      className="h-9 w-9 shrink-0"
+                      className="h-8 w-8 shrink-0 sm:h-9 sm:w-9"
                       aria-label={t("nextMonth")}
                       onClick={() => setMonth(addMonths(month, 1))}
                     >
@@ -1840,7 +1796,7 @@ export function CalendarMonth({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-9 shrink-0"
+                    className="h-8 shrink-0 sm:h-9"
                     onClick={goToToday}
                   >
                     {t("today")}
@@ -1849,7 +1805,7 @@ export function CalendarMonth({
               )}
             </div>
 
-            <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">
               <div className="flex rounded-md border border-border p-0.5">
                 <Button
                   size="sm"
@@ -1891,55 +1847,6 @@ export function CalendarMonth({
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="grid w-full grid-cols-2 gap-2 rounded-md border border-border bg-muted/30 p-2 sm:w-fit sm:min-w-[30rem]">
-        <label className="flex min-w-0 flex-col gap-1">
-          <span className="text-xs font-medium text-muted-foreground">
-            {t("filterMatter")}
-          </span>
-          <Select
-            value={matterFilter}
-            onChange={(e) => setMatterFilter(e.target.value)}
-            className={filterSelectClass}
-            aria-label={t("filterMatter")}
-          >
-            <option value="all">{t("filterAll")}</option>
-            <option value="none">{t("noMatterFilter")}</option>
-            {matterOptions.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.code} — {m.title}
-              </option>
-            ))}
-          </Select>
-        </label>
-        <label className="flex min-w-0 flex-col gap-1">
-          <span className="text-xs font-medium text-muted-foreground">
-            {t("filterStatus")}
-          </span>
-          <Select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className={filterSelectClass}
-            aria-label={t("filterStatus")}
-          >
-            <option value="all">{t("filterAll")}</option>
-            <optgroup label={t("kindTask")}>
-              {Object.entries(labels.taskStatus).map(([value, label]) => (
-                <option key={`task:${value}`} value={`task:${value}`}>
-                  {label}
-                </option>
-              ))}
-            </optgroup>
-            <optgroup label={t("kindPlan")}>
-              {Object.entries(labels.planStepStatus).map(([value, label]) => (
-                <option key={`plan:${value}`} value={`plan:${value}`}>
-                  {label}
-                </option>
-              ))}
-            </optgroup>
-          </Select>
-        </label>
       </div>
 
       {viewMode === "week" ? (

@@ -12,9 +12,6 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-# NEXT_PUBLIC_* is inlined at build time — pass matching key at docker build.
-ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY=""
-ENV NEXT_PUBLIC_VAPID_PUBLIC_KEY=$NEXT_PUBLIC_VAPID_PUBLIC_KEY
 # Dummy URL so prisma generate --schema=prisma-cms succeeds without real DB
 ARG CMS_DATABASE_URL="postgresql://nslaw_web:unused@localhost:5432/luat_work?schema=cms"
 ENV CMS_DATABASE_URL=$CMS_DATABASE_URL

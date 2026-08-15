@@ -30,6 +30,13 @@ Set in `/opt/luat-work-manager/.env` (never commit):
 | `CMS_DATABASE_URL` | same Postgres, `schema=cms` |
 | `S3_*` | MinIO on VPS or R2 |
 | `CRON_SECRET` | required for `/api/cron/deadlines` |
+| `VAPID_PUBLIC_KEY` | Web Push public key (**runtime** — required) |
+| `VAPID_PRIVATE_KEY` | Web Push private key |
+| `VAPID_SUBJECT` | e.g. `mailto:admin@nslaw.vn` |
+
+> Do **not** rely only on `NEXT_PUBLIC_VAPID_PUBLIC_KEY` in Docker: Next.js inlines
+> `NEXT_PUBLIC_*` at **build** time. Empty build-arg → push always “not configured”.
+> Use `VAPID_PUBLIC_KEY` in `.env` (compose maps it into the app container).
 
 ### Image transfer deploy
 

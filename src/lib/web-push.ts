@@ -12,10 +12,27 @@ export type PushPayload = {
 
 let configured = false;
 
+/**
+ * Public VAPID key for the server (and for /api/push/subscription → client).
+ * Prefer VAPID_PUBLIC_KEY (runtime). Do NOT rely on NEXT_PUBLIC_* alone — Next
+ * inlines NEXT_PUBLIC at build time, so an empty build-arg permanently disables push.
+ */
+function readVapidPublicKey(): string {
+  return (
+    process.env.VAPID_PUBLIC_KEY?.trim() ||
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim() ||
+    ""
+  );
+}
+
+function readVapidPrivateKey(): string {
+  return process.env.VAPID_PRIVATE_KEY?.trim() || "";
+}
+
 function ensureConfigured() {
   if (configured) return true;
-  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim();
-  const privateKey = process.env.VAPID_PRIVATE_KEY?.trim();
+  const publicKey = readVapidPublicKey();
+  const privateKey = readVapidPrivateKey();
   const subject = process.env.VAPID_SUBJECT?.trim() || "mailto:admin@admin.com";
   if (!publicKey || !privateKey) return false;
   webpush.setVapidDetails(subject, publicKey, privateKey);
@@ -24,15 +41,12 @@ function ensureConfigured() {
 }
 
 export function getVapidPublicKey(): string | null {
-  const key = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim();
+  const key = readVapidPublicKey();
   return key || null;
 }
 
 export function isWebPushConfigured(): boolean {
-  return Boolean(
-    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim() &&
-      process.env.VAPID_PRIVATE_KEY?.trim(),
-  );
+  return Boolean(readVapidPublicKey() && readVapidPrivateKey());
 }
 
 /** Send a Web Push to all devices registered for the given users. Fire-and-forget safe. */

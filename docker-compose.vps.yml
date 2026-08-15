@@ -85,6 +85,8 @@ services:
       S3_REGION: ${S3_REGION:-auto}
       S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://minio:9000}
       NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${NEXT_PUBLIC_VAPID_PUBLIC_KEY:-}
+      # Runtime public key (preferred). NEXT_PUBLIC_* is inlined at build and can stay empty.
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-${NEXT_PUBLIC_VAPID_PUBLIC_KEY:-}}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@admin.com}
       CRON_SECRET: ${CRON_SECRET:-}

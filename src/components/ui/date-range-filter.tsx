@@ -38,11 +38,13 @@ export function DateRangeFilter({
   dateTo,
   onChange,
   className,
+  id,
 }: {
   dateFrom: string;
   dateTo: string;
   onChange: (next: { dateFrom: string; dateTo: string }) => void;
   className?: string;
+  id?: string;
 }) {
   const t = useTranslations("admin.auditLogs");
   const tFilters = useTranslations("filters");
@@ -186,6 +188,7 @@ export function DateRangeFilter({
     <div ref={rootRef} className={cn("relative min-w-0", className)}>
       <button
         type="button"
+        id={id}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={listId}

@@ -19,6 +19,7 @@ import {
   requestSettlePackageAction,
   requestTopupAction,
   topupPackageAction,
+  updateBudgetPackageAction,
 } from "@/lib/budget-package-actions";
 import type { BudgetPackageDto } from "@/lib/budget-package";
 import { budgetPackageStatusTone, packageSpendPct } from "@/lib/budget-package-ui";
@@ -103,12 +104,19 @@ export function PackageDetailView({
   const [topupDigits, setTopupDigits] = useState("");
   const [requestDigits, setRequestDigits] = useState("");
   const [panel, setPanel] = useState<
-    null | "topup" | "requestTopup" | "settle"
+    null | "topup" | "requestTopup" | "settle" | "edit"
   >(null);
+  const [editName, setEditName] = useState(pkg.name);
+  const [editNote, setEditNote] = useState(pkg.note ?? "");
+  const [editWhy, setEditWhy] = useState("");
 
   const isOwner = pkg.ownerUserId === currentUserId;
   const isOpen = pkg.status === "OPEN";
   const isPendingSettle = pkg.status === "PENDING_SETTLE";
+  const canEditMeta =
+    (canManage || isOwner) &&
+    pkg.status !== "CLOSED" &&
+    pkg.status !== "CANCELLED";
   const pct = packageSpendPct(pkg.allocatedVnd, pkg.spentVnd);
 
   const report = useMemo(
@@ -137,6 +145,7 @@ export function PackageDetailView({
       setPanel(null);
       setTopupDigits("");
       setRequestDigits("");
+      setEditWhy("");
       router.refresh();
     });
   }
@@ -147,6 +156,16 @@ export function PackageDetailView({
     formData.set("packageId", pkg.id);
     formData.set("amountVnd", topupDigits);
     runAction(() => topupPackageAction(formData));
+  }
+
+  function handleEditPackage(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    formData.set("packageId", pkg.id);
+    formData.set("name", editName.trim());
+    formData.set("note", editNote.trim());
+    formData.set("justification", editWhy.trim());
+    runAction(() => updateBudgetPackageAction(formData));
   }
 
   function handleRequestTopup(e: FormEvent<HTMLFormElement>) {
@@ -199,6 +218,22 @@ export function PackageDetailView({
             <RevisionHistory entityType="BudgetPackage" entityId={pkg.id} />
           </div>
           <div className="flex flex-wrap gap-2">
+            {canEditMeta ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="interactive-press"
+                onClick={() => {
+                  setEditName(pkg.name);
+                  setEditNote(pkg.note ?? "");
+                  setEditWhy("");
+                  setPanel(panel === "edit" ? null : "edit");
+                }}
+              >
+                {t("editPackage")}
+              </Button>
+            ) : null}
             {canManage && isOpen ? (
               <Button
                 type="button"
@@ -250,6 +285,51 @@ export function PackageDetailView({
       </div>
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
+
+      {panel === "edit" ? (
+        <SectionPanel title={t("editPackageTitle")}>
+          <form onSubmit={handleEditPackage} className="space-y-3 max-w-md">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-pkg-name">{t("name")}</Label>
+              <Input
+                id="edit-pkg-name"
+                name="name"
+                required
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder={t("namePlaceholder")}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-pkg-note">{t("note")}</Label>
+              <Input
+                id="edit-pkg-note"
+                name="note"
+                value={editNote}
+                onChange={(e) => setEditNote(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-pkg-why">{t("editJustification")}</Label>
+              <Input
+                id="edit-pkg-why"
+                name="justification"
+                required
+                minLength={3}
+                value={editWhy}
+                onChange={(e) => setEditWhy(e.target.value)}
+                placeholder={t("editJustificationPlaceholder")}
+              />
+            </div>
+            <Button
+              type="submit"
+              disabled={pending || editName.trim().length < 1 || editWhy.trim().length < 3}
+            >
+              {pending ? tCommon("saving") : t("editPackageSubmit")}
+            </Button>
+          </form>
+        </SectionPanel>
+      ) : null}
 
       {panel === "topup" ? (
         <SectionPanel title={t("topupTitle")}>

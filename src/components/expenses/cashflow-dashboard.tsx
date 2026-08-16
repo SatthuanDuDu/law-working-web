@@ -182,7 +182,7 @@ export function CashflowDashboard({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="interactive-press"
+                className="interactive-press h-9 px-3 text-sm"
                 onClick={() => pushFilters({ from: p.from, to: p.to })}
               >
                 {p.label}
@@ -191,7 +191,7 @@ export function CashflowDashboard({
             <Button
               type="button"
               size="sm"
-              className="interactive-press"
+              className="interactive-press h-9 px-3 text-sm"
               onClick={() => setCreateOpen(true)}
             >
               {tPkg("createCta")}
@@ -199,10 +199,16 @@ export function CashflowDashboard({
           </>
         }
       >
-        <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-end">
-          <div className="min-w-0 max-w-sm flex-1">
-            <p className="mb-1.5 text-xs text-muted-foreground">{t("filterLabel")}</p>
+        <div className="flex min-w-0 w-full flex-1 flex-col gap-2 sm:flex-row sm:items-end sm:gap-3">
+          <div className="min-w-0 w-full max-w-sm flex-1 space-y-1">
+            <Label
+              htmlFor="expenses-period-filter"
+              className="text-xs font-medium text-muted-foreground"
+            >
+              {t("filterLabel")}
+            </Label>
             <DateRangeFilter
+              id="expenses-period-filter"
               dateFrom={stats.from}
               dateTo={stats.to}
               onChange={({ dateFrom, dateTo }) =>
@@ -210,20 +216,28 @@ export function CashflowDashboard({
               }
             />
           </div>
-          <div className="w-full sm:w-44">
-            <Label htmlFor="pkg-status-filter" className="mb-1.5 text-xs">
+          <div className="w-full space-y-1 sm:w-44">
+            <Label
+              htmlFor="pkg-status-filter"
+              className="text-xs font-medium text-muted-foreground"
+            >
               {t("filterPackageStatus")}
             </Label>
             <Select
               id="pkg-status-filter"
               value={packageStatus}
               onChange={(e) => pushFilters({ status: e.target.value })}
+              className="h-9"
             >
               <option value="ACTIVE">{tPkg("statusActive")}</option>
               <option value="ALL">{tPkg("statusAll")}</option>
               <option value="OPEN">{tPkg("status.OPEN")}</option>
-              <option value="PENDING_FUNDING">{tPkg("status.PENDING_FUNDING")}</option>
-              <option value="PENDING_SETTLE">{tPkg("status.PENDING_SETTLE")}</option>
+              <option value="PENDING_FUNDING">
+                {tPkg("status.PENDING_FUNDING")}
+              </option>
+              <option value="PENDING_SETTLE">
+                {tPkg("status.PENDING_SETTLE")}
+              </option>
               <option value="CLOSED">{tPkg("status.CLOSED")}</option>
             </Select>
           </div>

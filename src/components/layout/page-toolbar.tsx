@@ -21,11 +21,11 @@ export function PageToolbar({
         className,
       )}
     >
-      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+      <div className="flex min-w-0 flex-1 flex-wrap items-end gap-2">
         {children}
       </div>
       {actions ? (
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+        <div className="flex shrink-0 flex-wrap items-end justify-end gap-2">
           {actions}
         </div>
       ) : null}

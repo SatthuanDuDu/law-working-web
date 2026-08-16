@@ -17,6 +17,7 @@ import {
   outlinedFieldControlClass,
 } from "@/components/ui/outlined-field";
 import { cn } from "@/lib/utils";
+import { toVietnamDateInput } from "@/lib/datetime";
 
 export type TaskDetailItem = {
   id: string;
@@ -57,9 +58,7 @@ export function TaskDetailPanel({
 
   if (!mounted || typeof document === "undefined" || !task) return null;
 
-  const dueValue = task.dueDate
-    ? new Date(task.dueDate).toISOString().slice(0, 10)
-    : "";
+  const dueValue = task.dueDate ? toVietnamDateInput(task.dueDate) : "";
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

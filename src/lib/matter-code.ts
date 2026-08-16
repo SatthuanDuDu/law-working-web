@@ -1,6 +1,9 @@
 import type { MatterType } from "@prisma/client";
 import type { PrismaClient } from "@prisma/client";
 import { MATTER_TYPE_LABELS } from "@/lib/constants";
+import { getVietnamDayRange } from "@/lib/datetime";
+
+export { getVietnamDayRange };
 
 const MATTER_TYPE_CODES: Record<MatterType, string> = {
   CIVIL: "DS",
@@ -10,8 +13,6 @@ const MATTER_TYPE_CODES: Record<MatterType, string> = {
   FAMILY: "HN",
   OTHER: "OT",
 };
-
-const VIETNAM_TIMEZONE = "Asia/Ho_Chi_Minh";
 
 export function getMatterTypeCode(type: MatterType, customTypeLabel?: string | null) {
   if (type === "OTHER" && customTypeLabel?.trim()) {
@@ -25,24 +26,6 @@ export function getMatterTypeCode(type: MatterType, customTypeLabel?: string | n
     return normalized || "OT";
   }
   return MATTER_TYPE_CODES[type];
-}
-
-export function getVietnamDayRange(now = new Date()) {
-  const dateId = new Intl.DateTimeFormat("en-CA", {
-    timeZone: VIETNAM_TIMEZONE,
-  })
-    .format(now)
-    .replace(/-/g, "");
-
-  const vnDate = new Intl.DateTimeFormat("en-CA", {
-    timeZone: VIETNAM_TIMEZONE,
-  }).format(now);
-
-  const start = new Date(`${vnDate}T00:00:00+07:00`);
-  const end = new Date(start);
-  end.setUTCDate(end.getUTCDate() + 1);
-
-  return { dateId, start, end };
 }
 
 export function buildMatterCode(

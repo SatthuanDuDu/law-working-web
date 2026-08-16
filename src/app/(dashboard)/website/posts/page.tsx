@@ -15,6 +15,7 @@ import {
   TableEmptyRow,
 } from "@/components/ui/table";
 import { slugify } from "@/lib/utils";
+import { parseAppDateTime, toVietnamDateInput } from "@/lib/datetime";
 import { cmsDb } from "@/lib/cms-db";
 import { revalidatePublicSite } from "@/lib/cms-revalidate";
 import { requireRole } from "@/lib/session";
@@ -33,7 +34,9 @@ async function savePost(formData: FormData) {
   const featured = formData.get("featured") === "on";
   const status = formData.get("status") === "PUBLISHED" ? "PUBLISHED" : "DRAFT";
   const publishedAtRaw = String(formData.get("publishedAt") ?? "");
-  const publishedAt = publishedAtRaw ? new Date(publishedAtRaw) : new Date();
+  const publishedAt = publishedAtRaw
+    ? parseAppDateTime(publishedAtRaw) ?? new Date()
+    : new Date();
 
   const vi = {
     slug: String(formData.get("slugVi") ?? "").trim() || slugify(titleVi),
@@ -144,7 +147,7 @@ export default async function WebsitePostsPage({
                 id="publishedAt"
                 name="publishedAt"
                 type="date"
-                defaultValue={(editing?.publishedAt ?? new Date()).toISOString().slice(0, 10)}
+                defaultValue={toVietnamDateInput(editing?.publishedAt ?? new Date())}
               />
             </Field>
             <Field label="Chuyên mục" htmlFor="categoryId">
@@ -248,7 +251,9 @@ export default async function WebsitePostsPage({
                       {post.category?.translations[0]?.name ?? "—"}
                     </TD>
                     <TD className="px-4 py-3">
-                      {post.publishedAt.toLocaleDateString("vi-VN")}
+                      {post.publishedAt.toLocaleDateString("vi-VN", {
+                        timeZone: "Asia/Ho_Chi_Minh",
+                      })}
                     </TD>
                     <TD className="px-4 py-3 text-right">
                       <div className="flex flex-wrap items-center justify-end gap-3">

@@ -36,6 +36,7 @@ function digitsOnly(raw: string) {
 function formatWhen(iso: string) {
   try {
     return new Date(iso).toLocaleString("vi-VN", {
+      timeZone: "Asia/Ho_Chi_Minh",
       dateStyle: "short",
       timeStyle: "short",
     });

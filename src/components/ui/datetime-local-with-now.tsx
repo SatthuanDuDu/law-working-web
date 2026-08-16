@@ -4,10 +4,10 @@ import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { nowVietnamDatetimeLocalValue } from "@/lib/datetime";
 
 export function nowDatetimeLocalValue(date = new Date()): string {
-  const pad = (value: number) => String(value).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return nowVietnamDatetimeLocalValue(date);
 }
 
 const labelClass = "block text-sm font-medium text-foreground";

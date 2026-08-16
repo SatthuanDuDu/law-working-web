@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 function formatWhen(iso: string, locale: string) {
   try {
     return new Date(iso).toLocaleString(locale === "en" ? "en-GB" : "vi-VN", {
+      timeZone: "Asia/Ho_Chi_Minh",
       dateStyle: "short",
       timeStyle: "short",
     });

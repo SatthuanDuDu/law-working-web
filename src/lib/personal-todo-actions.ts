@@ -6,6 +6,7 @@ import type { PersonalTodoRecurrence, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
 import { actionError } from "@/i18n/server-labels";
+import { parseAppDateTime } from "@/lib/datetime";
 import {
   nextPersonalTodoDue,
   normalizeRecurrenceDays,
@@ -129,8 +130,8 @@ export async function createPersonalTodoAction(input: {
     return { error: await actionError("invalidData") };
   }
 
-  const dueDate = dueRaw.data ? new Date(dueRaw.data) : null;
-  if (dueDate && Number.isNaN(dueDate.getTime())) {
+  const dueDate = parseAppDateTime(dueRaw.data);
+  if (dueRaw.data?.trim() && !dueDate) {
     return { error: await actionError("invalidData") };
   }
 
@@ -197,8 +198,8 @@ export async function updatePersonalTodoAction(input: {
     data.note = note.data || null;
   }
   if (input.dueDate !== undefined) {
-    data.dueDate = input.dueDate ? new Date(input.dueDate) : null;
-    if (input.dueDate && Number.isNaN((data.dueDate as Date).getTime())) {
+    data.dueDate = parseAppDateTime(input.dueDate);
+    if (input.dueDate?.trim() && !data.dueDate) {
       return { error: await actionError("invalidData") };
     }
   }
@@ -215,7 +216,7 @@ export async function updatePersonalTodoAction(input: {
     const due =
       input.dueDate !== undefined
         ? input.dueDate
-          ? new Date(input.dueDate)
+        ? parseAppDateTime(input.dueDate)
           : null
         : existing.dueDate;
     data.recurrenceDays =

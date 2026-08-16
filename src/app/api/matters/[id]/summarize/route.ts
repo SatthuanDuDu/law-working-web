@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
 import { getAccessibleMatterIds } from "@/lib/access";
+import { formatDateTime } from "@/lib/utils";
 import {
   MATTER_STATUS_LABELS,
   MATTER_PLAN_STEP_STATUS_LABELS,
@@ -13,7 +14,7 @@ const USER_PROMPT =
 
 function formatDate(value: Date | null | undefined) {
   if (!value) return "—";
-  return value.toLocaleString("vi-VN");
+  return formatDateTime(value);
 }
 
 export async function POST(

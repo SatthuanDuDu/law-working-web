@@ -1,5 +1,9 @@
-import { addDays, endOfDay } from "date-fns";
 import Link from "next/link";
+import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/session";
+import { isManagerOrAbove } from "@/lib/permissions";
+import { formatDate, cn } from "@/lib/utils";
+import { endOfVietnamDayPlus } from "@/lib/datetime";
 import type { ReactNode } from "react";
 import {
   AlertTriangle,
@@ -27,10 +31,6 @@ import {
 } from "@/components/dashboard/upcoming-deadline-list";
 import { MatterStatusBadge } from "@/components/matters/matter-status-control";
 import { OpenPersonalTodoButton } from "@/components/personal-todo/open-personal-todo-button";
-import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/session";
-import { isManagerOrAbove } from "@/lib/permissions";
-import { formatDate, cn } from "@/lib/utils";
 import {
   listDivideClass,
   listRowClass,
@@ -142,7 +142,7 @@ export default async function DashboardPage() {
   const t = await getTranslations("dashboard");
   const tCommon = await getTranslations("common");
   const now = new Date();
-  const soonEnd = endOfDay(addDays(now, 3));
+  const soonEnd = endOfVietnamDayPlus(3, now);
 
   const matterIds = await getAccessibleMatterIds(user.id, user.role);
   const matterWhere = {

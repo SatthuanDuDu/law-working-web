@@ -1,6 +1,7 @@
-import { addDays, endOfDay, startOfDay, subHours } from "date-fns";
+import { subHours } from "date-fns";
 import type { PrismaClient } from "@prisma/client";
 import { notifyUsersPush } from "@/lib/web-push";
+import { endOfVietnamDayPlus, startOfVietnamDay } from "@/lib/datetime";
 
 const DEFAULT_BATCH_SIZE = 100;
 
@@ -25,8 +26,8 @@ export async function generateDeadlineReminders(
 ): Promise<DeadlineReminderResult> {
   const now = options?.now ?? new Date();
   const batchSize = options?.batchSize ?? DEFAULT_BATCH_SIZE;
-  const windowEnd = endOfDay(addDays(now, 3));
-  const todayStart = startOfDay(now);
+  const windowEnd = endOfVietnamDayPlus(3, now);
+  const todayStart = startOfVietnamDay(now);
   const reminderStaleBefore = subHours(now, 24);
 
   const dueWindowOr = [

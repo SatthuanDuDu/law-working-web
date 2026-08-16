@@ -1,6 +1,5 @@
 import type { PrismaClient } from "@prisma/client";
-
-const VIETNAM_TIMEZONE = "Asia/Ho_Chi_Minh";
+import { VIETNAM_TIMEZONE } from "@/lib/datetime";
 
 function getVietnamYear(now = new Date()) {
   return new Intl.DateTimeFormat("en", {

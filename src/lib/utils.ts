@@ -49,6 +49,7 @@ export function formatDate(
   locale?: Locale | string,
 ): string {
   return new Intl.DateTimeFormat(localeTag(locale), {
+    timeZone: "Asia/Ho_Chi_Minh",
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -60,6 +61,7 @@ export function formatDateTime(
   locale?: Locale | string,
 ): string {
   return new Intl.DateTimeFormat(localeTag(locale), {
+    timeZone: "Asia/Ho_Chi_Minh",
     day: "2-digit",
     month: "2-digit",
     year: "numeric",

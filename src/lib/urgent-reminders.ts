@@ -2,11 +2,13 @@ import { addHours, subHours } from "date-fns";
 import { prisma } from "@/lib/prisma";
 import { getAccessibleMatterIds } from "@/lib/access";
 import { isUrgentReminderActive } from "@/lib/urgent-reminder-window";
+import { VIETNAM_TIMEZONE } from "@/lib/datetime";
 import type { Role } from "@prisma/client";
 import type { UrgentReminderItem } from "@/components/layout/urgent-reminder-stack";
 
 function formatStartTime(date: Date): string {
   return new Intl.DateTimeFormat("vi-VN", {
+    timeZone: VIETNAM_TIMEZONE,
     hour: "2-digit",
     minute: "2-digit",
   }).format(date);

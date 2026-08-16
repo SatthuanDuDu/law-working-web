@@ -1,7 +1,7 @@
-import { addDays, endOfDay } from "date-fns";
 import type { Role, TaskStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getAccessibleMatterIds } from "@/lib/access";
+import { endOfVietnamDayPlus } from "@/lib/datetime";
 
 /**
  * Open tasks + plan steps that are overdue or due through end of day +3 days
@@ -9,7 +9,7 @@ import { getAccessibleMatterIds } from "@/lib/access";
  */
 export async function getUpcomingDueCount(userId: string, role: Role) {
   const now = new Date();
-  const soonEnd = endOfDay(addDays(now, 3));
+  const soonEnd = endOfVietnamDayPlus(3, now);
   const matterIds = await getAccessibleMatterIds(userId, role);
 
   const openTaskWhere = {

@@ -28,6 +28,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { DatetimeLocalWithNow } from "@/components/ui/datetime-local-with-now";
+import { parseAppDateTime, toVietnamDatetimeLocalValue } from "@/lib/datetime";
 import { Textarea } from "@/components/ui/textarea";
 import { Label, Select } from "@/components/ui/card";
 import {
@@ -82,11 +83,7 @@ const outlinedFieldInputClass =
   "interactive-field h-11 min-w-0 max-w-full w-full rounded-md border border-border bg-surface px-3 py-0 text-sm leading-normal text-foreground";
 
 function toDatetimeLocalValue(iso: string | null): string {
-  if (!iso) return "";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-  const pad = (value: number) => String(value).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return toVietnamDatetimeLocalValue(iso);
 }
 
 function StepMetaItem({
@@ -261,12 +258,8 @@ export function MatterPlanTimeline({
         setEditError(result.error);
         return;
       }
-      const startedIso = editDraft.startedAt
-        ? new Date(editDraft.startedAt).toISOString()
-        : null;
-      const dueIso = editDraft.dueAt
-        ? new Date(editDraft.dueAt).toISOString()
-        : null;
+      const startedIso = parseAppDateTime(editDraft.startedAt)?.toISOString() ?? null;
+      const dueIso = parseAppDateTime(editDraft.dueAt)?.toISOString() ?? null;
       const nextWorkType =
         workTypes.find((item) => item.id === editDraft.workTypeId) ?? null;
       const assigneeById = new Map(

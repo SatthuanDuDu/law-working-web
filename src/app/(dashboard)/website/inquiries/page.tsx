@@ -83,7 +83,9 @@ export default async function WebsiteInquiriesPage() {
                     ) : null}
                     <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{item.message}</p>
                     <p className="mt-2 text-xs text-muted-foreground">
-                      {item.createdAt.toLocaleString("vi-VN")} · locale {item.locale}
+                      {item.createdAt.toLocaleString("vi-VN", {
+                        timeZone: "Asia/Ho_Chi_Minh",
+                      })} · locale {item.locale}
                     </p>
                   </div>
                   <form action={updateStatus} className="flex items-center gap-2">

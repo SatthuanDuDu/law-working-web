@@ -1,3 +1,5 @@
+import { toVietnamDateInput } from "@/lib/datetime";
+
 export type ExcelCell = string | number | null | undefined;
 export type ExcelRow = Record<string, ExcelCell>;
 
@@ -7,7 +9,7 @@ function sanitizeSheetName(name: string) {
 }
 
 function datedFilename(filenameBase: string) {
-  const stamp = new Date().toISOString().slice(0, 10);
+  const stamp = toVietnamDateInput(new Date());
   return `${filenameBase}-${stamp}.xlsx`;
 }
 

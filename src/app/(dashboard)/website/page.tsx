@@ -117,7 +117,9 @@ export default async function WebsiteDashboardPage() {
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <p className="font-semibold text-foreground">{item.fullName}</p>
                   <span className="text-xs text-muted-foreground">
-                    {item.createdAt.toLocaleString("vi-VN")}
+                    {item.createdAt.toLocaleString("vi-VN", {
+                      timeZone: "Asia/Ho_Chi_Minh",
+                    })}
                   </span>
                 </div>
                 <p className="mt-1 text-muted-foreground">

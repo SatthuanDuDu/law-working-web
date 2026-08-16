@@ -69,6 +69,7 @@ services:
       minio:
         condition: service_started
     environment:
+      TZ: Asia/Ho_Chi_Minh
       AUTH_SECRET: ${AUTH_SECRET}
       AUTH_URL: ${AUTH_URL}
       NEXTAUTH_URL: ${NEXTAUTH_URL:-${AUTH_URL}}

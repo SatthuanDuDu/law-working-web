@@ -21,6 +21,7 @@ import {
 } from "@/lib/validations";
 import { canManageUsers, isAdmin, isManagerOrAbove } from "@/lib/permissions";
 import { generateMatterCode } from "@/lib/matter-code";
+import { parseAppDateTime } from "@/lib/datetime";
 import { generateClientCode } from "@/lib/client-code";
 import { getAccessibleClientIds, getAccessibleMatterIds, assertMatterNotArchived } from "@/lib/access";
 import { deleteObject } from "@/lib/storage";
@@ -1234,8 +1235,8 @@ export async function createMatterPlanStepAction(formData: FormData) {
         matterId: parsed.data.matterId,
         title,
         workTypeId: parsed.data.workTypeId || null,
-        startedAt: parsed.data.startedAt ? new Date(parsed.data.startedAt) : null,
-        dueAt: parsed.data.dueAt ? new Date(parsed.data.dueAt) : null,
+        startedAt: parseAppDateTime(parsed.data.startedAt),
+        dueAt: parseAppDateTime(parsed.data.dueAt),
         status: parsed.data.status as MatterPlanStepStatus,
         priority: parsed.data.priority,
         sortOrder: (last?.sortOrder ?? 0) + 1,
@@ -1371,10 +1372,10 @@ export async function updateMatterPlanStepAction(formData: FormData) {
           ? { workTypeId: parsed.data.workTypeId || null }
           : {}),
         ...(parsed.data.startedAt !== undefined
-          ? { startedAt: parsed.data.startedAt ? new Date(parsed.data.startedAt) : null }
+          ? { startedAt: parseAppDateTime(parsed.data.startedAt) }
           : {}),
         ...(parsed.data.dueAt !== undefined
-          ? { dueAt: parsed.data.dueAt ? new Date(parsed.data.dueAt) : null }
+          ? { dueAt: parseAppDateTime(parsed.data.dueAt) }
           : {}),
         ...(nextStatus !== undefined
           ? {
@@ -1740,7 +1741,7 @@ export async function createTaskAction(formData: FormData) {
       description: parsed.data.description || null,
       status: parsed.data.status,
       priority: parsed.data.priority,
-      dueDate: parsed.data.dueDate ? new Date(parsed.data.dueDate) : null,
+      dueDate: parseAppDateTime(parsed.data.dueDate),
       assigneeId: parsed.data.assigneeId,
       createdById: user.id,
       matterId: parsed.data.matterId || null,
@@ -1860,7 +1861,7 @@ export async function updateTaskAction(formData: FormData) {
       description: parsed.data.description || null,
       status: parsed.data.status,
       priority: parsed.data.priority,
-      dueDate: parsed.data.dueDate ? new Date(parsed.data.dueDate) : null,
+      dueDate: parseAppDateTime(parsed.data.dueDate),
       assigneeId: parsed.data.assigneeId,
       matterId: parsed.data.matterId || null,
     },

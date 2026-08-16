@@ -13,6 +13,7 @@ import {
 } from "@/lib/pdf-font";
 import { formatVndDigits } from "@/lib/wallet";
 import { cn } from "@/lib/utils";
+import { toVietnamDateInput } from "@/lib/datetime";
 
 async function downloadReportPdf(
   report: ReportModel,
@@ -116,7 +117,7 @@ async function downloadReportPdf(
     margin: { left: margin, right: margin },
   });
 
-  const stamp = new Date().toISOString().slice(0, 10);
+  const stamp = toVietnamDateInput(new Date());
   doc.save(`${filenameBase}-${stamp}.pdf`);
 }
 
@@ -131,7 +132,7 @@ async function downloadReportPng(
     backgroundColor: "#ffffff",
   });
   const a = document.createElement("a");
-  const stamp = new Date().toISOString().slice(0, 10);
+  const stamp = toVietnamDateInput(new Date());
   a.download = `${filenameBase}-${stamp}.png`;
   a.href = dataUrl;
   a.click();

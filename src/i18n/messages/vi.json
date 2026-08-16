@@ -1350,9 +1350,12 @@
     "exportSection": "Xuất báo cáo kỳ"
   },
   "reports": {
-    "owner": "Người giữ",
+    "owner": "Người nhận",
+    "grantedBy": "Người cấp",
+    "recipient": "Người nhận",
     "status": "Trạng thái",
     "period": "Kỳ",
+    "totalCost": "Tổng chi phí",
     "totalCredit": "Tổng nhận",
     "totalDebit": "Tổng chi",
     "totalNet": "Ròng",

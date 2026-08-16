@@ -5,22 +5,31 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { ReportPreview } from "@/components/reports/report-preview";
 import type { ReportModel } from "@/lib/report-model";
+import { reportTotalCostVnd } from "@/lib/report-model";
 import { downloadReportExcel } from "@/lib/export-report";
 import {
   ensurePdfUnicodeFont,
   PDF_UNICODE_FONT,
 } from "@/lib/pdf-font";
+import { formatVndDigits } from "@/lib/wallet";
 import { cn } from "@/lib/utils";
 
 async function downloadReportPdf(
   report: ReportModel,
   filenameBase: string,
-  columns: {
+  labels: {
     when: string;
     direction: string;
     category: string;
     amount: string;
     note: string;
+    grantedBy: string;
+    recipient: string;
+    totalCost: string;
+    totalCredit: string;
+    totalDebit: string;
+    allocated: string;
+    remaining: string;
   },
 ) {
   const [{ jsPDF }, autoTableMod] = await Promise.all([
@@ -54,11 +63,22 @@ async function downloadReportPdf(
 
   doc.setFont(font, "normal");
   doc.setFontSize(9);
+  const totalCost = reportTotalCostVnd(report);
   const metaLines = [
     report.meta.packageName ? `Gói: ${report.meta.packageName}` : null,
-    report.meta.ownerName ? `Chủ gói: ${report.meta.ownerName}` : null,
+    report.meta.grantedByName
+      ? `${labels.grantedBy}: ${report.meta.grantedByName}`
+      : null,
+    report.meta.ownerName
+      ? `${labels.recipient}: ${report.meta.ownerName}`
+      : null,
     report.meta.periodFrom || report.meta.periodTo
       ? `Kỳ: ${report.meta.periodFrom ?? "…"} → ${report.meta.periodTo ?? "…"}`
+      : null,
+    `${labels.totalCost}: ${formatVndDigits(totalCost)} ₫`,
+    `${labels.totalCredit}: ${formatVndDigits(report.totals.creditVnd)} ₫ · ${labels.totalDebit}: ${formatVndDigits(report.totals.debitVnd)} ₫`,
+    report.totals.allocatedVnd != null
+      ? `${labels.allocated}: ${formatVndDigits(report.totals.allocatedVnd)} ₫ · ${labels.remaining}: ${formatVndDigits(report.totals.remainingVnd ?? "0")} ₫`
       : null,
   ].filter(Boolean) as string[];
 
@@ -72,18 +92,18 @@ async function downloadReportPdf(
     startY: y,
     head: [
       [
-        columns.when,
-        columns.direction,
-        columns.category,
-        columns.amount,
-        columns.note,
+        labels.when,
+        labels.direction,
+        labels.category,
+        labels.amount,
+        labels.note,
       ],
     ],
     body: report.rows.map((r) => [
       r.when,
       r.direction,
       r.category,
-      r.amountVnd,
+      `${formatVndDigits(r.amountVnd)} ₫`,
       r.note.slice(0, 80),
     ]),
     styles: { fontSize: 8, font: PDF_UNICODE_FONT },
@@ -173,6 +193,13 @@ export function ReportExportBar({
                 category: t("colCategory"),
                 amount: t("colAmount"),
                 note: t("colNote"),
+                grantedBy: t("grantedBy"),
+                recipient: t("recipient"),
+                totalCost: t("totalCost"),
+                totalCredit: t("totalCredit"),
+                totalDebit: t("totalDebit"),
+                allocated: t("allocated"),
+                remaining: t("remaining"),
               }),
             )
           }

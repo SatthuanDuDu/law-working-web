@@ -126,6 +126,7 @@ export function PackageDetailView({
         packageName: pkg.name,
         packageStatus: pkg.status,
         ownerName: pkg.ownerName,
+        grantedByName: pkg.createdByName,
         allocatedVnd: pkg.allocatedVnd,
         spentVnd: pkg.spentVnd,
         remainingVnd: pkg.remainingVnd,

@@ -7,7 +7,10 @@ export type ReportMeta = {
   periodTo?: string | null;
   packageName?: string | null;
   packageStatus?: string | null;
+  /** Người nhận — package owner / holder. */
   ownerName?: string | null;
+  /** Người cấp — allocator who created / funded the package. */
+  grantedByName?: string | null;
   generatedAt: string;
 };
 
@@ -88,6 +91,7 @@ export function buildPackageReport(input: {
   packageName: string;
   packageStatus: string;
   ownerName: string;
+  grantedByName: string;
   allocatedVnd: string;
   spentVnd: string;
   remainingVnd: string;
@@ -105,6 +109,7 @@ export function buildPackageReport(input: {
       packageName: input.packageName,
       packageStatus: input.packageStatus,
       ownerName: input.ownerName,
+      grantedByName: input.grantedByName,
       periodFrom: input.periodFrom ?? null,
       periodTo: input.periodTo ?? null,
       generatedAt: new Date().toISOString(),
@@ -157,44 +162,59 @@ export function buildPeriodReport(input: {
 /** Flatten report for Excel / table display with formatted amounts. */
 export function reportRowsForExcel(report: ReportModel) {
   return report.rows.map((r) => ({
-    When: r.when,
-    Direction: r.direction,
-    Kind: r.kind,
-    Category: r.category,
-    Amount: formatVndDigits(r.amountVnd),
-    Note: r.note,
-    Matter: r.matter,
-    CreatedBy: r.createdBy,
+    "Thời gian": r.when,
+    Chiều: r.direction,
+    Loại: r.kind,
+    Nhóm: r.category,
+    "Số tiền (VND)": formatVndDigits(r.amountVnd),
+    "Ghi chú": r.note,
+    "Vụ việc": r.matter,
+    "Người tạo": r.createdBy,
   }));
+}
+
+/** Tổng chi phí ưu tiên spent gói; fallback tổng DEBIT trong kỳ. */
+export function reportTotalCostVnd(report: ReportModel): string {
+  if (report.totals.spentVnd != null && report.totals.spentVnd !== "") {
+    return report.totals.spentVnd;
+  }
+  return report.totals.debitVnd;
 }
 
 export function reportHeaderRows(report: ReportModel): Record<string, string | number>[] {
   const { meta, totals } = report;
   const rows: Record<string, string | number>[] = [
-    { Field: "Title", Value: meta.title },
+    { Field: "Tiêu đề", Value: meta.title },
   ];
-  if (meta.packageName) rows.push({ Field: "Package", Value: meta.packageName });
-  if (meta.ownerName) rows.push({ Field: "Owner", Value: meta.ownerName });
-  if (meta.packageStatus) rows.push({ Field: "Status", Value: meta.packageStatus });
+  if (meta.packageName) rows.push({ Field: "Gói", Value: meta.packageName });
+  if (meta.grantedByName) {
+    rows.push({ Field: "Người cấp", Value: meta.grantedByName });
+  }
+  if (meta.ownerName) rows.push({ Field: "Người nhận", Value: meta.ownerName });
+  if (meta.packageStatus) rows.push({ Field: "Trạng thái", Value: meta.packageStatus });
   if (meta.periodFrom || meta.periodTo) {
     rows.push({
-      Field: "Period",
+      Field: "Kỳ",
       Value: `${meta.periodFrom ?? "…"} → ${meta.periodTo ?? "…"}`,
     });
   }
-  rows.push({ Field: "Generated", Value: meta.generatedAt });
-  rows.push({ Field: "Rows", Value: totals.rowCount });
-  rows.push({ Field: "Credit (VND)", Value: formatVndDigits(totals.creditVnd) });
-  rows.push({ Field: "Debit (VND)", Value: formatVndDigits(totals.debitVnd) });
-  rows.push({ Field: "Net (VND)", Value: formatVndDigits(totals.netVnd) });
+  rows.push({ Field: "Xuất lúc", Value: meta.generatedAt });
+  rows.push({ Field: "Số dòng", Value: totals.rowCount });
+  rows.push({
+    Field: "Tổng chi phí (VND)",
+    Value: formatVndDigits(reportTotalCostVnd(report)),
+  });
+  rows.push({ Field: "Tổng nhận (VND)", Value: formatVndDigits(totals.creditVnd) });
+  rows.push({ Field: "Tổng chi (VND)", Value: formatVndDigits(totals.debitVnd) });
+  rows.push({ Field: "Ròng (VND)", Value: formatVndDigits(totals.netVnd) });
   if (totals.allocatedVnd != null) {
-    rows.push({ Field: "Allocated (VND)", Value: formatVndDigits(totals.allocatedVnd) });
+    rows.push({ Field: "Đã cấp (VND)", Value: formatVndDigits(totals.allocatedVnd) });
   }
   if (totals.spentVnd != null) {
-    rows.push({ Field: "Spent (VND)", Value: formatVndDigits(totals.spentVnd) });
+    rows.push({ Field: "Đã chi (VND)", Value: formatVndDigits(totals.spentVnd) });
   }
   if (totals.remainingVnd != null) {
-    rows.push({ Field: "Remaining (VND)", Value: formatVndDigits(totals.remainingVnd) });
+    rows.push({ Field: "Còn lại (VND)", Value: formatVndDigits(totals.remainingVnd) });
   }
   return rows;
 }

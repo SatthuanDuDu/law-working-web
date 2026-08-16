@@ -1350,9 +1350,12 @@
     "exportSection": "Export period report"
   },
   "reports": {
-    "owner": "Owner",
+    "owner": "Recipient",
+    "grantedBy": "Granted by",
+    "recipient": "Recipient",
     "status": "Status",
     "period": "Period",
+    "totalCost": "Total cost",
     "totalCredit": "Total credit",
     "totalDebit": "Total debit",
     "totalNet": "Net",

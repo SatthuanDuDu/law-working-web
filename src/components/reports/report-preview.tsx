@@ -3,6 +3,7 @@
 import { forwardRef } from "react";
 import { useTranslations } from "next-intl";
 import type { ReportModel } from "@/lib/report-model";
+import { reportTotalCostVnd } from "@/lib/report-model";
 import { formatVndDigits } from "@/lib/wallet";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +13,7 @@ export const ReportPreview = forwardRef<
 >(function ReportPreview({ report, className }, ref) {
   const t = useTranslations("reports");
   const { meta, rows, totals } = report;
+  const totalCost = reportTotalCostVnd(report);
 
   return (
     <div
@@ -27,9 +29,14 @@ export const ReportPreview = forwardRef<
           <p className="text-sm text-muted-foreground">{meta.subtitle}</p>
         ) : null}
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          {meta.grantedByName ? (
+            <span>
+              {t("grantedBy")}: {meta.grantedByName}
+            </span>
+          ) : null}
           {meta.ownerName ? (
             <span>
-              {t("owner")}: {meta.ownerName}
+              {t("recipient")}: {meta.ownerName}
             </span>
           ) : null}
           {meta.packageStatus ? (
@@ -45,7 +52,13 @@ export const ReportPreview = forwardRef<
         </div>
       </header>
 
-      <div className="mb-4 grid gap-2 sm:grid-cols-3">
+      <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-md border border-border px-3 py-2">
+          <p className="text-xs text-muted-foreground">{t("totalCost")}</p>
+          <p className="text-sm font-semibold tabular-nums">
+            {formatVndDigits(totalCost)} ₫
+          </p>
+        </div>
         <div className="rounded-md border border-border px-3 py-2">
           <p className="text-xs text-muted-foreground">{t("totalCredit")}</p>
           <p className="text-sm font-semibold tabular-nums">

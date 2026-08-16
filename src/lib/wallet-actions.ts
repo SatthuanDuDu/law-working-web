@@ -8,7 +8,7 @@ import { createAuditLog } from "@/lib/audit";
 import { getAccessibleMatterIds } from "@/lib/access";
 import { actionError } from "@/i18n/server-labels";
 import { ensureStaffWallet } from "@/lib/wallet";
-import { walletSpendSchema } from "@/lib/wallet-validations";
+import { walletSpendSchema, walletUpdateSpendSchema } from "@/lib/wallet-validations";
 import { canManageWalletUser } from "@/lib/permissions";
 import { allocateBudgetAction as allocateBudgetConfirmation } from "@/lib/money-confirmation-actions";
 
@@ -417,6 +417,447 @@ export async function recordWalletSpendAction(formData: FormData) {
     }
     console.error("recordWalletSpendAction failed:", error);
     return { error: await actionError("cannotRecordSpend") };
+  }
+}
+
+/** Rebuild balanceAfterVnd for every non-legacy tx on a wallet (createdAt, id order). */
+async function rebuildWalletBalanceAfterInTx(
+  db: Prisma.TransactionClient,
+  walletUserId: string,
+) {
+  const wallet = await db.staffWallet.findUniqueOrThrow({
+    where: { userId: walletUserId },
+  });
+  const txs = await db.walletTransaction.findMany({
+    where: { walletUserId, legacyImported: false },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    select: {
+      id: true,
+      direction: true,
+      amountVnd: true,
+    },
+  });
+
+  let start = wallet.balanceVnd;
+  for (const tx of txs) {
+    if (tx.direction === "DEBIT") start += tx.amountVnd;
+    else start -= tx.amountVnd;
+  }
+
+  let running = start;
+  for (const tx of txs) {
+    if (tx.direction === "DEBIT") running -= tx.amountVnd;
+    else running += tx.amountVnd;
+    await db.walletTransaction.update({
+      where: { id: tx.id },
+      data: { balanceAfterVnd: running },
+    });
+  }
+}
+
+export type WalletSpendEditContext = {
+  keepTransactionId: string;
+  walletUserId: string;
+  amountVnd: string;
+  budgetPackageId: string | null;
+  splitFromPackageId: string | null;
+  spendCategoryId: string | null;
+  detail: string | null;
+  note: string | null;
+  matterId: string | null;
+  matterPlanStepId: string | null;
+  expenseType: ExpenseType | null;
+  customTypeLabel: string | null;
+  siblingCount: number;
+  /** Amounts currently counted in package.spent — add back for UI remaining checks. */
+  packageAmountCredits: { packageId: string; amountVnd: string }[];
+};
+
+export async function getWalletSpendEditContextAction(transactionId: string) {
+  const user = await requireAuth();
+  const tx = await prisma.walletTransaction.findUnique({
+    where: { id: transactionId },
+  });
+  if (
+    !tx ||
+    tx.direction !== "DEBIT" ||
+    tx.kind !== "SPEND" ||
+    tx.legacyImported
+  ) {
+    return { error: await actionError("spendNotEditable") };
+  }
+  if (tx.walletUserId !== user.id) {
+    return { error: await actionError("noPermission") };
+  }
+
+  const siblings = tx.splitGroupId
+    ? await prisma.walletTransaction.findMany({
+        where: {
+          walletUserId: tx.walletUserId,
+          splitGroupId: tx.splitGroupId,
+        },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      })
+    : [tx];
+
+  const keep = siblings[0]!;
+  let total = BigInt(0);
+  let primaryPackageId: string | null = keep.budgetPackageId;
+  let splitFromPackageId: string | null = null;
+  for (let i = 0; i < siblings.length; i++) {
+    const s = siblings[i]!;
+    total += s.amountVnd;
+    if (i === 0) primaryPackageId = s.budgetPackageId;
+    else if (s.budgetPackageId) splitFromPackageId = s.budgetPackageId;
+  }
+
+  const ctx: WalletSpendEditContext = {
+    keepTransactionId: keep.id,
+    walletUserId: keep.walletUserId,
+    amountVnd: total.toString(),
+    budgetPackageId: primaryPackageId,
+    splitFromPackageId,
+    spendCategoryId: keep.spendCategoryId,
+    detail: keep.detail,
+    note: keep.note,
+    matterId: keep.matterId,
+    matterPlanStepId: keep.matterPlanStepId,
+    expenseType: keep.expenseType,
+    customTypeLabel: keep.customTypeLabel,
+    siblingCount: siblings.length,
+    packageAmountCredits: siblings
+      .filter((s) => s.budgetPackageId)
+      .map((s) => ({
+        packageId: s.budgetPackageId!,
+        amountVnd: s.amountVnd.toString(),
+      })),
+  };
+  return { success: true as const, context: ctx };
+}
+
+export async function updateWalletSpendAction(formData: FormData) {
+  const user = await requireAuth();
+  const spendCategoryId = String(formData.get("spendCategoryId") ?? "");
+  const categoryRow = await prisma.spendCategory.findUnique({
+    where: { id: spendCategoryId },
+  });
+  if (!categoryRow || !categoryRow.isActive) {
+    return { error: await actionError("spendCategoryNotFound") };
+  }
+
+  const parsed = walletUpdateSpendSchema.safeParse({
+    transactionId: formData.get("transactionId"),
+    justification: formData.get("justification"),
+    spendCategoryId,
+    amountVnd: formData.get("amountVnd"),
+    budgetPackageId: formData.get("budgetPackageId"),
+    splitFromPackageId: formData.get("splitFromPackageId") || null,
+    detail: formData.get("detail"),
+    matterId: formData.get("matterId") || null,
+    matterPlanStepId: formData.get("matterPlanStepId") || null,
+    expenseType: formData.get("expenseType") || null,
+    customTypeLabel: formData.get("customTypeLabel"),
+    note: formData.get("note"),
+    requiresMatter: categoryRow.requiresMatter,
+  });
+  if (!parsed.success) {
+    return {
+      error: parsed.error.issues[0]?.message ?? (await actionError("invalidData")),
+    };
+  }
+
+  const amountVnd = BigInt(parsed.data.amountVnd);
+  const justification = parsed.data.justification.trim();
+  const primaryPackageId = parsed.data.budgetPackageId.trim();
+  const splitFromPackageId = parsed.data.splitFromPackageId?.trim() || null;
+  let matterId: string | null = null;
+  let matterPlanStepId: string | null = null;
+  let expenseType: ExpenseType | null = null;
+  let customTypeLabel: string | null = null;
+  const detail = parsed.data.detail?.trim() || null;
+  const note = parsed.data.note?.trim() || null;
+
+  if (categoryRow.requiresMatter) {
+    matterId = parsed.data.matterId!.trim();
+    const accessibleIds = await getAccessibleMatterIds(user.id, user.role);
+    if (accessibleIds && !accessibleIds.includes(matterId)) {
+      return { error: await actionError("noMatterAccess") };
+    }
+    const matter = await prisma.matter.findUnique({
+      where: { id: matterId },
+      select: { id: true, status: true, deletedAt: true },
+    });
+    if (!matter || matter.deletedAt) {
+      return { error: await actionError("matterNotFound") };
+    }
+    if (
+      !OPEN_MATTER_STATUSES.includes(
+        matter.status as (typeof OPEN_MATTER_STATUSES)[number],
+      )
+    ) {
+      return { error: await actionError("matterNotOpen") };
+    }
+    expenseType = parsed.data.expenseType!;
+    customTypeLabel =
+      expenseType === "OTHER" ? parsed.data.customTypeLabel?.trim() || null : null;
+    const stepId = parsed.data.matterPlanStepId?.trim();
+    if (stepId) {
+      const step = await prisma.matterPlanStep.findFirst({
+        where: { id: stepId, matterId },
+        select: { id: true },
+      });
+      if (!step) {
+        return { error: await actionError("planStepNotFound") };
+      }
+      matterPlanStepId = step.id;
+    }
+  }
+
+  const { packageRemainingVnd } = await import("@/lib/budget-package");
+  const { randomUUID } = await import("crypto");
+  const { diffFields, recordRevision } = await import("@/lib/revisions");
+
+  try {
+    const updated = await prisma.$transaction(async (db) => {
+      const anchor = await db.walletTransaction.findUnique({
+        where: { id: parsed.data.transactionId },
+      });
+      if (
+        !anchor ||
+        anchor.direction !== "DEBIT" ||
+        anchor.kind !== "SPEND" ||
+        anchor.legacyImported
+      ) {
+        throw new Error("NOT_EDITABLE");
+      }
+      if (anchor.walletUserId !== user.id) {
+        throw new Error("NO_PERMISSION");
+      }
+
+      const siblings = anchor.splitGroupId
+        ? await db.walletTransaction.findMany({
+            where: {
+              walletUserId: anchor.walletUserId,
+              splitGroupId: anchor.splitGroupId,
+            },
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          })
+        : [anchor];
+
+      const keep = siblings[0]!;
+      let oldTotal = BigInt(0);
+      const oldPackageIds = new Set<string>();
+      for (const s of siblings) {
+        oldTotal += s.amountVnd;
+        if (s.budgetPackageId) oldPackageIds.add(s.budgetPackageId);
+      }
+
+      const beforeSnap = {
+        amountVnd: oldTotal.toString(),
+        budgetPackageId: keep.budgetPackageId ?? "",
+        spendCategoryId: keep.spendCategoryId ?? "",
+        detail: keep.detail ?? "",
+        note: keep.note ?? "",
+        matterId: keep.matterId ?? "",
+      };
+
+      for (const s of siblings) {
+        if (s.budgetPackageId) {
+          await db.budgetPackage.update({
+            where: { id: s.budgetPackageId },
+            data: { spentVnd: { decrement: s.amountVnd } },
+          });
+        }
+      }
+
+      const extraIds = siblings.slice(1).map((s) => s.id);
+      if (extraIds.length) {
+        await db.walletTransaction.deleteMany({
+          where: { id: { in: extraIds } },
+        });
+      }
+
+      const wallet = await db.staffWallet.findUniqueOrThrow({
+        where: { userId: keep.walletUserId },
+      });
+      const available = wallet.balanceVnd + oldTotal;
+      if (available < amountVnd) {
+        throw new Error("INSUFFICIENT_BALANCE");
+      }
+      const delta = amountVnd - oldTotal;
+      if (delta !== BigInt(0)) {
+        await db.staffWallet.update({
+          where: { userId: keep.walletUserId },
+          data: { balanceVnd: { decrement: delta } },
+        });
+      }
+
+      const primary = await db.budgetPackage.findUnique({
+        where: { id: primaryPackageId },
+      });
+      if (
+        !primary ||
+        primary.ownerUserId !== keep.walletUserId ||
+        primary.status !== "OPEN"
+      ) {
+        throw new Error("INVALID_PACKAGE");
+      }
+
+      const primaryRemaining = packageRemainingVnd(primary);
+      let primaryDebit = amountVnd;
+      let splitDebit = BigInt(0);
+      let splitPkgId: string | null = null;
+      let splitGroupId: string | null = null;
+
+      if (amountVnd > primaryRemaining) {
+        if (!splitFromPackageId) {
+          throw new Error("PACKAGE_OVERSPEND");
+        }
+        const splitPkg = await db.budgetPackage.findUnique({
+          where: { id: splitFromPackageId },
+        });
+        if (
+          !splitPkg ||
+          splitPkg.ownerUserId !== keep.walletUserId ||
+          splitPkg.status !== "OPEN"
+        ) {
+          throw new Error("INVALID_SPLIT_PACKAGE");
+        }
+        const splitRemaining = packageRemainingVnd(splitPkg);
+        const shortfall = amountVnd - primaryRemaining;
+        if (shortfall > splitRemaining) {
+          throw new Error("PACKAGE_OVERSPEND");
+        }
+        primaryDebit = primaryRemaining;
+        splitDebit = shortfall;
+        splitPkgId = splitPkg.id;
+        splitGroupId = randomUUID();
+      }
+
+      await db.walletTransaction.update({
+        where: { id: keep.id },
+        data: {
+          amountVnd: primaryDebit,
+          budgetPackageId: primary.id,
+          splitGroupId,
+          spendCategoryId: categoryRow.id,
+          detail,
+          note,
+          matterId,
+          matterPlanStepId,
+          expenseType,
+          customTypeLabel,
+        },
+      });
+
+      await db.budgetPackage.update({
+        where: { id: primary.id },
+        data: { spentVnd: { increment: primaryDebit } },
+      });
+      oldPackageIds.add(primary.id);
+
+      if (splitDebit > BigInt(0) && splitPkgId && splitGroupId) {
+        await db.walletTransaction.create({
+          data: {
+            walletUserId: keep.walletUserId,
+            direction: "DEBIT",
+            kind: "SPEND",
+            amountVnd: splitDebit,
+            balanceAfterVnd: BigInt(0),
+            budgetPackageId: splitPkgId,
+            splitGroupId,
+            spendCategoryId: categoryRow.id,
+            detail,
+            note: note ? `${note} (bù gói)` : "Bù từ gói khác",
+            matterId,
+            matterPlanStepId,
+            expenseType,
+            customTypeLabel,
+            createdById: user.id,
+            createdAt: keep.createdAt,
+          },
+        });
+        await db.budgetPackage.update({
+          where: { id: splitPkgId },
+          data: { spentVnd: { increment: splitDebit } },
+        });
+        oldPackageIds.add(splitPkgId);
+      }
+
+      await rebuildWalletBalanceAfterInTx(db, keep.walletUserId);
+
+      const afterSnap = {
+        amountVnd: amountVnd.toString(),
+        budgetPackageId: primary.id,
+        spendCategoryId: categoryRow.id,
+        detail: detail ?? "",
+        note: note ?? "",
+        matterId: matterId ?? "",
+      };
+      const changes = diffFields(beforeSnap, afterSnap, [
+        { field: "amountVnd", label: "Số tiền" },
+        { field: "budgetPackageId", label: "Gói" },
+        { field: "spendCategoryId", label: "Nhóm chi" },
+        { field: "detail", label: "Chi tiết" },
+        { field: "note", label: "Ghi chú" },
+        { field: "matterId", label: "Vụ việc" },
+      ]);
+      await recordRevision(db, {
+        entityType: "WalletTransaction",
+        entityId: keep.id,
+        changedById: user.id,
+        justification,
+        source: "FORM",
+        changes,
+      });
+
+      const refreshed = await db.walletTransaction.findUniqueOrThrow({
+        where: { id: keep.id },
+        include: txInclude,
+      });
+      return { tx: refreshed, packageIds: [...oldPackageIds] };
+    });
+
+    await createAuditLog({
+      userId: user.id,
+      action: "UPDATE",
+      entityType: "WalletTransaction",
+      entityId: updated.tx.id,
+      details: `UPDATE SPEND ${amountVnd.toString()} VND`,
+    });
+
+    revalidatePath("/wallet");
+    revalidatePath("/expenses");
+    for (const pid of updated.packageIds) {
+      revalidatePath(`/expenses/packages/${pid}`);
+    }
+    if (matterId) {
+      revalidatePath(`/matters/${matterId}`);
+      revalidatePath("/matters");
+    }
+    return { success: true, transaction: serializeTx(updated.tx) };
+  } catch (error) {
+    if (error instanceof Error && error.message === "INSUFFICIENT_BALANCE") {
+      return { error: await actionError("insufficientBalance") };
+    }
+    if (error instanceof Error && error.message === "PACKAGE_OVERSPEND") {
+      return { error: await actionError("budgetPackageOverspend") };
+    }
+    if (
+      error instanceof Error &&
+      (error.message === "INVALID_PACKAGE" ||
+        error.message === "INVALID_SPLIT_PACKAGE")
+    ) {
+      return { error: await actionError("budgetPackageInvalid") };
+    }
+    if (error instanceof Error && error.message === "NOT_EDITABLE") {
+      return { error: await actionError("spendNotEditable") };
+    }
+    if (error instanceof Error && error.message === "NO_PERMISSION") {
+      return { error: await actionError("noPermission") };
+    }
+    console.error("updateWalletSpendAction failed:", error);
+    return { error: await actionError("cannotUpdateSpend") };
   }
 }
 

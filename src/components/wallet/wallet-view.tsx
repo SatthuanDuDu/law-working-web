@@ -20,6 +20,10 @@ import { SectionPanel } from "@/components/ui/section-panel";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusChip } from "@/components/ui/status-chip";
 import { AddExpenseModal } from "@/components/expenses/add-expense-modal";
+import {
+  EditExpenseModal,
+  canEditSpendTx,
+} from "@/components/expenses/edit-expense-modal";
 import type { WalletTxListItem } from "@/lib/wallet-actions";
 import type { MoneyConfirmationListItem } from "@/lib/money-confirmation-actions";
 import type { BudgetPackageDto } from "@/lib/budget-package";
@@ -63,6 +67,7 @@ export function WalletView({
   const router = useRouter();
   const [spendOpen, setSpendOpen] = useState(false);
   const [receiptOpen, setReceiptOpen] = useState(false);
+  const [editTx, setEditTx] = useState<WalletTxListItem | null>(null);
   const [txMenuOpen, setTxMenuOpen] = useState(false);
   const [txMenuBox, setTxMenuBox] = useState<{
     top: number;
@@ -447,6 +452,19 @@ export function WalletView({
                   </p>
                 ) : null}
                 <WalletReceiptLinks attachments={tx.attachments ?? []} />
+                {canEditSpendTx(tx) ? (
+                  <div className="pt-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="interactive-press h-8"
+                      onClick={() => setEditTx(tx)}
+                    >
+                      {t("editSpend")}
+                    </Button>
+                  </div>
+                ) : null}
               </li>
             ))}
           </ul>
@@ -457,6 +475,14 @@ export function WalletView({
         open={spendOpen}
         onClose={() => {
           setSpendOpen(false);
+          startTransition(() => router.refresh());
+        }}
+      />
+      <EditExpenseModal
+        open={Boolean(editTx)}
+        transaction={editTx}
+        onClose={() => {
+          setEditTx(null);
           startTransition(() => router.refresh());
         }}
       />

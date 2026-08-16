@@ -6,9 +6,23 @@ import { Button } from "@/components/ui/button";
 import { ReportPreview } from "@/components/reports/report-preview";
 import type { ReportModel } from "@/lib/report-model";
 import { downloadReportExcel } from "@/lib/export-report";
+import {
+  ensurePdfUnicodeFont,
+  PDF_UNICODE_FONT,
+} from "@/lib/pdf-font";
 import { cn } from "@/lib/utils";
 
-async function downloadReportPdf(report: ReportModel, filenameBase: string) {
+async function downloadReportPdf(
+  report: ReportModel,
+  filenameBase: string,
+  columns: {
+    when: string;
+    direction: string;
+    category: string;
+    amount: string;
+    note: string;
+  },
+) {
   const [{ jsPDF }, autoTableMod] = await Promise.all([
     import("jspdf"),
     import("jspdf-autotable"),
@@ -29,23 +43,23 @@ async function downloadReportPdf(report: ReportModel, filenameBase: string) {
   }
 
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+  const font = await ensurePdfUnicodeFont(doc);
   const margin = 40;
   let y = margin;
 
-  doc.setFont("helvetica", "bold");
+  doc.setFont(font, "bold");
   doc.setFontSize(14);
   doc.text(report.meta.title, margin, y);
   y += 18;
 
-  doc.setFont("helvetica", "normal");
+  doc.setFont(font, "normal");
   doc.setFontSize(9);
   const metaLines = [
-    report.meta.packageName ? `Package: ${report.meta.packageName}` : null,
-    report.meta.ownerName ? `Owner: ${report.meta.ownerName}` : null,
+    report.meta.packageName ? `Gói: ${report.meta.packageName}` : null,
+    report.meta.ownerName ? `Chủ gói: ${report.meta.ownerName}` : null,
     report.meta.periodFrom || report.meta.periodTo
-      ? `Period: ${report.meta.periodFrom ?? "…"} → ${report.meta.periodTo ?? "…"}`
+      ? `Kỳ: ${report.meta.periodFrom ?? "…"} → ${report.meta.periodTo ?? "…"}`
       : null,
-    "Note: PDF uses Helvetica — Vietnamese diacritics may be incomplete without an embedded font.",
   ].filter(Boolean) as string[];
 
   for (const line of metaLines) {
@@ -56,7 +70,15 @@ async function downloadReportPdf(report: ReportModel, filenameBase: string) {
 
   autoTable(doc, {
     startY: y,
-    head: [["When", "Dir", "Category", "Amount", "Note"]],
+    head: [
+      [
+        columns.when,
+        columns.direction,
+        columns.category,
+        columns.amount,
+        columns.note,
+      ],
+    ],
     body: report.rows.map((r) => [
       r.when,
       r.direction,
@@ -64,8 +86,13 @@ async function downloadReportPdf(report: ReportModel, filenameBase: string) {
       r.amountVnd,
       r.note.slice(0, 80),
     ]),
-    styles: { fontSize: 8, font: "helvetica" },
-    headStyles: { fillColor: [63, 111, 90] },
+    styles: { fontSize: 8, font: PDF_UNICODE_FONT },
+    headStyles: {
+      fillColor: [15, 23, 42],
+      font: PDF_UNICODE_FONT,
+      fontStyle: "bold",
+    },
+    bodyStyles: { font: PDF_UNICODE_FONT },
     margin: { left: margin, right: margin },
   });
 
@@ -138,7 +165,17 @@ export function ReportExportBar({
           variant="outline"
           disabled={pending}
           className="interactive-press"
-          onClick={() => run(() => downloadReportPdf(report, filenameBase))}
+          onClick={() =>
+            run(() =>
+              downloadReportPdf(report, filenameBase, {
+                when: t("colWhen"),
+                direction: t("colDirection"),
+                category: t("colCategory"),
+                amount: t("colAmount"),
+                note: t("colNote"),
+              }),
+            )
+          }
         >
           {t("exportPdf")}
         </Button>

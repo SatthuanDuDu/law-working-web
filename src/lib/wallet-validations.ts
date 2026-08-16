@@ -162,3 +162,15 @@ export const walletSpendSchema = z
       }
     }
   });
+
+/** Update an existing SPEND debit (same fields as create + id + justification). */
+export const walletUpdateSpendSchema = walletSpendSchema.and(
+  z.object({
+    transactionId: z.string().min(1, "Thiếu mã giao dịch"),
+    justification: z
+      .string()
+      .trim()
+      .min(3, "Vui lòng nhập lý do sửa (ít nhất 3 ký tự)")
+      .max(1000),
+  }),
+);

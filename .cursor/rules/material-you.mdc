@@ -5,20 +5,23 @@ alwaysApply: true
 
 # Material You UI
 
-This project follows **Material You (Material Design 3)** for UI.
+This project follows **Material You (Material Design 3)** for UI chrome,
+with a **neutral charcoal** workspace palette (Cases-style SaaS), not green-as-primary.
 
-## Brand palette (NSLAW)
+## Brand palette (NSLAW workspace)
 
-Bảng màu thương hiệu là **xanh lá đậm + gold** (theo logo NSLAW), khai báo tập trung
-bằng CSS vars trong `src/app/globals.css`:
+Tokens live in `src/app/globals.css` (`:root` / `.dark`):
 
-- `--primary: #14532d` (xanh lá đậm) — dùng qua `bg-primary` / `text-primary`...
-- `--accent: #9a7b16` (gold, đủ tương phản để làm chữ) + `--accent-muted: #f6edcf`
-- Radius phẳng/sharp: `--radius-md: 0.375rem` (6px) là mặc định; ưu tiên `rounded-md`.
-- Shadow overlay thống nhất: `var(--shadow-overlay)` (dùng cho modal/panel/menu nổi).
+- `--primary` / `--action: #0f172a` (deep slate / charcoal) — main CTAs, Selected chips, `bg-primary` / `bg-action`
+- `--primary-foreground` / `--action-foreground: #ffffff`
+- `--accent: #475569` (slate) + `--accent-muted: #f8fafc`
+- Soft sky is **not** brand chrome — only optional info/status tint
+- Radius: `--radius-md: 0.5rem` (8px) default scale; prefer `rounded-md`
+- Overlay shadow: `var(--shadow-overlay)` for modal/panel/menu
 
-Không hardcode hex navy cũ (`#152d4f`, `#0f2138`, `#3b82c4`); luôn dùng token/primary.
-Logo đặt tại `public/logo-nslaw.png` (login + header sidebar).
+Logo mark (`public/logo-nslaw.png`) may still show **green + gold**; do not force those hexes as app primary unless the user asks to restore green chrome.
+
+Không hardcode hex navy/sky cũ làm primary (`#152d4f`, `#0f2138`, `#3b82c4`, `#14532d` as UI primary); luôn dùng CSS tokens.
 
 ## Do
 
@@ -34,6 +37,7 @@ Logo đặt tại `public/logo-nslaw.png` (login + header sidebar).
 - Colored `box-shadow` / neon glow on chips, badges, or buttons (except brief success feedback when explicitly requested)
 - Heavy `shadow-lg` + saturated option rows that fight the rest of the UI
 - Overbuilt cards with multi-layer shadows for decoration
+- Soft-sky or purple gradients as default brand chrome
 
 ## Status colors (example)
 
@@ -41,5 +45,5 @@ Use saturated fill on the active tag; keep the open menu plain (label + subtle h
 
 - NEW — sky / info tonal
 - IN_PROGRESS — amber / caution tonal
-- ON_HOLD — rose / pause tonal  
+- ON_HOLD — rose / pause tonal
 - CLOSED — emerald / success tonal

@@ -27,6 +27,7 @@ Quy tắc: một slice = một việc end-to-end nhỏ. Chỉ một slice active
 - [x] Mobile table fallback + a11y (aria / focus-visible) + loading expenses/wallet/website
 - [x] UI density pass (4 slices) — list cards + dashboard + chrome + admin/CMS — `ai/docs/ui-density.md` + `ai/docs/ui-primitives.md`
 - [x] Budget packages + thống kê + export + revision core + neutral-first tokens — `ai/docs/budget-packages.md` + `ai/docs/ui-style-reference.md`
+- [x] Edit wallet spend (đổi số tiền/gói/metadata + recalc sổ + revision) — `ai/docs/edit-wallet-spend.md`
 
 ## Budget wallet slices (checklist)
 - [x] Schema `StaffWallet` + `WalletTransaction` + migrate legacy `MatterExpense`

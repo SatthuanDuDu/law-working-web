@@ -1160,6 +1160,8 @@
     "cannotCreateExpense": "Không thể lưu chi phí",
     "cannotAllocateBudget": "Không thể phát budget",
     "cannotRecordSpend": "Không thể ghi chi",
+    "cannotUpdateSpend": "Không thể cập nhật khoản chi",
+    "spendNotEditable": "Khoản này không thể sửa (không phải chi ví / dữ liệu cũ)",
     "insufficientBalance": "Số dư ví không đủ",
     "planStepNotFound": "Không tìm thấy bước kế hoạch",
     "spendCategoryNotFound": "Không tìm thấy nhóm chi phí",
@@ -1268,7 +1270,13 @@
     "receipts": "Minh chứng",
     "addTransaction": "Thêm giao dịch",
     "addReceive": "Nhận",
-    "addSpend": "Chi"
+    "addSpend": "Chi",
+    "editSpend": "Sửa",
+    "editSpendTitle": "Sửa khoản chi",
+    "editJustification": "Lý do sửa",
+    "editJustificationPlaceholder": "Vì sao sửa số tiền / gói / nội dung…",
+    "editSave": "Lưu thay đổi",
+    "editSplitHint": "Khoản chi bù 2 gói sẽ được gộp lại khi lưu (có thể chọn gói bù mới nếu vượt)."
   },
   "expenses": {
     "filterLabel": "Kỳ thống kê",
@@ -1363,7 +1371,7 @@
     "showPreview": "Xem trước",
     "hidePreview": "Ẩn xem trước",
     "exportFailed": "Xuất báo cáo thất bại",
-    "pdfFontNote": "PDF dùng font chuẩn — dấu tiếng Việt có thể thiếu. Ưu tiên Excel/PNG nếu cần đủ dấu."
+    "pdfFontNote": "PDF nhúng font Noto Sans — hỗ trợ đầy đủ dấu tiếng Việt."
   },
   "chat": {
     "title": "Trò chuyện",

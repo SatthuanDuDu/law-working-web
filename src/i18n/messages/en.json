@@ -1160,6 +1160,8 @@
     "cannotCreateExpense": "Unable to save expense",
     "cannotAllocateBudget": "Unable to allocate budget",
     "cannotRecordSpend": "Unable to record spend",
+    "cannotUpdateSpend": "Unable to update spend",
+    "spendNotEditable": "This entry cannot be edited (not a wallet spend / legacy)",
     "insufficientBalance": "Insufficient wallet balance",
     "planStepNotFound": "Plan step not found",
     "spendCategoryNotFound": "Spend category not found",
@@ -1268,7 +1270,13 @@
     "receipts": "Receipts",
     "addTransaction": "Add transaction",
     "addReceive": "Receive",
-    "addSpend": "Spend"
+    "addSpend": "Spend",
+    "editSpend": "Edit",
+    "editSpendTitle": "Edit spend",
+    "editJustification": "Justification",
+    "editJustificationPlaceholder": "Why change amount / package / details…",
+    "editSave": "Save changes",
+    "editSplitHint": "A two-package split will be rebuilt on save (you can pick a new split package if needed)."
   },
   "expenses": {
     "filterLabel": "Reporting period",
@@ -1363,7 +1371,7 @@
     "showPreview": "Show preview",
     "hidePreview": "Hide preview",
     "exportFailed": "Export failed",
-    "pdfFontNote": "PDF uses a standard font — Vietnamese diacritics may be incomplete. Prefer Excel/PNG for full accents."
+    "pdfFontNote": "PDF embeds Noto Sans — full Vietnamese diacritics supported."
   },
   "chat": {
     "title": "Chat",

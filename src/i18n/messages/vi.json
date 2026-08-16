@@ -352,6 +352,11 @@
     "planTab": "Kế hoạch",
     "reportTab": "Báo cáo",
     "overview": "Tổng quan",
+    "overviewExport": {
+      "exportPdf": "Xuất PDF",
+      "exportWord": "Xuất Word",
+      "failed": "Xuất tổng quan thất bại"
+    },
     "deleteTitle": "Xóa vụ việc",
     "deleteConfirm": "Bạn có chắc muốn xóa vụ việc \"{title}\" ({code})? Có thể hoàn tác ngay sau khi xóa.",
     "deleteConfirmLabel": "Xóa vụ việc",

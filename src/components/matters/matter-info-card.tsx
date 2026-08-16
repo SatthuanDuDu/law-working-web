@@ -166,7 +166,7 @@ export async function MatterInfoCard({
         className={cn(
           "flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 p-3.5 pb-2 sm:p-4 sm:pb-2.5",
           stickyHeader &&
-            "xl:sticky xl:top-32 xl:z-10 xl:rounded-t-md xl:border-b xl:border-border xl:bg-surface/95 xl:backdrop-blur-sm",
+            "xl:sticky xl:top-3 xl:z-10 xl:rounded-t-md xl:border-b xl:border-border xl:bg-surface/95 xl:backdrop-blur-sm",
         )}
       >
         <CardTitle className="text-sm font-semibold sm:text-base">
@@ -181,7 +181,7 @@ export async function MatterInfoCard({
         />
       </CardHeader>
 
-      <CardContent className="space-y-3 p-3.5 pt-0 sm:space-y-3.5 sm:p-4 sm:pt-0">
+      <CardContent className="space-y-3 p-3.5 pt-2.5 sm:space-y-3.5 sm:p-4 sm:pt-3">
         <div className="min-w-0">
           <h3 className="break-words text-base font-semibold leading-snug text-foreground sm:text-lg">
             {matter.title}

@@ -352,6 +352,11 @@
     "planTab": "Plan",
     "reportTab": "Report",
     "overview": "Overview",
+    "overviewExport": {
+      "exportPdf": "Export PDF",
+      "exportWord": "Export Word",
+      "failed": "Failed to export matter overview"
+    },
     "deleteTitle": "Delete matter",
     "deleteConfirm": "Are you sure you want to delete matter \"{title}\" ({code})? You can undo right after deleting.",
     "deleteConfirmLabel": "Delete matter",

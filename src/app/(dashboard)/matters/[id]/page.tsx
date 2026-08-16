@@ -5,6 +5,7 @@ import { PageHeaderSlot } from "@/components/layout/page-header-slot";
 import { AttachmentPanel } from "@/components/attachments/attachment-panel";
 import { MatterAiSummary } from "@/components/matters/matter-ai-summary";
 import { MatterInfoCard } from "@/components/matters/matter-info-card";
+import { MatterOverviewExport } from "@/components/matters/matter-overview-export";
 import { TaskForm } from "@/components/tasks/task-form";
 import { TaskList } from "@/components/tasks/task-list";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -142,7 +143,7 @@ export default async function MatterHubPage({
       <PageHeaderSlot title={matter.title} />
 
       <div className="grid gap-6 xl:grid-cols-3">
-        <div className="xl:col-span-1">
+        <div className="space-y-3 xl:col-span-1">
           <MatterInfoCard
             matter={matter}
             canEditStatus={canEditStatus}
@@ -150,6 +151,7 @@ export default async function MatterHubPage({
             canEditMembers={canEditMembers}
             staffOptions={formData?.members ?? []}
           />
+          <MatterOverviewExport matterId={matter.id} />
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 xl:col-span-2 xl:grid-cols-1 xl:content-start">

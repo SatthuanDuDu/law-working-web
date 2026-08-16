@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { PageHeaderSlot } from "@/components/layout/page-header-slot";
 import { MatterInfoCard } from "@/components/matters/matter-info-card";
+import { MatterOverviewExport } from "@/components/matters/matter-overview-export";
 import { MatterPlanTimeline } from "@/components/matters/matter-plan-timeline";
 import { Card, CardContent } from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
@@ -186,8 +187,9 @@ export default async function MatterPlanPage({
     <>
       <PageHeaderSlot title={tPages("title")} />
 
-      <div className="grid min-w-0 items-start gap-6 xl:grid-cols-3">
-        <aside className="min-w-0 xl:sticky xl:top-32 xl:z-10 xl:self-start">
+      <div className="grid min-w-0 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+        {/* Left column — pin to row 1 / top so it cannot wrap under the timeline */}
+        <aside className="order-1 min-w-0 space-y-3 self-start xl:sticky xl:top-3 xl:z-10">
           <MatterInfoCard
             matter={matter}
             canEditStatus={canEditStatus}
@@ -196,9 +198,10 @@ export default async function MatterPlanPage({
             canEditMembers={canEditMembers}
             staffOptions={formData?.members ?? []}
           />
+          <MatterOverviewExport matterId={matter.id} />
         </aside>
 
-        <Card className="min-w-0 overflow-visible rounded-md xl:col-span-2">
+        <Card className="order-2 min-w-0 overflow-visible rounded-md self-start">
           <CardContent className="overflow-visible p-4 sm:p-6">
             <MatterPlanTimeline
               matterId={matter.id}

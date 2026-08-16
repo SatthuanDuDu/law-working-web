@@ -29,6 +29,7 @@ Quy tắc: một slice = một việc end-to-end nhỏ. Chỉ một slice active
 - [x] Budget packages + thống kê + export + revision core + neutral-first tokens — `ai/docs/budget-packages.md` + `ai/docs/ui-style-reference.md`
 - [x] Edit wallet spend (đổi số tiền/gói/metadata + recalc sổ + revision) — `ai/docs/edit-wallet-spend.md`
 - [x] Legacy backfill đầy đủ + UI sửa gói (allocator) — `ai/docs/budget-package-backfill.md`
+- [x] Xuất PDF/Word tổng quan vụ việc (info + bước + bình luận) — `ai/docs/matter-overview-export.md`
 
 ## Budget wallet slices (checklist)
 - [x] Schema `StaffWallet` + `WalletTransaction` + migrate legacy `MatterExpense`

@@ -481,8 +481,8 @@ export async function getWalletSpendEditContextAction(transactionId: string) {
   if (
     !tx ||
     tx.direction !== "DEBIT" ||
-    tx.kind !== "SPEND" ||
-    tx.legacyImported
+    tx.legacyImported ||
+    (tx.kind !== "SPEND" && tx.kind !== "LEGACY")
   ) {
     return { error: await actionError("spendNotEditable") };
   }
@@ -625,8 +625,8 @@ export async function updateWalletSpendAction(formData: FormData) {
       if (
         !anchor ||
         anchor.direction !== "DEBIT" ||
-        anchor.kind !== "SPEND" ||
-        anchor.legacyImported
+        anchor.legacyImported ||
+        (anchor.kind !== "SPEND" && anchor.kind !== "LEGACY")
       ) {
         throw new Error("NOT_EDITABLE");
       }
@@ -737,6 +737,7 @@ export async function updateWalletSpendAction(formData: FormData) {
       await db.walletTransaction.update({
         where: { id: keep.id },
         data: {
+          kind: "SPEND",
           amountVnd: primaryDebit,
           budgetPackageId: primary.id,
           splitGroupId,

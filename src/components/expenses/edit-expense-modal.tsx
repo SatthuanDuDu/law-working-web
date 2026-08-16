@@ -39,11 +39,9 @@ function digitsOnly(raw: string) {
 }
 
 export function canEditSpendTx(tx: WalletTxListItem) {
-  return (
-    tx.direction === "DEBIT" &&
-    tx.kind === "SPEND" &&
-    !tx.legacyImported
-  );
+  if (tx.direction !== "DEBIT" || tx.legacyImported) return false;
+  // Pre-package spends were stored as LEGACY; still editable wallet debits.
+  return tx.kind === "SPEND" || tx.kind === "LEGACY";
 }
 
 export function EditExpenseModal({

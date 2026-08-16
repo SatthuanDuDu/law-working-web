@@ -460,7 +460,14 @@ export function PackageDetailView({
                     {tx.kind ? ` · ${tx.kind}` : ""}
                     {tx.spendCategoryName ? ` · ${tx.spendCategoryName}` : ""}
                   </span>
-                  <span className="text-sm font-semibold tabular-nums">
+                  <span
+                    className={cn(
+                      "inline-flex items-center rounded-md px-2 py-0.5 text-sm font-semibold tabular-nums text-white",
+                      tx.direction === "CREDIT"
+                        ? "bg-emerald-600"
+                        : "bg-rose-600",
+                    )}
+                  >
                     {tx.direction === "CREDIT" ? "+" : "−"}
                     {formatVndDigits(tx.amountVnd)} ₫
                   </span>

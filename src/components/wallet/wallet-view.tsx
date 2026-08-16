@@ -410,63 +410,79 @@ export function WalletView({
           </EmptyState>
         ) : (
           <ul className={cn(listDivideClass, "rounded-md border border-border")}>
-            {filtered.map((tx) => (
-              <li key={tx.id} className={cn(listRowClass, "flex flex-col gap-1")}>
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className="text-sm font-medium">
-                    {tx.direction === "CREDIT" ? t("credit") : t("debit")}
-                    {tx.budgetPackageName ? ` · ${tx.budgetPackageName}` : ""}
-                    {tx.spendCategoryName ? ` · ${tx.spendCategoryName}` : ""}
-                    {tx.legacyImported ? ` (${t("legacy")})` : ""}
-                  </span>
-                  <span
-                    className={cn(
-                      "text-sm font-semibold tabular-nums",
-                      tx.direction === "CREDIT"
-                        ? "text-emerald-700"
-                        : "text-foreground",
-                    )}
-                  >
-                    {tx.direction === "CREDIT" ? "+" : "−"}
-                    {formatVndDigits(tx.amountVnd)} ₫
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {formatWhen(tx.createdAt)}
-                  {" · "}
-                  {t("afterBalance")}: {formatVndDigits(tx.balanceAfterVnd)} ₫
-                </p>
-                {tx.direction === "CREDIT" && tx.allocatedByName ? (
-                  <p className="text-xs text-muted-foreground">
-                    {t("allocatedBy")}: {tx.allocatedByName}
-                    {tx.note ? ` — ${tx.note}` : ""}
-                  </p>
-                ) : null}
-                {tx.detail ? (
-                  <p className="text-sm text-foreground/90">{tx.detail}</p>
-                ) : null}
-                {tx.matterCode ? (
-                  <p className="text-xs text-muted-foreground">
-                    {tx.matterCode} — {tx.matterTitle}
-                    {tx.planStepTitle ? ` · ${tx.planStepTitle}` : ""}
-                  </p>
-                ) : null}
-                <WalletReceiptLinks attachments={tx.attachments ?? []} />
-                {canEditSpendTx(tx) ? (
-                  <div className="pt-1">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="interactive-press h-8"
-                      onClick={() => setEditTx(tx)}
+            {filtered.map((tx) => {
+              const metaBits = [
+                formatWhen(tx.createdAt),
+                `${t("afterBalance")}: ${formatVndDigits(tx.balanceAfterVnd)} ₫`,
+              ];
+              if (tx.direction === "CREDIT" && tx.allocatedByName) {
+                metaBits.push(`${t("allocatedBy")}: ${tx.allocatedByName}`);
+              }
+              if (tx.matterCode) {
+                metaBits.push(
+                  `${tx.matterCode}${tx.planStepTitle ? ` · ${tx.planStepTitle}` : ""}`,
+                );
+              }
+              const subtitle =
+                tx.detail?.trim() ||
+                (tx.direction === "CREDIT" ? tx.note?.trim() : null) ||
+                null;
+
+              return (
+                <li
+                  key={tx.id}
+                  className={cn(listRowClass, "flex flex-col gap-1 py-2")}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1 space-y-0.5">
+                      <p className="truncate text-sm font-medium leading-snug">
+                        {tx.direction === "CREDIT" ? t("credit") : t("debit")}
+                        {tx.budgetPackageName
+                          ? ` · ${tx.budgetPackageName}`
+                          : ""}
+                        {tx.spendCategoryName
+                          ? ` · ${tx.spendCategoryName}`
+                          : ""}
+                        {tx.legacyImported ? ` (${t("legacy")})` : ""}
+                      </p>
+                      {subtitle ? (
+                        <p className="truncate text-sm leading-snug text-foreground/90">
+                          {subtitle}
+                        </p>
+                      ) : null}
+                      <p className="truncate text-[11px] leading-snug text-muted-foreground">
+                        {metaBits.join(" · ")}
+                      </p>
+                    </div>
+                    <span
+                      className={cn(
+                        "inline-flex shrink-0 items-center rounded-md px-2 py-0.5 text-sm font-semibold tabular-nums text-white",
+                        tx.direction === "CREDIT"
+                          ? "bg-emerald-600"
+                          : "bg-rose-600",
+                      )}
                     >
-                      {t("editSpend")}
-                    </Button>
+                      {tx.direction === "CREDIT" ? "+" : "−"}
+                      {formatVndDigits(tx.amountVnd)} ₫
+                    </span>
                   </div>
-                ) : null}
-              </li>
-            ))}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <WalletReceiptLinks attachments={tx.attachments ?? []} />
+                    {canEditSpendTx(tx) ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="interactive-press h-7 px-2 text-xs"
+                        onClick={() => setEditTx(tx)}
+                      >
+                        {t("editSpend")}
+                      </Button>
+                    ) : null}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
       </SectionPanel>

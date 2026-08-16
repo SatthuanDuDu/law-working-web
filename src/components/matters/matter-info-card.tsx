@@ -164,12 +164,12 @@ export async function MatterInfoCard({
     <Card className={cn("rounded-md", className)}>
       <CardHeader
         className={cn(
-          "flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 p-3.5 pb-2 sm:p-4 sm:pb-2.5",
+          "flex flex-row flex-nowrap items-center justify-between gap-2 space-y-0 p-3.5 pb-2 sm:p-4 sm:pb-2.5",
           stickyHeader &&
-            "xl:sticky xl:top-3 xl:z-10 xl:rounded-t-md xl:border-b xl:border-border xl:bg-surface/95 xl:backdrop-blur-sm",
+            "@5xl/workspace:border-b @5xl/workspace:border-border",
         )}
       >
-        <CardTitle className="text-sm font-semibold sm:text-base">
+        <CardTitle className="min-w-0 truncate text-sm font-semibold sm:text-base">
           {t("info")}
         </CardTitle>
         <MatterStatusControl

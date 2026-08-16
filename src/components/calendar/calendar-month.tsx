@@ -61,6 +61,8 @@ function useNowMs(intervalMs = 30_000) {
 
 const CALENDAR_CHIP_BASE =
   "interactive-press flex w-full min-w-0 items-center gap-0.5 rounded px-1 py-0.5 text-left text-[10px] font-medium text-white sm:gap-1 sm:px-1.5 sm:text-[11px]";
+/** Week-row floor so a day cell can show the date header + at least 4 chips. */
+const MONTH_WEEK_ROW_MIN = "10.75rem";
 const CALENDAR_CHIP_NORMAL = "bg-primary hover:bg-primary-hover";
 const CALENDAR_CHIP_URGENT =
   "bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600";
@@ -1952,19 +1954,21 @@ export function CalendarMonth({
           )}
         >
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-            <div className="grid min-w-0 shrink-0 grid-cols-7 gap-0.5 text-center text-[10px] font-semibold uppercase text-muted-foreground sm:gap-2 sm:text-xs">
+            <div className="grid min-w-0 shrink-0 grid-cols-7 gap-0.5 px-px text-center text-[10px] font-semibold uppercase text-muted-foreground sm:gap-2 sm:px-0.5 sm:text-xs">
                 {weekdayLabels.map((d) => (
                   <div key={d} className="py-1 sm:py-2">
                     {d}
                   </div>
                 ))}
               </div>
-              <div
-                className="mt-1 grid min-h-0 min-w-0 flex-1 grid-cols-7 gap-0.5 sm:mt-0 sm:gap-2"
-                style={{
-                  gridTemplateRows: `repeat(${monthWeekCount}, minmax(0, 1fr))`,
-                }}
-              >
+              <div className="mt-1 min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain p-px sm:mt-0 sm:p-0.5">
+                <div
+                  data-calendar-month-grid
+                  className="grid min-h-full min-w-0 grid-cols-7 gap-0.5 sm:gap-2"
+                  style={{
+                    gridTemplateRows: `repeat(${monthWeekCount}, minmax(${MONTH_WEEK_ROW_MIN}, 1fr))`,
+                  }}
+                >
                 {monthDays.map((day) => {
                   const key = format(day, "yyyy-MM-dd");
                   const dayTasks = tasksByDay.get(key) ?? [];
@@ -1999,7 +2003,8 @@ export function CalendarMonth({
                         inMonth
                           ? "border-border bg-surface/80 hover:border-primary/30 hover:bg-primary-muted-hover"
                           : "border-border/50 bg-muted/40 text-muted-foreground hover:bg-primary-muted/40",
-                        isSameDay(day, new Date()) && "ring-2 ring-primary/40",
+                        isSameDay(day, new Date()) &&
+                          "ring-2 ring-inset ring-primary/40",
                       )}
                     >
                       <div className="flex shrink-0 items-center justify-between gap-1">
@@ -2037,6 +2042,7 @@ export function CalendarMonth({
                     </div>
                   );
                 })}
+                </div>
               </div>
           </div>
         </section>

@@ -89,6 +89,27 @@ function toDatetimeLocalValue(iso: string | null): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+function StepMetaItem({
+  label,
+  children,
+  className,
+}: {
+  label: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("min-w-0", className)}>
+      <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground sm:text-[11px]">
+        {label}
+      </dt>
+      <dd className="mt-0.5 min-w-0 break-words text-sm font-medium leading-snug text-foreground">
+        {children}
+      </dd>
+    </div>
+  );
+}
+
 function OutlinedField({
   label,
   htmlFor,
@@ -223,10 +244,6 @@ export function MatterPlanTimeline({
       setEditError(t("titleRequired"));
       return;
     }
-    if (!editDraft.assigneeIds.length) {
-      setEditError(t("assigneeRequired"));
-      return;
-    }
     setEditError("");
     const formData = new FormData();
     formData.set("id", editingId);
@@ -244,6 +261,52 @@ export function MatterPlanTimeline({
         setEditError(result.error);
         return;
       }
+      const startedIso = editDraft.startedAt
+        ? new Date(editDraft.startedAt).toISOString()
+        : null;
+      const dueIso = editDraft.dueAt
+        ? new Date(editDraft.dueAt).toISOString()
+        : null;
+      const nextWorkType =
+        workTypes.find((item) => item.id === editDraft.workTypeId) ?? null;
+      const assigneeById = new Map(
+        [...assigneeOptions, ...orderedSteps.flatMap((s) => s.assignees)].map(
+          (user) => [user.id, user],
+        ),
+      );
+      setOrderedSteps((prev) =>
+        prev.map((item) =>
+          item.id === editingId
+            ? {
+                ...item,
+                title: nextTitle,
+                workType: nextWorkType,
+                assignees: editDraft.assigneeIds.flatMap((id) => {
+                  const user = assigneeById.get(id);
+                  if (!user) return [];
+                  return [
+                    {
+                      id: user.id,
+                      name: user.name,
+                      avatarKey:
+                        "avatarKey" in user && typeof user.avatarKey === "string"
+                          ? user.avatarKey
+                          : null,
+                    },
+                  ];
+                }),
+                startedAt: startedIso,
+                dueAt: dueIso,
+                priority: editDraft.priority,
+                locationName: editDraft.location?.name ?? null,
+                locationAddress: editDraft.location?.address ?? null,
+                locationPlaceId: editDraft.location?.placeId ?? null,
+                locationLat: editDraft.location?.lat ?? null,
+                locationLng: editDraft.location?.lng ?? null,
+              }
+            : item,
+        ),
+      );
       cancelEdit();
       refresh();
     });
@@ -410,7 +473,7 @@ export function MatterPlanTimeline({
             ) : null}
           </div>
         ) : (
-          <ol className="relative ml-0 min-w-0 space-y-0 border-l-2 border-primary/40 pl-7 pt-1 sm:ml-2 sm:pl-9">
+          <ol className="relative ml-0 min-w-0 space-y-0 border-l-2 border-primary/40 pl-5 pt-1 @md/workspace:ml-1 @md/workspace:pl-7 @xl/workspace:ml-2 @xl/workspace:pl-9">
             {orderedSteps.map((step, index) => {
               const isDragging = draggingId === step.id;
               const isDropTarget =
@@ -441,7 +504,7 @@ export function MatterPlanTimeline({
                         : undefined
                     }
                     className={cn(
-                      "group relative min-w-0 rounded-md border border-border/50 bg-[color-mix(in_oklab,var(--muted)_8%,var(--surface))] p-3 transition-[border-color,background-color,transform] duration-150 sm:p-4",
+                      "@container/step group relative min-w-0 rounded-md border border-border/50 bg-[color-mix(in_oklab,var(--muted)_8%,var(--surface))] p-3 transition-[border-color,background-color,transform] duration-150 @min-[28rem]/step:p-4",
                       canEdit &&
                         !editingId &&
                         "cursor-grab active:cursor-grabbing",
@@ -452,7 +515,7 @@ export function MatterPlanTimeline({
                         "border-primary/50 bg-surface ring-1 ring-primary/25",
                     )}
                   >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="flex flex-col gap-3 @min-[32rem]/step:flex-row @min-[32rem]/step:items-start @min-[32rem]/step:justify-between">
                       <div className="flex min-w-0 flex-1 gap-2">
                         {canEdit && !isEditing ? (
                           <span
@@ -503,7 +566,7 @@ export function MatterPlanTimeline({
                                 />
                               </OutlinedField>
 
-                              <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+                              <div className="grid min-w-0 gap-4 @min-[28rem]/step:grid-cols-2">
                                 <OutlinedField
                                   label={t("workType")}
                                   htmlFor={`edit-work-type-${step.id}`}
@@ -610,7 +673,7 @@ export function MatterPlanTimeline({
                                 disabled={isUpdatingStep}
                               />
 
-                              <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+                              <div className="grid min-w-0 gap-4 @min-[28rem]/step:grid-cols-2">
                                 <DatetimeLocalWithNow
                                   id={`edit-started-${step.id}`}
                                   label={t("startedAt")}
@@ -665,9 +728,7 @@ export function MatterPlanTimeline({
                                 <Button
                                   type="submit"
                                   disabled={
-                                    isUpdatingStep ||
-                                    !editDraft.title.trim() ||
-                                    !editDraft.assigneeIds.length
+                                    isUpdatingStep || !editDraft.title.trim()
                                   }
                                 >
                                   {isUpdatingStep
@@ -727,87 +788,65 @@ export function MatterPlanTimeline({
                                 ) : null}
                               </div>
 
-                              <dl className="grid min-w-0 gap-3 border-t border-border/70 pt-3 sm:grid-cols-3">
-                                <div className="min-w-0">
-                                  <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                                    {t("workTypeMeta")}
-                                  </dt>
-                                  <dd className="mt-1 break-words text-sm font-medium text-foreground">
-                                    {step.workType?.name ?? "—"}
-                                  </dd>
-                                </div>
-                                <div className="min-w-0 sm:col-span-2">
-                                  <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                                    {t("assigneeMeta")}
-                                  </dt>
-                                  <dd className="mt-1">
-                                    {step.assignees.length > 0 ? (
-                                      <ul className="flex min-w-0 flex-wrap gap-x-3 gap-y-1.5">
-                                        {step.assignees.map((user) => (
-                                          <li
-                                            key={user.id}
-                                            className="flex min-w-0 max-w-full items-center gap-2"
-                                          >
-                                            <UserAvatar
-                                              userId={user.id}
-                                              name={user.name}
-                                              avatarKey={user.avatarKey}
-                                              size="sm"
-                                              className="h-6 w-6 shrink-0 text-[10px]"
-                                            />
-                                            <span className="min-w-0 truncate text-sm font-medium text-foreground">
-                                              {user.name}
-                                            </span>
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    ) : (
-                                      <span className="text-sm font-medium text-foreground">
-                                        —
-                                      </span>
-                                    )}
-                                  </dd>
-                                </div>
-                                <div className="min-w-0">
-                                  <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                                    {t("startedMeta")}
-                                  </dt>
-                                  <dd className="mt-1 break-words text-sm font-medium tabular-nums text-foreground">
+                              <dl className="grid min-w-0 grid-cols-1 gap-x-4 gap-y-2.5 border-t border-border/70 pt-3 @min-[22rem]/step:grid-cols-2">
+                                <StepMetaItem label={t("workTypeMeta")}>
+                                  {step.workType?.name ?? "—"}
+                                </StepMetaItem>
+                                <StepMetaItem label={t("assigneeMeta")}>
+                                  {step.assignees.length > 0 ? (
+                                    <ul className="flex min-w-0 flex-wrap gap-x-3 gap-y-1.5">
+                                      {step.assignees.map((user) => (
+                                        <li
+                                          key={user.id}
+                                          className="flex min-w-0 max-w-full items-center gap-2"
+                                        >
+                                          <UserAvatar
+                                            userId={user.id}
+                                            name={user.name}
+                                            avatarKey={user.avatarKey}
+                                            size="sm"
+                                            className="h-6 w-6 shrink-0 text-[10px]"
+                                          />
+                                          <span className="min-w-0 truncate text-sm font-medium text-foreground">
+                                            {user.name}
+                                          </span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  ) : (
+                                    "—"
+                                  )}
+                                </StepMetaItem>
+                                <StepMetaItem label={t("startedMeta")}>
+                                  <span className="tabular-nums">
                                     {step.startedAt
                                       ? formatDateTime(step.startedAt, locale)
                                       : "—"}
-                                  </dd>
-                                </div>
-                                <div className="min-w-0">
-                                  <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                                    {t("dueMeta")}
-                                  </dt>
-                                  <dd className="mt-1 break-words text-sm font-medium tabular-nums text-foreground">
+                                  </span>
+                                </StepMetaItem>
+                                <StepMetaItem label={t("dueMeta")}>
+                                  <span className="tabular-nums">
                                     {step.dueAt
                                       ? formatDateTime(step.dueAt, locale)
                                       : "—"}
-                                  </dd>
-                                </div>
-                                <div className="min-w-0 sm:col-span-3">
-                                  <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                                    {t("locationMeta")}
-                                  </dt>
-                                  <dd className="mt-1 min-w-0">
-                                    {(() => {
-                                      const loc = locationFromPrismaFields(step);
-                                      return loc ? (
-                                        <LocationChip
-                                          location={loc}
-                                          className="w-full max-w-full sm:w-auto sm:max-w-full"
-                                        />
-                                      ) : (
-                                        <span className="text-sm font-medium text-foreground">
-                                          —
-                                        </span>
-                                      );
-                                    })()}
-                                  </dd>
-                                </div>
+                                  </span>
+                                </StepMetaItem>
+                                <StepMetaItem
+                                  label={t("locationMeta")}
+                                  className="@min-[22rem]/step:col-span-2"
+                                >
+                                  {(() => {
+                                    const loc = locationFromPrismaFields(step);
+                                    return loc ? (
+                                      <LocationChip
+                                        location={loc}
+                                        className="w-auto max-w-full"
+                                      />
+                                    ) : (
+                                      "—"
+                                    );
+                                  })()}
+                                </StepMetaItem>
                               </dl>
                             </div>
                           )}
@@ -816,7 +855,7 @@ export function MatterPlanTimeline({
                       {canEdit ? (
                         <div
                           data-no-drag
-                          className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto"
+                          className="flex w-full flex-wrap items-center gap-1.5 @min-[32rem]/step:w-auto @min-[32rem]/step:shrink-0"
                           onMouseDown={(event) => event.stopPropagation()}
                         >
                           {!isEditing ? (
@@ -832,7 +871,7 @@ export function MatterPlanTimeline({
                                         .value as MatterPlanStepStatus,
                                     )
                                   }
-                                  className="h-9 w-full min-w-0 appearance-none rounded-md py-0 pl-3 pr-9 text-center sm:w-auto sm:min-w-[10rem]"
+                                  className="h-9 w-full min-w-0 appearance-none rounded-md py-0 pl-3 pr-9 text-center @min-[32rem]/step:w-auto @min-[32rem]/step:min-w-[10rem]"
                                   aria-label={t("statusLabel")}
                                 >
                                   {(

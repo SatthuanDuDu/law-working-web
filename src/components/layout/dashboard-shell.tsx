@@ -90,7 +90,7 @@ export function DashboardShell({
                 <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
                   <main
                     className={cn(
-                      "min-w-0 flex-1 px-3 sm:px-5 lg:px-6",
+                      "@container/workspace min-w-0 flex-1 px-3 sm:px-5 lg:px-6",
                       flushTopUnderHeader
                         ? "pt-0"
                         : "pt-3 sm:pt-4 lg:pt-5",

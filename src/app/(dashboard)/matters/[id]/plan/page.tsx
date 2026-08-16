@@ -187,9 +187,9 @@ export default async function MatterPlanPage({
     <>
       <PageHeaderSlot title={tPages("title")} />
 
-      <div className="grid min-w-0 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-        {/* Left column — pin to row 1 / top so it cannot wrap under the timeline */}
-        <aside className="order-1 min-w-0 space-y-3 self-start xl:sticky xl:top-3 xl:z-10">
+      <div className="grid min-w-0 items-start gap-5 @5xl/workspace:grid-cols-[minmax(16rem,18.5rem)_minmax(0,1fr)] @5xl/workspace:gap-6">
+        {/* Info rail: full width when workspace is squeezed; left column when main ≥ 64rem */}
+        <aside className="order-1 min-w-0 space-y-3 self-start @5xl/workspace:sticky @5xl/workspace:top-0 @5xl/workspace:z-10">
           <MatterInfoCard
             matter={matter}
             canEditStatus={canEditStatus}
@@ -202,7 +202,7 @@ export default async function MatterPlanPage({
         </aside>
 
         <Card className="order-2 min-w-0 overflow-visible rounded-md self-start">
-          <CardContent className="overflow-visible p-4 sm:p-6">
+          <CardContent className="overflow-visible p-3.5 sm:p-4">
             <MatterPlanTimeline
               matterId={matter.id}
               steps={planSteps}

@@ -206,10 +206,10 @@ function NavLinkContent({
         {collapsed && badgeText ? (
           <span
             className={cn(
-              "absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full px-0.5 text-[10px] font-semibold leading-none",
+              "absolute -right-2 -top-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold leading-none tabular-nums",
               active
                 ? "bg-white/25 text-white"
-                : "bg-accent text-white",
+                : "bg-rose-500 text-white",
             )}
           >
             {badgeText}
@@ -220,10 +220,10 @@ function NavLinkContent({
       {!collapsed && badgeText ? (
         <span
           className={cn(
-            "ml-auto shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
+            "ml-auto inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold leading-none tabular-nums",
             active
-              ? "bg-white/20 text-white"
-              : "bg-muted text-muted-foreground group-hover/nav:bg-primary/15 group-hover/nav:text-primary",
+              ? "bg-white/25 text-white"
+              : "bg-rose-500 text-white",
           )}
         >
           {badgeText}

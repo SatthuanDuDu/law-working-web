@@ -44,28 +44,36 @@ export function MatterOverviewExport({
   }
 
   return (
-    <div className={cn("space-y-1.5", className)}>
+    <div
+      className={cn(
+        "space-y-2 rounded-md border border-primary/15 bg-primary-muted/80 p-2.5 sm:p-3",
+        className,
+      )}
+    >
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:text-[11px]">
+        {t("label")}
+      </p>
       <div className="flex flex-wrap gap-2">
         <Button
           type="button"
           size="sm"
-          variant="outline"
+          variant="default"
           disabled={pending}
-          className="interactive-press h-9 gap-1.5 px-3 text-sm"
+          className="interactive-press h-9 min-w-[7.5rem] flex-1 gap-1.5 px-3 text-sm sm:flex-none"
           onClick={() => run("pdf")}
         >
-          <FileDown className="h-3.5 w-3.5" aria-hidden />
+          <FileDown className="h-4 w-4 shrink-0" aria-hidden />
           {t("exportPdf")}
         </Button>
         <Button
           type="button"
           size="sm"
-          variant="outline"
+          variant="default"
           disabled={pending}
-          className="interactive-press h-9 gap-1.5 px-3 text-sm"
+          className="interactive-press h-9 min-w-[7.5rem] flex-1 gap-1.5 px-3 text-sm sm:flex-none"
           onClick={() => run("docx")}
         >
-          <FileText className="h-3.5 w-3.5" aria-hidden />
+          <FileText className="h-4 w-4 shrink-0" aria-hidden />
           {t("exportWord")}
         </Button>
       </div>

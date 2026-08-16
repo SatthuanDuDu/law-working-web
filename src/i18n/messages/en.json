@@ -353,6 +353,7 @@
     "reportTab": "Report",
     "overview": "Overview",
     "overviewExport": {
+      "label": "Export overview",
       "exportPdf": "Export PDF",
       "exportWord": "Export Word",
       "failed": "Failed to export matter overview"

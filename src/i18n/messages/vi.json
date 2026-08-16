@@ -353,6 +353,7 @@
     "reportTab": "Báo cáo",
     "overview": "Tổng quan",
     "overviewExport": {
+      "label": "Xuất tổng quan",
       "exportPdf": "Xuất PDF",
       "exportWord": "Xuất Word",
       "failed": "Xuất tổng quan thất bại"

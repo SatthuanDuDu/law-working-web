@@ -2,6 +2,7 @@ import { subHours } from "date-fns";
 import type { PrismaClient } from "@prisma/client";
 import { notifyUsersPush } from "@/lib/web-push";
 import { endOfVietnamDayPlus, startOfVietnamDay } from "@/lib/datetime";
+import { MATTER_EDIT_LOCKED_STATUSES } from "@/lib/matter-status";
 
 const DEFAULT_BATCH_SIZE = 100;
 
@@ -52,6 +53,19 @@ export async function generateDeadlineReminders(
         dueDate: { not: null, lte: windowEnd },
         status: { in: ["TODO", "IN_PROGRESS"] },
         OR: [...dueWindowOr],
+        AND: [
+          {
+            OR: [
+              { matterId: null },
+              {
+                matter: {
+                  deletedAt: null,
+                  status: { notIn: [...MATTER_EDIT_LOCKED_STATUSES] },
+                },
+              },
+            ],
+          },
+        ],
       },
       select: {
         id: true,
@@ -67,6 +81,10 @@ export async function generateDeadlineReminders(
         dueAt: { not: null, lte: windowEnd },
         status: { in: ["NOT_STARTED", "IN_PROGRESS"] },
         OR: [...planDueWindowOr],
+        matter: {
+          deletedAt: null,
+          status: { notIn: [...MATTER_EDIT_LOCKED_STATUSES] },
+        },
       },
       select: {
         id: true,
@@ -84,6 +102,19 @@ export async function generateDeadlineReminders(
         isDone: false,
         dueDate: { not: null, lte: windowEnd },
         OR: [...dueWindowOr],
+        AND: [
+          {
+            OR: [
+              { matterId: null },
+              {
+                matter: {
+                  deletedAt: null,
+                  status: { notIn: [...MATTER_EDIT_LOCKED_STATUSES] },
+                },
+              },
+            ],
+          },
+        ],
       },
       select: {
         id: true,

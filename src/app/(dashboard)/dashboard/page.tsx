@@ -38,6 +38,7 @@ import {
 import { getLabelMaps } from "@/i18n/server-labels";
 import { getTranslations } from "next-intl/server";
 import { getAccessibleMatterIds } from "@/lib/access";
+import { isMatterEditLocked } from "@/lib/matter-status";
 import type { MatterStatus, TaskPriority, TaskStatus } from "@prisma/client";
 import type { Prisma } from "@prisma/client";
 
@@ -46,6 +47,7 @@ const STATUS_BAR_CLASS: Record<MatterStatus, string> = {
   IN_PROGRESS: "bg-amber-500",
   ON_HOLD: "bg-rose-500",
   CLOSED: "bg-emerald-500",
+  TERMINATED: "bg-violet-500",
   ARCHIVED: "bg-slate-500",
 };
 
@@ -54,6 +56,7 @@ const STATUS_ORDER: MatterStatus[] = [
   "IN_PROGRESS",
   "ON_HOLD",
   "CLOSED",
+  "TERMINATED",
   "ARCHIVED",
 ];
 
@@ -353,7 +356,7 @@ export default async function DashboardPage() {
     })),
     ...upcomingPlanSteps.map((step) => {
       const canEditPlan =
-        step.matter.status !== "ARCHIVED" &&
+        !isMatterEditLocked(step.matter.status) &&
         (isManagerOrAbove(user.role) ||
           step.matter.leadLawyerId === user.id ||
           step.matter.members.some((member) => member.userId === user.id));

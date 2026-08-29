@@ -22,6 +22,7 @@ Out of scope: related tasks, attachment file lists, budget, PNG.
   are marked `full` and span the width.
 - Status uses a tonal pill driven by `statusTone` in the model (never by matching the
   translated text): NEW info / IN_PROGRESS warn / ON_HOLD danger / CLOSED success /
+  TERMINATED danger / ARCHIVED neutral.
   NOT_STARTED neutral / DONE success / BLOCKED danger.
 - Step banner carries the title (`Bước 1 / 3 · <title>`), so there is no `Tiêu đề:` row.
 - "Bình luận" is omitted entirely when a step has none.

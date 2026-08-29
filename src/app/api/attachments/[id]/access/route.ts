@@ -9,6 +9,10 @@ import {
   canViewAttachmentContent,
   isMatterOrPlanDocument,
 } from "@/lib/attachment-access";
+import {
+  isMatterEditLocked,
+  MATTER_EDIT_LOCKED_MESSAGE,
+} from "@/lib/matter-status";
 
 const MODES: AttachmentAccessMode[] = ["ALL_MEMBERS", "ALLOWLIST", "DENYLIST"];
 
@@ -107,7 +111,7 @@ export async function GET(
       user.id,
       user.role,
       matter.leadLawyerId,
-    ) && matter.status !== "ARCHIVED",
+    ) && !isMatterEditLocked(matter.status),
     leadLawyerId: matter.leadLawyerId,
     candidates,
   });
@@ -158,9 +162,9 @@ export async function PUT(
   if (!matter) {
     return NextResponse.json({ error: "Không tìm thấy vụ việc" }, { status: 404 });
   }
-  if (matter.status === "ARCHIVED") {
+  if (isMatterEditLocked(matter.status)) {
     return NextResponse.json(
-      { error: "Vụ việc đã lưu trữ — không thể chỉnh quyền xem" },
+      { error: MATTER_EDIT_LOCKED_MESSAGE },
       { status: 403 },
     );
   }

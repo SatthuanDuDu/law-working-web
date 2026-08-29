@@ -205,7 +205,8 @@
       "NEW": "New",
       "IN_PROGRESS": "In progress",
       "ON_HOLD": "On hold",
-      "CLOSED": "Closed",
+      "CLOSED": "Completed",
+      "TERMINATED": "Terminated",
       "ARCHIVED": "Archived"
     },
     "matterType": {
@@ -228,7 +229,7 @@
       "NOT_STARTED": "Not started",
       "IN_PROGRESS": "In progress",
       "DONE": "Done",
-      "BLOCKED": "Blocked"
+      "BLOCKED": "Waiting"
     },
     "taskStatus": {
       "TODO": "To do",
@@ -450,7 +451,7 @@
       "planSteps": "Plan steps",
       "inProgress": "In progress",
       "done": "Done",
-      "blocked": "Blocked",
+      "blocked": "Waiting",
       "recentActivity": "Recent activity",
       "noActivity": "No activity yet.",
       "relatedTasks": "Related tasks",
@@ -1042,6 +1043,11 @@
     "attachedTitle": "Attachments",
     "upload": "Upload",
     "dragDropHint": "Drop files here",
+    "dragDropFolderHint": "Drop files or folders here",
+    "uploadFolder": "Upload folder",
+    "folderImportConfirmTitle": "Confirm folder upload",
+    "folderImportHint": "Will create folder(s): {names}",
+    "folderNameExists": "A folder named \"{name}\" already exists",
     "uploading": "Uploading…",
     "uploadPercent": "{pct}%",
     "empty": "No documents yet",

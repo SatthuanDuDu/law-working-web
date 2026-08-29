@@ -9,7 +9,8 @@ import type {
  * Soft Material You tonal surfaces for status / priority chips.
  * Prefer muted fills + readable text — never saturated white-on-color fills.
  *
- * Matter status palette (rule): NEW=sky, IN_PROGRESS=amber, ON_HOLD=rose, CLOSED=emerald.
+ * Matter status palette (rule): NEW=sky, IN_PROGRESS=amber, ON_HOLD=rose,
+ * CLOSED=emerald, TERMINATED=violet, ARCHIVED=slate.
  */
 
 export const MATTER_STATUS_TONES: Record<MatterStatus, string> = {
@@ -19,6 +20,8 @@ export const MATTER_STATUS_TONES: Record<MatterStatus, string> = {
   ON_HOLD: "bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300",
   CLOSED:
     "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300",
+  TERMINATED:
+    "bg-violet-100 text-violet-800 dark:bg-violet-950/50 dark:text-violet-300",
   ARCHIVED: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200",
 };
 

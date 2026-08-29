@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getAccessibleMatterIds } from "@/lib/access";
 import { isUrgentReminderActive } from "@/lib/urgent-reminder-window";
 import { VIETNAM_TIMEZONE } from "@/lib/datetime";
+import { MATTER_EDIT_LOCKED_STATUSES } from "@/lib/matter-status";
 import type { Role } from "@prisma/client";
 import type { UrgentReminderItem } from "@/components/layout/urgent-reminder-stack";
 
@@ -30,7 +31,10 @@ export async function getUrgentReminders(
   const steps = await prisma.matterPlanStep.findMany({
     where: {
       status: { in: ["NOT_STARTED", "IN_PROGRESS"] },
-      matter: { deletedAt: null },
+      matter: {
+        deletedAt: null,
+        status: { notIn: [...MATTER_EDIT_LOCKED_STATUSES] },
+      },
       AND: [
         {
           OR: [
@@ -105,6 +109,15 @@ export async function getUrgentReminders(
         gte: twoHoursAgo,
         lte: withinTwoHours,
       },
+      OR: [
+        { matterId: null },
+        {
+          matter: {
+            deletedAt: null,
+            status: { notIn: [...MATTER_EDIT_LOCKED_STATUSES] },
+          },
+        },
+      ],
     },
     select: { id: true, title: true, dueDate: true },
     orderBy: { dueDate: "asc" },

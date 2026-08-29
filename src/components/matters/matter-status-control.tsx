@@ -9,12 +9,14 @@ import { cn } from "@/lib/utils";
 import { matterStatusChipClass } from "@/components/ui/status-chip";
 import { useTranslations } from "next-intl";
 import type { MatterStatus } from "@prisma/client";
+import { isMatterEditLocked } from "@/lib/matter-status";
 
 const STATUS_DOT_CLASS: Record<MatterStatus, string> = {
   NEW: "bg-sky-500",
   IN_PROGRESS: "bg-amber-500",
   ON_HOLD: "bg-rose-500",
   CLOSED: "bg-emerald-500",
+  TERMINATED: "bg-violet-500",
   ARCHIVED: "bg-slate-500",
 };
 
@@ -23,6 +25,7 @@ const WORKFLOW_STATUSES: MatterStatus[] = [
   "IN_PROGRESS",
   "ON_HOLD",
   "CLOSED",
+  "TERMINATED",
 ];
 
 /** Read-only / trigger chip — same palette as status picker */
@@ -88,8 +91,8 @@ export function MatterStatusControl({
     optimisticStatus !== null && optimisticStatus !== status
       ? optimisticStatus
       : status;
-  const isArchived = currentStatus === "ARCHIVED";
-  const canOpenMenu = canEdit || (isAdmin && isArchived);
+  const isLocked = isMatterEditLocked(currentStatus);
+  const canOpenMenu = canEdit || (isAdmin && isLocked);
 
   useEffect(() => {
     return () => {
@@ -158,7 +161,7 @@ export function MatterStatusControl({
   }
 
   const busy = isPending || feedback !== "idle";
-  const menuItems: { value: MatterStatus; label: string }[] = isArchived
+  const menuItems: { value: MatterStatus; label: string }[] = isLocked
     ? isAdmin
       ? [{ value: "IN_PROGRESS", label: matterStatus.IN_PROGRESS }]
       : []

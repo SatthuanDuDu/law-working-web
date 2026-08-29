@@ -5,6 +5,10 @@ import { canAccessAttachmentTarget } from "@/lib/access";
 import { buildStorageKey, createUploadUrl, deleteObject } from "@/lib/storage";
 import { createAuditLog } from "@/lib/audit";
 import { canManageMatterDocuments } from "@/lib/permissions";
+import {
+  isMatterEditLocked,
+  MATTER_EDIT_LOCKED_MESSAGE,
+} from "@/lib/matter-status";
 
 const MAX_SIZE_BYTES = 25 * 1024 * 1024;
 
@@ -68,9 +72,9 @@ export async function POST(
     where: { id: current.matterId },
     select: { status: true },
   });
-  if (matter?.status === "ARCHIVED") {
+  if (isMatterEditLocked(matter?.status)) {
     return NextResponse.json(
-      { error: "Vụ việc đã lưu trữ — không thể thay thế tài liệu" },
+      { error: MATTER_EDIT_LOCKED_MESSAGE },
       { status: 403 },
     );
   }

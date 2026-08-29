@@ -9,6 +9,10 @@ import {
   canViewAttachmentContent,
   cleanupAttachmentAccessIfOrphan,
 } from "@/lib/attachment-access";
+import {
+  isMatterEditLocked,
+  MATTER_EDIT_LOCKED_MESSAGE,
+} from "@/lib/matter-status";
 
 export async function GET(
   request: Request,
@@ -96,9 +100,9 @@ export async function PATCH(
     where: { id: attachment.matterId },
     select: { status: true },
   });
-  if (matter?.status === "ARCHIVED") {
+  if (isMatterEditLocked(matter?.status)) {
     return NextResponse.json(
-      { error: "Vụ việc đã lưu trữ — không thể chỉnh sửa" },
+      { error: MATTER_EDIT_LOCKED_MESSAGE },
       { status: 403 },
     );
   }
@@ -194,9 +198,9 @@ export async function DELETE(
       where: { id: attachment.matterId },
       select: { status: true },
     });
-    if (matter?.status === "ARCHIVED") {
+    if (isMatterEditLocked(matter?.status)) {
       return NextResponse.json(
-        { error: "Vụ việc đã lưu trữ — không thể xóa tài liệu" },
+        { error: MATTER_EDIT_LOCKED_MESSAGE },
         { status: 403 },
       );
     }

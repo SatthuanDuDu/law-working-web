@@ -9,6 +9,8 @@ Quy tắc: một slice = một việc end-to-end nhỏ. Chỉ một slice active
 - _(trống)_
 
 ## Done
+- [x] Matter status `TERMINATED` (Chấm dứt) + nhãn CLOSED → Hoàn thành; khóa sửa + tắt reminder như lưu trữ — `ai/docs/matter-status-terminated.md`
+- [x] Upload folder từ máy (nút + kéo-thả) → MatterFolder tên = folder local; hiện ở tài liệu chung vụ việc (hub + plan) — `ai/docs/matter-folder-upload.md`
 - [x] Core product: auth, matters, tasks, docs, dashboard (đã ship trước khi scaffold `ai/`)
 - [x] Project rules Material You + verify-before-handoff
 - [x] Context hygiene — chốt PRD/PLAN baseline + mô hình ví tạm ứng trong PRD

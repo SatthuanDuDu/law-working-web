@@ -13,6 +13,10 @@ import {
   filterVisibleAttachments,
   getAccessSummaries,
 } from "@/lib/attachment-access";
+import {
+  isMatterEditLocked,
+  MATTER_EDIT_LOCKED_MESSAGE,
+} from "@/lib/matter-status";
 
 const MAX_SIZE_BYTES = 25 * 1024 * 1024;
 
@@ -331,9 +335,9 @@ export async function POST(request: Request) {
       where: { id: resolvedMatterId },
       select: { status: true },
     });
-    if (matter?.status === "ARCHIVED") {
+    if (isMatterEditLocked(matter?.status)) {
       return NextResponse.json(
-        { error: "Vụ việc đã lưu trữ — không thể tải lên tài liệu" },
+        { error: MATTER_EDIT_LOCKED_MESSAGE },
         { status: 403 },
       );
     }

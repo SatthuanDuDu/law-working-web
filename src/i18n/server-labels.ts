@@ -22,6 +22,7 @@ export async function getLabelMaps() {
       IN_PROGRESS: t("matterStatus.IN_PROGRESS"),
       ON_HOLD: t("matterStatus.ON_HOLD"),
       CLOSED: t("matterStatus.CLOSED"),
+      TERMINATED: t("matterStatus.TERMINATED"),
       ARCHIVED: t("matterStatus.ARCHIVED"),
     },
     matterType: {

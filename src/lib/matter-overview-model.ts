@@ -26,6 +26,7 @@ const MATTER_STATUS_TONE: Record<MatterStatus, MatterOverviewTone> = {
   IN_PROGRESS: "warn",
   ON_HOLD: "danger",
   CLOSED: "success",
+  TERMINATED: "danger",
   ARCHIVED: "neutral",
 };
 

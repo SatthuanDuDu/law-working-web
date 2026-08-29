@@ -24,6 +24,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDateTime, cn } from "@/lib/utils";
+import {
+  collectFromDataTransfer,
+  groupFilesFromDirectoryInput,
+  type DroppedFolder,
+} from "@/lib/browser-folder-files";
 import type { AttachmentOrigin } from "@/lib/attachment-origin";
 import type { AttachmentAccessMode } from "@prisma/client";
 
@@ -106,6 +111,10 @@ export function AttachmentPanel({
   const [folders, setFolders] = useState<FolderItem[]>([]);
   const [folderFilter, setFolderFilter] = useState<FolderFilter>("all");
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [pendingImportFolders, setPendingImportFolders] = useState<
+    DroppedFolder[]
+  >([]);
+  const [pendingLooseFiles, setPendingLooseFiles] = useState<File[]>([]);
   const [newFolderName, setNewFolderName] = useState("");
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [error, setError] = useState("");
@@ -117,6 +126,7 @@ export function AttachmentPanel({
   >({});
   const replaceInputRef = useRef<HTMLInputElement>(null);
   const dropInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
   const [replaceTargetId, setReplaceTargetId] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{
@@ -131,7 +141,47 @@ export function AttachmentPanel({
   function queuePendingFiles(files: File[]) {
     if (files.length === 0) return;
     setError("");
+    setPendingImportFolders([]);
+    setPendingLooseFiles([]);
     setPendingFiles(files);
+  }
+
+  function queueFolderImport(folders: DroppedFolder[], looseFiles: File[] = []) {
+    const usable = folders.filter((f) => f.name.trim() && f.files.length > 0);
+    if (usable.length === 0 && looseFiles.length === 0) return;
+    setError("");
+    if (usable.length === 0) {
+      setPendingImportFolders([]);
+      setPendingLooseFiles([]);
+      setPendingFiles(looseFiles);
+      return;
+    }
+    setPendingImportFolders(usable);
+    setPendingLooseFiles(looseFiles);
+    setPendingFiles([
+      ...usable.flatMap((f) => f.files),
+      ...looseFiles,
+    ]);
+  }
+
+  async function createMatterFolder(name: string): Promise<string | null> {
+    if (!matterId) return null;
+    const res = await fetch("/api/matter-folders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ matterId, name: name.trim().slice(0, 80) }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(
+        data.error ||
+          (res.status === 409
+            ? t("folderNameExists", { name })
+            : t("folderCreateFailed")),
+      );
+      return null;
+    }
+    return typeof data.folder?.id === "string" ? data.folder.id : null;
   }
 
   // Folders apply to any matter attachment (hub, report, plan step). Compact
@@ -599,34 +649,69 @@ export function AttachmentPanel({
   }
 
   const uploadControl = canUpload ? (
-    <label className="inline-flex cursor-pointer">
-      <input
-        type="file"
-        className="hidden"
-        multiple
-        disabled={isPending}
-        onChange={(e) => {
-          queuePendingFiles(Array.from(e.target.files ?? []));
-          e.target.value = "";
-        }}
-      />
-      <span
-        className={cn(
-          "interactive-press inline-flex items-center gap-2 rounded-md bg-primary font-medium text-white hover:bg-primary-hover",
-          compact ? "h-8 px-2.5 text-xs" : "h-9 px-3 text-sm",
-        )}
-      >
-        <FileUp className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
-        {t("upload")}
-      </span>
-    </label>
+    <div className="flex flex-wrap items-center gap-2">
+      <label className="inline-flex cursor-pointer">
+        <input
+          type="file"
+          className="hidden"
+          multiple
+          disabled={isPending}
+          onChange={(e) => {
+            queuePendingFiles(Array.from(e.target.files ?? []));
+            e.target.value = "";
+          }}
+        />
+        <span
+          className={cn(
+            "interactive-press inline-flex items-center gap-2 rounded-md bg-primary font-medium text-white hover:bg-primary-hover",
+            compact ? "h-8 px-2.5 text-xs" : "h-9 px-3 text-sm",
+          )}
+        >
+          <FileUp className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
+          {t("upload")}
+        </span>
+      </label>
+      {foldersEnabled ? (
+        <label className="inline-flex cursor-pointer">
+          <input
+            ref={(el) => {
+              folderInputRef.current = el;
+              if (el) {
+                el.setAttribute("webkitdirectory", "");
+                el.setAttribute("directory", "");
+              }
+            }}
+            type="file"
+            className="hidden"
+            multiple
+            disabled={isPending}
+            onChange={(e) => {
+              const groups = groupFilesFromDirectoryInput(e.target.files ?? []);
+              queueFolderImport(groups);
+              e.target.value = "";
+            }}
+          />
+          <span
+            className={cn(
+              "interactive-press inline-flex items-center gap-2 rounded-md border border-border bg-surface font-medium text-foreground hover:bg-primary-muted",
+              compact ? "h-8 px-2.5 text-xs" : "h-9 px-3 text-sm",
+            )}
+          >
+            <FolderPlus className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
+            {t("uploadFolder")}
+          </span>
+        </label>
+      ) : null}
+    </div>
   ) : null;
 
   const dropZone = canUpload ? (
     <div
       role="button"
       tabIndex={isPending ? -1 : 0}
-      aria-label={t("dragDropHint")}
+      aria-label={
+        foldersEnabled ? t("dragDropFolderHint") : t("dragDropHint")
+      }
       onClick={() => {
         if (isPending) return;
         dropInputRef.current?.click();
@@ -654,7 +739,23 @@ export function AttachmentPanel({
         e.stopPropagation();
         setDragActive(false);
         if (isPending) return;
-        queuePendingFiles(Array.from(e.dataTransfer.files ?? []));
+        const dt = e.dataTransfer;
+        void (async () => {
+          if (!foldersEnabled) {
+            queuePendingFiles(Array.from(dt.files ?? []));
+            return;
+          }
+          try {
+            const payload = await collectFromDataTransfer(dt);
+            if (payload.folders.length > 0) {
+              queueFolderImport(payload.folders, payload.looseFiles);
+            } else {
+              queuePendingFiles(payload.looseFiles);
+            }
+          } catch {
+            queuePendingFiles(Array.from(dt.files ?? []));
+          }
+        })();
       }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -684,7 +785,7 @@ export function AttachmentPanel({
       />
       <FileUp className={cn(compact ? "h-4 w-4" : "h-5 w-5")} />
       <p className={cn("font-medium", compact ? "text-xs" : "text-sm")}>
-        {t("dragDropHint")}
+        {foldersEnabled ? t("dragDropFolderHint") : t("dragDropHint")}
       </p>
     </div>
   ) : null;
@@ -1248,17 +1349,165 @@ export function AttachmentPanel({
       open={pendingFiles.length > 0}
       files={pendingFiles}
       labels={labels}
-      folders={foldersEnabled ? folders : undefined}
+      folders={
+        foldersEnabled && pendingImportFolders.length === 0
+          ? folders
+          : undefined
+      }
       initialFolderId={
-        foldersEnabled && folderFilter !== "all" && folderFilter !== "unfiled"
+        foldersEnabled &&
+        pendingImportFolders.length === 0 &&
+        folderFilter !== "all" &&
+        folderFilter !== "unfiled"
           ? folderFilter
           : null
       }
-      onCancel={() => setPendingFiles([])}
-      onConfirm={({ labelId, customLabel, folderId }) => {
-        const files = pendingFiles;
+      importFolderNames={
+        pendingImportFolders.length > 0
+          ? pendingImportFolders.map((f) => f.name)
+          : undefined
+      }
+      onCancel={() => {
         setPendingFiles([]);
-        if (files.length) runUploadBatch(files, labelId, customLabel, folderId);
+        setPendingImportFolders([]);
+        setPendingLooseFiles([]);
+      }}
+      onConfirm={({ labelId, customLabel, folderId }) => {
+        const imports = pendingImportFolders;
+        const loose = pendingLooseFiles;
+        const plainFiles =
+          pendingImportFolders.length === 0 ? pendingFiles : [];
+        setPendingFiles([]);
+        setPendingImportFolders([]);
+        setPendingLooseFiles([]);
+
+        if (imports.length === 0) {
+          if (plainFiles.length) {
+            runUploadBatch(plainFiles, labelId, customLabel, folderId);
+          }
+          return;
+        }
+
+        startTransition(async () => {
+          setError("");
+          const createdIds: string[] = [];
+          let failed = 0;
+          const folderFileCount = imports.reduce(
+            (n, f) => n + f.files.length,
+            0,
+          );
+          const totalFiles = folderFileCount + loose.length;
+          let done = 0;
+          setUploadProgress({
+            pct: 0,
+            current: 1,
+            total: Math.max(totalFiles, 1),
+            fileName: imports[0]?.files[0]?.name ?? loose[0]?.name ?? "",
+          });
+
+          async function uploadOne(file: File, targetFolderId: string | null) {
+            const prepare = await fetch("/api/attachments", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                fileName: file.name,
+                mimeType: file.type || "application/octet-stream",
+                sizeBytes: file.size,
+                matterId,
+                taskId,
+                clientId,
+                matterPlanStepId,
+                labelId,
+                customLabel,
+                folderId: foldersEnabled ? targetFolderId : null,
+              }),
+            });
+            const prepared = await prepare.json().catch(() => ({}));
+            if (!prepare.ok) {
+              failed += 1;
+              done += 1;
+              setError(prepared.error || t("uploadSessionFailed"));
+              return;
+            }
+
+            const { putAttachmentBytes } = await import("@/lib/browser-upload");
+            const uploaded = await putAttachmentBytes({
+              attachmentId: prepared.attachment.id,
+              uploadUrl: prepared.uploadUrl,
+              file,
+              mimeType: file.type || "application/octet-stream",
+              onProgress: (filePct) => {
+                const overall = Math.round(
+                  ((done + filePct / 100) / totalFiles) * 100,
+                );
+                setUploadProgress({
+                  pct: overall,
+                  current: done + 1,
+                  total: totalFiles,
+                  fileName: file.name,
+                });
+              },
+            });
+
+            if (!uploaded.ok) {
+              await fetch(`/api/attachments/${prepared.attachment.id}`, {
+                method: "DELETE",
+              });
+              failed += 1;
+              setError(
+                uploaded.corsLikely ? t("uploadCorsFailed") : t("uploadFailed"),
+              );
+            }
+            done += 1;
+          }
+
+          try {
+            for (const group of imports) {
+              const newFolderId = await createMatterFolder(group.name);
+              if (!newFolderId) {
+                failed += group.files.length;
+                done += group.files.length;
+                continue;
+              }
+              createdIds.push(newFolderId);
+
+              for (const file of group.files) {
+                setUploadProgress({
+                  pct: Math.round((done / totalFiles) * 100),
+                  current: done + 1,
+                  total: totalFiles,
+                  fileName: file.name,
+                });
+                await uploadOne(file, newFolderId);
+              }
+            }
+
+            for (const file of loose) {
+              setUploadProgress({
+                pct: Math.round((done / totalFiles) * 100),
+                current: done + 1,
+                total: totalFiles,
+                fileName: file.name,
+              });
+              await uploadOne(file, null);
+            }
+
+            await refreshFolders();
+            await refreshAttachments();
+            if (createdIds.length === 1) {
+              selectFolderFilter(createdIds[0]!);
+            } else if (createdIds.length > 1) {
+              selectFolderFilter("all");
+            }
+            if (failed > 0 && failed < totalFiles) {
+              setError(
+                t("uploadPartialFailed", { failed, total: totalFiles }),
+              );
+            }
+          } finally {
+            setUploadProgress(null);
+          }
+        });
       }}
     />
   );

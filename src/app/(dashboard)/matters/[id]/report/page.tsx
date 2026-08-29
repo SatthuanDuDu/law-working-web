@@ -18,6 +18,7 @@ import {
 } from "@/lib/attachment-access";
 import { getLabelMaps } from "@/i18n/server-labels";
 import { getTranslations } from "next-intl/server";
+import { isMatterEditLocked } from "@/lib/matter-status";
 
 const CommentThread = dynamic(
   () =>
@@ -89,18 +90,18 @@ export default async function MatterReportPage({
   if (!matter || matter.deletedAt) notFound();
 
   const { taskStatus, planStepStatus } = labels;
-  const isArchived = matter.status === "ARCHIVED";
+  const isLocked = isMatterEditLocked(matter.status);
   const canEditContent =
-    !isArchived &&
+    !isLocked &&
     (isManagerOrAbove(user.role) ||
       matter.leadLawyerId === user.id ||
       matter.members.some((member) => member.userId === user.id));
   const canEditStatus =
-    (!isArchived && canEditContent) || (isArchived && isAdmin(user.role));
+    (!isLocked && canEditContent) || (isLocked && isAdmin(user.role));
   const canManageDocs =
     canEditContent && canManageMatterDocuments(user.role);
   const canEditMembers =
-    !isArchived &&
+    !isLocked &&
     (isManagerOrAbove(user.role) || matter.leadLawyerId === user.id);
   const formData = canEditMembers ? await getMatterFormData(user) : null;
 

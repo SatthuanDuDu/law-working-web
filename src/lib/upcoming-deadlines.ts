@@ -2,6 +2,7 @@ import type { Role, TaskStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getAccessibleMatterIds } from "@/lib/access";
 import { endOfVietnamDayPlus } from "@/lib/datetime";
+import { MATTER_EDIT_LOCKED_STATUSES } from "@/lib/matter-status";
 
 /**
  * Open tasks + plan steps that are overdue or due through end of day +3 days
@@ -16,6 +17,15 @@ export async function getUpcomingDueCount(userId: string, role: Role) {
     assigneeId: userId,
     status: { in: ["TODO", "IN_PROGRESS"] satisfies TaskStatus[] },
     dueDate: { lte: soonEnd },
+    OR: [
+      { matterId: null },
+      {
+        matter: {
+          deletedAt: null,
+          status: { notIn: [...MATTER_EDIT_LOCKED_STATUSES] },
+        },
+      },
+    ],
   };
 
   const [taskCount, planCount] = await Promise.all([
@@ -24,6 +34,10 @@ export async function getUpcomingDueCount(userId: string, role: Role) {
       where: {
         dueAt: { not: null, lte: soonEnd },
         status: { not: "DONE" },
+        matter: {
+          deletedAt: null,
+          status: { notIn: [...MATTER_EDIT_LOCKED_STATUSES] },
+        },
         ...(matterIds ? { matterId: { in: matterIds } } : {}),
       },
     }),

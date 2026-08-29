@@ -24,6 +24,10 @@ import { generateMatterCode } from "@/lib/matter-code";
 import { parseAppDateTime } from "@/lib/datetime";
 import { generateClientCode } from "@/lib/client-code";
 import { getAccessibleClientIds, getAccessibleMatterIds, assertMatterNotArchived } from "@/lib/access";
+import {
+  isMatterEditLocked,
+  MATTER_EDIT_LOCKED_MESSAGE,
+} from "@/lib/matter-status";
 import { deleteObject } from "@/lib/storage";
 import { actionError } from "@/i18n/server-labels";
 import { notifyUsersPush } from "@/lib/web-push";
@@ -552,9 +556,12 @@ export async function updateMatterAction(matterId: string, formData: FormData) {
 
   const existing = await prisma.matter.findUnique({
     where: { id: matterId },
-    select: { id: true, code: true, clientId: true },
+    select: { id: true, code: true, clientId: true, status: true },
   });
   if (!existing) return { error: await actionError("matterNotFound") };
+  if (isMatterEditLocked(existing.status)) {
+    return { error: MATTER_EDIT_LOCKED_MESSAGE };
+  }
 
   const parsed = parseMatterFormPayload(formData);
   if (!parsed.success) {
@@ -670,8 +677,8 @@ export async function updateMatterMembersAction(
     },
   });
   if (!matter) return { error: await actionError("matterNotFound") };
-  if (matter.status === "ARCHIVED") {
-    return { error: await actionError("noPermission") };
+  if (isMatterEditLocked(matter.status)) {
+    return { error: MATTER_EDIT_LOCKED_MESSAGE };
   }
 
   const isLead = matter.leadLawyerId === user.id;
@@ -798,9 +805,9 @@ async function assertCanEditMatterPlan(userId: string, role: Parameters<typeof i
   });
   if (!matter) return { error: await actionError("matterNotFound"), matter: null };
 
-  if (matter.status === "ARCHIVED") {
+  if (isMatterEditLocked(matter.status)) {
     return {
-      error: "Vụ việc đã lưu trữ — chỉ được xem, không thể chỉnh sửa" as const,
+      error: MATTER_EDIT_LOCKED_MESSAGE,
       matter: null,
     };
   }
@@ -1504,7 +1511,7 @@ export async function reorderMatterPlanStepsAction(matterId: string, orderedIds:
 
 export async function updateMatterStatusAction(matterId: string, status: string) {
   const user = await requireAuth();
-  const allowed = ["NEW", "IN_PROGRESS", "ON_HOLD", "CLOSED", "ARCHIVED"] as const;
+  const allowed = ["NEW", "IN_PROGRESS", "ON_HOLD", "CLOSED", "TERMINATED", "ARCHIVED"] as const;
   if (!allowed.includes(status as (typeof allowed)[number])) {
     return { error: "Trạng thái không hợp lệ" };
   }
@@ -1525,13 +1532,19 @@ export async function updateMatterStatusAction(matterId: string, status: string)
   const nextStatus = status as (typeof allowed)[number];
   const leavingArchive = matter.status === "ARCHIVED" && nextStatus !== "ARCHIVED";
   const enteringArchive = nextStatus === "ARCHIVED" && matter.status !== "ARCHIVED";
+  const leavingTerminated =
+    matter.status === "TERMINATED" && nextStatus !== "TERMINATED";
 
   if ((enteringArchive || leavingArchive) && !isAdmin(user.role)) {
     return { error: "Chỉ quản trị viên mới được lưu trữ hoặc tái kích hoạt vụ việc" };
   }
 
-  if (matter.status === "ARCHIVED" && !isAdmin(user.role)) {
-    return { error: "Vụ việc đã lưu trữ — không thể đổi trạng thái" };
+  if (leavingTerminated && !isAdmin(user.role)) {
+    return { error: "Chỉ quản trị viên mới được mở lại vụ việc đã chấm dứt" };
+  }
+
+  if (isMatterEditLocked(matter.status) && !isAdmin(user.role)) {
+    return { error: "Vụ việc đã lưu trữ hoặc chấm dứt — không thể đổi trạng thái" };
   }
 
   const previousStatus = matter.status;
@@ -1604,7 +1617,7 @@ export async function bulkUpdateMatterStatusAction(
   status: string,
 ) {
   const user = await requireAuth();
-  const allowed = ["NEW", "IN_PROGRESS", "ON_HOLD", "CLOSED", "ARCHIVED"] as const;
+  const allowed = ["NEW", "IN_PROGRESS", "ON_HOLD", "CLOSED", "TERMINATED", "ARCHIVED"] as const;
   if (!allowed.includes(status as (typeof allowed)[number])) {
     return { error: "Trạng thái không hợp lệ" };
   }
@@ -1635,10 +1648,15 @@ export async function bulkUpdateMatterStatusAction(
       matter.status === "ARCHIVED" && nextStatus !== "ARCHIVED";
     const enteringArchive =
       nextStatus === "ARCHIVED" && matter.status !== "ARCHIVED";
+    const leavingTerminated =
+      matter.status === "TERMINATED" && nextStatus !== "TERMINATED";
     if ((enteringArchive || leavingArchive) && !isAdmin(user.role)) {
       return false;
     }
-    if (matter.status === "ARCHIVED" && !isAdmin(user.role)) {
+    if (leavingTerminated && !isAdmin(user.role)) {
+      return false;
+    }
+    if (isMatterEditLocked(matter.status) && !isAdmin(user.role)) {
       return false;
     }
     return true;
@@ -1648,7 +1666,7 @@ export async function bulkUpdateMatterStatusAction(
     return {
       error: isAdmin(user.role)
         ? "Không có vụ việc nào để cập nhật"
-        : "Chỉ quản trị viên mới được lưu trữ / tái kích hoạt, hoặc vụ việc đã lưu trữ không thể đổi trạng thái",
+        : "Chỉ quản trị viên mới được lưu trữ / mở lại vụ chấm dứt, hoặc vụ đã khóa không thể đổi trạng thái",
     };
   }
 

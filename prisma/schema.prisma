@@ -25,6 +25,7 @@ enum MatterStatus {
   IN_PROGRESS
   ON_HOLD
   CLOSED
+  TERMINATED
   ARCHIVED
 }
 

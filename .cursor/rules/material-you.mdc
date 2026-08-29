@@ -47,3 +47,5 @@ Use saturated fill on the active tag; keep the open menu plain (label + subtle h
 - IN_PROGRESS — amber / caution tonal
 - ON_HOLD — rose / pause tonal
 - CLOSED — emerald / success tonal
+- TERMINATED — violet / ended tonal
+- ARCHIVED — slate / archive tonal

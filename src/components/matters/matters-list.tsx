@@ -36,6 +36,7 @@ const BULK_STATUSES: MatterStatus[] = [
   "IN_PROGRESS",
   "ON_HOLD",
   "CLOSED",
+  "TERMINATED",
 ];
 export type MatterListItem = {
   id: string;

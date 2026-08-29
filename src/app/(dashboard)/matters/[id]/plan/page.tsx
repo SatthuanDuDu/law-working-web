@@ -17,6 +17,7 @@ import {
   getAccessSummaries,
 } from "@/lib/attachment-access";
 import { getTranslations } from "next-intl/server";
+import { isMatterEditLocked } from "@/lib/matter-status";
 
 export default async function MatterPlanPage({
   params,
@@ -83,18 +84,18 @@ export default async function MatterPlanPage({
 
   if (!matter || matter.deletedAt) notFound();
 
-  const isArchived = matter.status === "ARCHIVED";
+  const isLocked = isMatterEditLocked(matter.status);
   const canEditContent =
-    !isArchived &&
+    !isLocked &&
     (isManagerOrAbove(user.role) ||
       matter.leadLawyerId === user.id ||
       matter.members.some((member) => member.userId === user.id));
   const canEditStatus =
-    (!isArchived && canEditContent) || (isArchived && isAdmin(user.role));
+    (!isLocked && canEditContent) || (isLocked && isAdmin(user.role));
   const canManageDocs =
     canEditContent && canManageMatterDocuments(user.role);
   const canEditMembers =
-    !isArchived &&
+    !isLocked &&
     (isManagerOrAbove(user.role) || matter.leadLawyerId === user.id);
   const formData = canEditMembers ? await getMatterFormData(user) : null;
 

@@ -4,6 +4,10 @@ import { getSessionUser } from "@/lib/session";
 import { canAccessAttachmentTarget } from "@/lib/access";
 import { createAuditLog } from "@/lib/audit";
 import { canManageMatterDocuments } from "@/lib/permissions";
+import {
+  isMatterEditLocked,
+  MATTER_EDIT_LOCKED_MESSAGE,
+} from "@/lib/matter-status";
 
 export async function GET(request: Request) {
   const user = await getSessionUser();
@@ -66,9 +70,9 @@ export async function POST(request: Request) {
   if (!matter) {
     return NextResponse.json({ error: "Không tìm thấy vụ việc" }, { status: 404 });
   }
-  if (matter.status === "ARCHIVED") {
+  if (isMatterEditLocked(matter.status)) {
     return NextResponse.json(
-      { error: "Vụ việc đã lưu trữ — không thể tạo thư mục" },
+      { error: MATTER_EDIT_LOCKED_MESSAGE },
       { status: 403 },
     );
   }

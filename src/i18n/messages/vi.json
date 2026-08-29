@@ -205,7 +205,8 @@
       "NEW": "Mới",
       "IN_PROGRESS": "Đang xử lý",
       "ON_HOLD": "Tạm dừng",
-      "CLOSED": "Đóng",
+      "CLOSED": "Hoàn thành",
+      "TERMINATED": "Chấm dứt",
       "ARCHIVED": "Lưu trữ"
     },
     "matterType": {
@@ -228,7 +229,7 @@
       "NOT_STARTED": "Chưa thực hiện",
       "IN_PROGRESS": "Đang thực hiện",
       "DONE": "Hoàn thành",
-      "BLOCKED": "Bị chặn"
+      "BLOCKED": "Đang chờ"
     },
     "taskStatus": {
       "TODO": "Chưa làm",
@@ -450,7 +451,7 @@
       "planSteps": "Bước kế hoạch",
       "inProgress": "Đang thực hiện",
       "done": "Hoàn thành",
-      "blocked": "Bị chặn",
+      "blocked": "Đang chờ",
       "recentActivity": "Hoạt động gần đây",
       "noActivity": "Chưa có hoạt động nào.",
       "relatedTasks": "Task liên quan",
@@ -1042,6 +1043,11 @@
     "attachedTitle": "Tài liệu đính kèm",
     "upload": "Tải lên",
     "dragDropHint": "Kéo thả tệp vào đây",
+    "dragDropFolderHint": "Kéo thả tệp hoặc thư mục vào đây",
+    "uploadFolder": "Thêm thư mục",
+    "folderImportConfirmTitle": "Xác nhận tải thư mục",
+    "folderImportHint": "Sẽ tạo thư mục: {names}",
+    "folderNameExists": "Đã có thư mục tên \"{name}\"",
     "uploading": "Đang tải lên…",
     "uploadPercent": "{pct}%",
     "empty": "Chưa có tài liệu",

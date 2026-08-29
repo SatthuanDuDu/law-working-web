@@ -6,6 +6,10 @@ import {
   canViewAllMatters,
   isManagerOrAbove,
 } from "@/lib/permissions";
+import {
+  isMatterEditLocked,
+  MATTER_EDIT_LOCKED_MESSAGE,
+} from "@/lib/matter-status";
 
 export const getAccessibleMatterIds = cache(async (userId: string, role: Role) => {
   if (canViewAllMatters(role)) return null;
@@ -143,10 +147,8 @@ export async function assertMatterNotArchived(matterId: string) {
     select: { status: true },
   });
   if (!matter) return { error: "Không tìm thấy vụ việc" as const };
-  if (matter.status === "ARCHIVED") {
-    return {
-      error: "Vụ việc đã lưu trữ — chỉ được xem, không thể chỉnh sửa" as const,
-    };
+  if (isMatterEditLocked(matter.status)) {
+    return { error: MATTER_EDIT_LOCKED_MESSAGE };
   }
   return { error: null };
 }

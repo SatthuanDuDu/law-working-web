@@ -19,6 +19,7 @@ function UploadLabelForm({
   labels,
   folders,
   initialFolderId,
+  importFolderNames,
   onCancel,
   onConfirm,
 }: {
@@ -26,6 +27,8 @@ function UploadLabelForm({
   labels: LabelOption[];
   folders?: FolderOption[];
   initialFolderId?: string | null;
+  /** When set, folders will be created from these names — hide folder picker. */
+  importFolderNames?: string[];
   onCancel: () => void;
   onConfirm: (payload: {
     labelId: string | null;
@@ -40,7 +43,8 @@ function UploadLabelForm({
   const [folderId, setFolderId] = useState(initialFolderId ?? "");
   const [error, setError] = useState("");
 
-  const showFolders = folders !== undefined;
+  const importingFolders = Boolean(importFolderNames?.length);
+  const showFolders = folders !== undefined && !importingFolders;
   const fileSummary =
     files.length === 1
       ? files[0]!.name
@@ -68,6 +72,14 @@ function UploadLabelForm({
         {t("uploadDocument")}{" "}
         <span className="font-medium text-foreground">{fileSummary}</span>
       </p>
+      {importingFolders ? (
+        <p className="mt-2 text-sm text-muted-foreground">
+          {t("folderImportHint", {
+            names: (importFolderNames ?? []).join(", "),
+            count: importFolderNames?.length ?? 0,
+          })}
+        </p>
+      ) : null}
       {files.length > 1 ? (
         <ul className="mt-2 max-h-28 space-y-1 overflow-y-auto rounded-md border border-border/70 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
           {files.slice(0, 20).map((file) => (
@@ -134,6 +146,7 @@ export function AttachmentUploadDialog({
   labels,
   folders,
   initialFolderId,
+  importFolderNames,
   onCancel,
   onConfirm,
 }: {
@@ -144,6 +157,7 @@ export function AttachmentUploadDialog({
   labels: LabelOption[];
   folders?: FolderOption[];
   initialFolderId?: string | null;
+  importFolderNames?: string[];
   onCancel: () => void;
   onConfirm: (payload: {
     labelId: string | null;
@@ -159,9 +173,10 @@ export function AttachmentUploadDialog({
     : file
       ? [file]
       : [];
-  const fileKey = resolvedFiles
-    .map((f) => `${f.name}-${f.size}-${f.lastModified}`)
-    .join("|");
+  const fileKey = [
+    ...resolvedFiles.map((f) => `${f.name}-${f.size}-${f.lastModified}`),
+    ...(importFolderNames ?? []),
+  ].join("|");
 
   useEffect(() => {
     if (!mounted) return;
@@ -195,7 +210,9 @@ export function AttachmentUploadDialog({
           id="upload-label-dialog-title"
           className="text-lg font-semibold text-foreground"
         >
-          {t("uploadConfirmTitle")}
+          {importFolderNames?.length
+            ? t("folderImportConfirmTitle")
+            : t("uploadConfirmTitle")}
         </h2>
         <UploadLabelForm
           key={fileKey}
@@ -203,6 +220,7 @@ export function AttachmentUploadDialog({
           labels={labels}
           folders={folders}
           initialFolderId={initialFolderId}
+          importFolderNames={importFolderNames}
           onCancel={onCancel}
           onConfirm={onConfirm}
         />

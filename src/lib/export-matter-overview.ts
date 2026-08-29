@@ -456,7 +456,7 @@ function summaryItems(overview: MatterOverviewModel) {
     { label: "Chưa thực hiện", value: summary.notStarted },
     { label: "Đang làm", value: summary.inProgress },
     { label: "Hoàn thành", value: summary.done },
-    { label: "Bị chặn", value: summary.blocked },
+    { label: "Đang chờ", value: summary.blocked },
   ];
 }
 

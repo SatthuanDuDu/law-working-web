@@ -13,7 +13,8 @@ export const MATTER_STATUS_LABELS = {
   NEW: "Mới",
   IN_PROGRESS: "Đang xử lý",
   ON_HOLD: "Tạm dừng",
-  CLOSED: "Đóng",
+  CLOSED: "Hoàn thành",
+  TERMINATED: "Chấm dứt",
   ARCHIVED: "Lưu trữ",
 } as const;
 
@@ -42,7 +43,7 @@ export const MATTER_PLAN_STEP_STATUS_LABELS = {
   NOT_STARTED: "Chưa thực hiện",
   IN_PROGRESS: "Đang thực hiện",
   DONE: "Hoàn thành",
-  BLOCKED: "Bị chặn",
+  BLOCKED: "Đang chờ",
 } as const;
 
 export const VIETNAM_CITY_SUGGESTIONS = [

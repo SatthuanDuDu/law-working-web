@@ -80,6 +80,8 @@
     "calendarDue": "Lịch & hạn, {count} sắp tới hạn",
     "settings": "Cài đặt",
     "workload": "Phân bổ việc",
+    "workflows": "Workflow",
+    "badgeNew": "NEW",
     "expenses": "Dòng tiền",
     "wallet": "Ví tạm ứng",
     "spendCategories": "Nhóm chi phí",
@@ -92,7 +94,6 @@
     "websiteTraffic": "Lượt truy cập web",
     "matterDetail": "Chi tiết vụ việc",
     "plan": "Lên kế hoạch",
-    "report": "Báo cáo",
     "myWork": "Việc của tôi"
   },
   "pages": {
@@ -104,10 +105,6 @@
     "plan": {
       "title": "Lên kế hoạch vụ việc",
       "description": "Dựng và theo dõi lộ trình thực hiện vụ việc"
-    },
-    "report": {
-      "title": "Báo cáo vụ việc",
-      "description": "Tổng hợp hoạt động và tiến độ vụ việc"
     },
     "matters": {
       "title": "Vụ việc",
@@ -136,6 +133,10 @@
     "workload": {
       "title": "Phân bổ việc",
       "description": "Phân bổ công việc theo nhân viên và phòng ban"
+    },
+    "workflows": {
+      "title": "Workflow",
+      "description": "Thiết kế lộ trình mẫu khi tạo vụ việc mới"
     },
     "expenses": {
       "title": "Dòng tiền nội bộ",
@@ -333,6 +334,7 @@
   },
   "matters": {
     "create": "Tạo vụ việc",
+    "createShort": "Tạo",
     "title": "Tiêu đề",
     "client": "Khách hàng",
     "leadLawyer": "Luật sư phụ trách",
@@ -434,7 +436,14 @@
       "newClientSubtitle": "Điền thông tin khách hàng để gắn vào vụ việc này.",
       "clientFullName": "Họ và tên khách hàng",
       "clientNamePlaceholder": "Nguyễn Văn A",
-      "saveClient": "Lưu khách hàng"
+      "saveClient": "Lưu khách hàng",
+      "workflowLabel": "Workflow",
+      "workflowNone": "— Không chọn workflow —",
+      "workflowLoading": "Đang tải workflow...",
+      "workflowApplied": "{count} bước kế hoạch",
+      "workflowPlanLaterNote": "Mọi chỉnh sửa chi tiết (thời gian, người phụ trách, mô tả…) có thể bổ sung và cập nhật ở trang Kế hoạch sau khi tạo vụ việc.",
+      "editWorkflow": "Chỉnh workflow",
+      "clearWorkflow": "Bỏ workflow"
     },
     "aiSummary": {
       "title": "Tóm tắt AI",
@@ -446,19 +455,29 @@
       "regenerate": "Tạo lại",
       "empty": "Chưa có nội dung tóm tắt."
     },
-    "report": {
-      "currentStatus": "Tình hình hiện tại",
+    "overview": {
+      "timelineTitle": "Lộ trình thực hiện",
+      "progressTitle": "Tiến độ",
+      "startLabel": "Bắt đầu",
+      "dueLabel": "Hạn",
+      "expectedEnd": "Dự kiến xong",
+      "openPlan": "Mở kế hoạch",
+      "openStepAria": "Mở bước kế hoạch: {title}",
+      "expandStep": "Xem chi tiết bước",
+      "collapseStep": "Thu gọn chi tiết bước",
+      "noAssignee": "Chưa có người phụ trách",
+      "overdue": "Quá hạn",
+      "overdueCount": "{count} bước quá hạn",
+      "stepSummary": "{total} bước · {done} xong · {inProgress} đang làm · {waiting} đang chờ",
+      "noSteps": "Chưa có bước kế hoạch. Thêm bước đầu tiên để dựng lộ trình.",
+      "addFirstStep": "Thêm bước đầu tiên",
       "planSteps": "Bước kế hoạch",
       "inProgress": "Đang thực hiện",
       "done": "Hoàn thành",
       "blocked": "Đang chờ",
-      "recentActivity": "Hoạt động gần đây",
-      "noActivity": "Chưa có hoạt động nào.",
-      "relatedTasks": "Task liên quan",
-      "noRelatedTasks": "Chưa có task liên quan.",
-      "dueLabel": "Hạn: {date}",
       "commentsTitle": "Trao đổi / Bình luận",
-      "planFallback": "Kế hoạch"
+      "planFallback": "Kế hoạch",
+      "completedPercent": "{percent}% hoàn thành"
     }
   },
   "filters": {
@@ -500,6 +519,8 @@
     "deleteStep": "Xóa bước",
     "dragHint": "Kéo thẻ để đổi thứ tự bước",
     "docsTitle": "Tài liệu & trao đổi",
+    "docsExpand": "Xem file & bình luận",
+    "docsCollapse": "Thu gọn file & bình luận",
     "statusLabel": "Trạng thái:",
     "workTypeLabel": "Loại công việc:",
     "startedLabel": "Diễn ra:",
@@ -570,6 +591,7 @@
   },
   "clients": {
     "create": "Thêm khách hàng",
+    "createShort": "Thêm",
     "code": "Mã khách hàng",
     "codeAutoHint": "Để trống để tự tạo",
     "name": "Tên khách hàng",
@@ -1030,7 +1052,7 @@
     "addLocation": "Vị trí",
     "attachmentOnly": "(Đính kèm)",
     "removeFile": "Gỡ {name}",
-    "fileTooLarge": "File phải nhỏ hơn 25MB",
+    "fileTooLarge": "File phải nhỏ hơn 500MB",
     "uploadSessionFailed": "Không thể tạo phiên upload",
     "uploadFailed": "Upload lên kho lưu trữ thất bại",
     "uploadCorsFailed": "Upload bị chặn (CORS/R2). Kiểm tra CORS bucket và S3_PUBLIC_ENDPOINT trên Vercel.",
@@ -1748,5 +1770,63 @@
     "markOpen": "Mở lại",
     "editTitle": "Sửa tiêu đề",
     "doneHidden": "Đã hoàn thành ({count})"
+  },
+  "workflows": {
+    "addTitle": "Thêm workflow",
+    "listTitle": "Danh sách workflow",
+    "nameLabel": "Tên workflow",
+    "namePlaceholder": "VD: Tranh chấp dân sự cơ bản",
+    "descriptionLabel": "Mô tả",
+    "descriptionPlaceholder": "Mô tả ngắn khi nào dùng mẫu này",
+    "activeLabel": "Đang bật",
+    "stepsTitle": "Các bước",
+    "addStep": "Thêm bước",
+    "noStepsYet": "Chưa có bước. Thêm ít nhất một bước.",
+    "stepTitleLabel": "Tên bước",
+    "stepTitlePlaceholder": "VD: Thu thập hồ sơ",
+    "stepDescriptionLabel": "Mô tả",
+    "stepDescriptionPlaceholder": "Mô tả ngắn công việc của bước",
+    "moveUp": "Lên trên",
+    "moveDown": "Xuống dưới",
+    "removeStep": "Xóa bước",
+    "stepsRequired": "Workflow cần ít nhất một bước có tên",
+    "createButton": "Tạo workflow",
+    "confirmCreateTitle": "Xác nhận tạo workflow",
+    "confirmCreateMessage": "Tạo workflow \"{name}\"?",
+    "created": "Đã tạo workflow",
+    "searchPlaceholder": "Tìm workflow...",
+    "filterAll": "Tất cả",
+    "filterActive": "Đang bật",
+    "filterInactive": "Đã tắt",
+    "emptyTitle": "Chưa có workflow",
+    "emptyDescription": "Chưa có workflow nào. Tạo mẫu lộ trình đầu tiên để dùng khi mở vụ việc mới.",
+    "flowEditorHint": "Thiết kế lộ trình tuần tự — mỗi bước nối tiếp từ trên xuống.",
+    "flowCanvasHint": "Di chuột giữa các bước để thêm · bấm bước để chỉnh",
+    "startMarker": "Bắt đầu",
+    "endMarker": "Kết thúc",
+    "insertStep": "Chèn bước",
+    "expandStep": "Mở bước {number}",
+    "stepCount": "{count} bước",
+    "activeBadge": "Đang bật",
+    "inactiveBadge": "Đã tắt",
+    "deactivate": "Tắt",
+    "activate": "Bật",
+    "editTitle": "Sửa workflow",
+    "deleteConfirmTitle": "Xóa workflow",
+    "deleteConfirmMessage": "Xóa workflow \"{name}\"? Vụ việc đã tạo không bị ảnh hưởng.",
+    "apply": {
+      "title": "Tùy chỉnh workflow",
+      "hint": "Chỉnh nhanh tên, mô tả, thời gian hoặc người phụ trách nếu muốn — không bắt buộc. Chi tiết có thể bổ sung sau ở trang Kế hoạch.",
+      "addStep": "Thêm bước",
+      "moveUp": "Lên trên",
+      "moveDown": "Xuống dưới",
+      "removeStep": "Xóa bước",
+      "stepTitleLabel": "Tên bước",
+      "stepTitlePlaceholder": "Tên công việc của bước",
+      "stepDescriptionLabel": "Mô tả",
+      "stepsRequired": "Cần ít nhất một bước có tên",
+      "applyButton": "Áp dụng workflow",
+      "assigneeCount": "{count} người nhận"
+    }
   }
 }

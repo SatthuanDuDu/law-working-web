@@ -9,6 +9,9 @@ Quy tắc: một slice = một việc end-to-end nhỏ. Chỉ một slice active
 - _(trống)_
 
 ## Done
+- [x] Workflow UI flow redesign — list pipeline + modal rail + apply dialog — `ai/docs/workflow-templates.md`
+- [x] Workflow mẫu — tab `/workflows` (Manager+), chọn khi tạo vụ việc + popup customize — `ai/docs/workflow-templates.md`
+- [x] Matter hub overview — timeline + tiến độ trên tab vụ việc; bỏ report page + task liên quan — `ai/docs/matter-hub-overview.md`
 - [x] Matter status `TERMINATED` (Chấm dứt) + nhãn CLOSED → Hoàn thành; khóa sửa + tắt reminder như lưu trữ — `ai/docs/matter-status-terminated.md`
 - [x] Upload folder từ máy (nút + kéo-thả) → MatterFolder tên = folder local; hiện ở tài liệu chung vụ việc (hub + plan) — `ai/docs/matter-folder-upload.md`
 - [x] Core product: auth, matters, tasks, docs, dashboard (đã ship trước khi scaffold `ai/`)

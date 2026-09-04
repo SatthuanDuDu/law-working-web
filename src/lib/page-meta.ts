@@ -14,6 +14,7 @@ const PAGE_KEYS: Record<string, string> = {
   "/settings": "settings",
   "/chat": "chat",
   "/workload": "workload",
+  "/workflows": "workflows",
   "/expenses": "expenses",
   "/wallet": "wallet",
   "/admin/spend-categories": "spendCategories",
@@ -42,11 +43,6 @@ export function getPageMeta(pathname: string, tPages?: PagesT): PageMeta {
         title: tPages ? tPages("plan.title") : "Lên kế hoạch vụ việc",
       };
     }
-    if (/\/report\/?$/.test(pathname)) {
-      return {
-        title: tPages ? tPages("report.title") : "Báo cáo vụ việc",
-      };
-    }
     return {
       title: tPages ? tPages("matterDetail.title") : "Chi tiết vụ việc",
     };
@@ -66,7 +62,7 @@ export async function resolveServerPageMeta(
   pathname: string,
   tPages?: PagesT,
 ): Promise<PageMeta> {
-  const match = pathname.match(/^\/matters\/([^/]+)(?:\/(plan|report))?\/?$/);
+  const match = pathname.match(/^\/matters\/([^/]+)(?:\/(plan))?\/?$/);
   if (match) {
     const [, id, section] = match;
     const matter = await prisma.matter.findFirst({
@@ -81,11 +77,6 @@ export async function resolveServerPageMeta(
       if (section === "plan") {
         return {
           title: tPages ? tPages("plan.title") : "Lên kế hoạch vụ việc",
-        };
-      }
-      if (section === "report") {
-        return {
-          title: tPages ? tPages("report.title") : "Báo cáo vụ việc",
         };
       }
       return { title: matter.title };

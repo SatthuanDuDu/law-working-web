@@ -46,8 +46,7 @@ import { AttachmentViewer } from "@/components/attachments/attachment-viewer";
 import { AttachmentUploadDialog } from "@/components/attachments/attachment-upload-dialog";
 import { formatDateTime, cn } from "@/lib/utils";
 import { UserAvatar } from "@/components/ui/user-avatar";
-
-const MAX_SIZE_BYTES = 25 * 1024 * 1024;
+import { ATTACHMENT_MAX_BYTES } from "@/lib/upload-limits";
 
 export type CommentMentionUser = {
   id: string;
@@ -716,7 +715,7 @@ function CommentComposer({
     labelId: string | null,
     customLabel: string | null,
   ) {
-    if (file.size <= 0 || file.size > MAX_SIZE_BYTES) {
+    if (file.size <= 0 || file.size > ATTACHMENT_MAX_BYTES) {
       setError(t("fileTooLarge"));
       return;
     }

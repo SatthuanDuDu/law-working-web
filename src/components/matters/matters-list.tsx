@@ -25,6 +25,7 @@ import {
   MattersFiltersBar,
   type MattersFilterState,
 } from "@/components/matters/matters-filters";
+import { CreateMatterButton } from "@/components/matters/create-matter-button";
 import {
   CreateMatterModal,
   type MatterEditInitial,
@@ -658,6 +659,7 @@ export function MattersList({
           <PageToolbar
             actions={
               <>
+                <CreateMatterButton variant="toolbar" />
                 <Button
                   type="button"
                   variant="outline"

@@ -3,27 +3,24 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronDown } from "lucide-react";
+import type { MatterPlanStepStatus } from "@prisma/client";
+import { PLAN_STEP_STATUS_TONES } from "@/lib/status-tokens";
 import { cn } from "@/lib/utils";
 
-export type FilterSelectOption = { value: string; label: string };
-
-/**
- * Compact filter select (button + menu) — uses design-system text-sm.
- * Prefer this over native <select> in filter toolbars so mobile text
- * matches the rest of the UI (native selects are forced to 16px for iOS).
- */
-export function FilterSelect({
+export function PlanStepStatusSelect({
   value,
   onChange,
   options,
-  className,
+  disabled = false,
   "aria-label": ariaLabel,
+  className,
 }: {
-  value: string;
-  onChange: (value: string) => void;
-  options: FilterSelectOption[];
-  className?: string;
+  value: MatterPlanStepStatus;
+  onChange: (value: MatterPlanStepStatus) => void;
+  options: { value: MatterPlanStepStatus; label: string }[];
+  disabled?: boolean;
   "aria-label"?: string;
+  className?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [menuBox, setMenuBox] = useState<{
@@ -37,17 +34,18 @@ export function FilterSelect({
   const listId = useId();
 
   const selected = options.find((option) => option.value === value);
-  const summary = selected?.label ?? options[0]?.label ?? "";
+  const label = selected?.label ?? value;
 
   function measureMenuBox() {
     const rect = buttonRef.current?.getBoundingClientRect();
     if (!rect) return null;
-    const width = Math.min(Math.max(rect.width, 160), window.innerWidth - 16);
+    const width = Math.min(Math.max(rect.width, 168), window.innerWidth - 16);
     const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
     return { top: rect.bottom + 6, left, width };
   }
 
   function openMenu() {
+    if (disabled) return;
     const nextBox = measureMenuBox();
     if (nextBox) setMenuBox(nextBox);
     setOpen(true);
@@ -95,21 +93,27 @@ export function FilterSelect({
       <button
         ref={buttonRef}
         type="button"
+        disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={listId}
         aria-label={ariaLabel}
         onClick={() => (open ? closeMenu() : openMenu())}
         className={cn(
-          "interactive-field flex h-10 w-full cursor-pointer items-center gap-1.5 rounded-md border border-border bg-surface px-3 text-left text-sm leading-normal text-foreground",
-          "hover:border-primary/35 hover:bg-muted/90",
-          open && "border-primary/40 bg-muted/90",
+          "interactive-press inline-flex h-8 w-full min-w-0 items-center justify-between gap-1.5 rounded-full px-2.5 text-left text-xs font-semibold leading-none",
+          "ring-1 ring-inset ring-black/5 dark:ring-white/10",
+          "disabled:cursor-not-allowed disabled:opacity-50",
+          "@min-[32rem]/step:w-auto @min-[32rem]/step:min-w-[8.5rem]",
+          PLAN_STEP_STATUS_TONES[value],
+          open && "ring-primary/25",
         )}
       >
-        <span className="min-w-0 flex-1 truncate">{summary}</span>
+        <span className="min-w-0 flex-1 truncate text-center @min-[32rem]/step:text-left">
+          {label}
+        </span>
         <ChevronDown
           className={cn(
-            "h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform",
+            "h-3.5 w-3.5 shrink-0 opacity-70 transition-transform",
             open && "rotate-180",
           )}
           aria-hidden
@@ -127,7 +131,7 @@ export function FilterSelect({
                 left: menuBox.left,
                 width: menuBox.width,
               }}
-              className="fixed z-[60] max-h-56 overflow-y-auto rounded-md border border-border bg-surface py-1 shadow-[var(--shadow-overlay)]"
+              className="fixed z-[70] max-h-56 overflow-y-auto rounded-md border border-border bg-surface py-1 shadow-[var(--shadow-overlay)]"
             >
               {options.map((option) => {
                 const isSelected = option.value === value;
@@ -136,8 +140,8 @@ export function FilterSelect({
                     <button
                       type="button"
                       className={cn(
-                        "interactive-press flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-muted",
-                        isSelected && "bg-muted font-medium hover:bg-muted",
+                        "interactive-press flex w-full cursor-pointer items-center gap-2 px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-muted",
+                        isSelected && "bg-muted/80 font-medium",
                       )}
                       onClick={() => {
                         onChange(option.value);
@@ -146,16 +150,17 @@ export function FilterSelect({
                     >
                       <span
                         className={cn(
-                          "flex h-4 w-4 shrink-0 items-center justify-center rounded border",
-                          isSelected
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border bg-surface",
+                          "inline-flex min-w-0 flex-1 items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-semibold",
+                          PLAN_STEP_STATUS_TONES[option.value],
                         )}
-                        aria-hidden
                       >
-                        {isSelected ? <Check className="h-3 w-3" /> : null}
+                        {option.label}
                       </span>
-                      <span className="min-w-0 flex-1 truncate">{option.label}</span>
+                      {isSelected ? (
+                        <Check className="h-3.5 w-3.5 shrink-0 text-primary" />
+                      ) : (
+                        <span className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                      )}
                     </button>
                   </li>
                 );

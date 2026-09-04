@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
 import { canAccessAttachmentTarget } from "@/lib/access";
-import { buildStorageKey, createUploadUrl } from "@/lib/storage";
+import { buildStorageKey, createUploadUrl, ATTACHMENT_MAX_BYTES } from "@/lib/storage";
 import { createAuditLog } from "@/lib/audit";
 import { buildAttachmentOrigin } from "@/lib/attachment-origin";
 import {
@@ -17,8 +17,6 @@ import {
   isMatterEditLocked,
   MATTER_EDIT_LOCKED_MESSAGE,
 } from "@/lib/matter-status";
-
-const MAX_SIZE_BYTES = 25 * 1024 * 1024;
 
 export async function GET(request: Request) {
   const user = await getSessionUser();
@@ -259,9 +257,9 @@ export async function POST(request: Request) {
     }
   }
 
-  if (sizeBytes <= 0 || sizeBytes > MAX_SIZE_BYTES) {
+  if (sizeBytes <= 0 || sizeBytes > ATTACHMENT_MAX_BYTES) {
     return NextResponse.json(
-      { error: "File phải nhỏ hơn 25MB" },
+      { error: "File phải nhỏ hơn 500MB" },
       { status: 400 },
     );
   }

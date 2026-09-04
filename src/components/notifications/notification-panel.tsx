@@ -495,7 +495,7 @@ export function NotificationPanel({
                     className={cn(
                       "interactive-press flex-1 rounded-md px-2.5 py-1.5 text-xs font-medium sm:flex-none sm:px-3",
                       tab === item.key
-                        ? "bg-primary text-white"
+                        ? "bg-primary text-primary-foreground"
                         : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground",
                     )}
                     onClick={() => setTab(item.key)}

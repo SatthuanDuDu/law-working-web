@@ -1,13 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import type { MatterType } from "@prisma/client";
-import { X, ChevronDown, Plus, Users, Scale } from "lucide-react";
+import { X, ChevronDown, Pencil, Plus, Users, Scale } from "lucide-react";
 import { createMatterAction, updateMatterAction } from "@/lib/actions";
 import { buildMatterCode } from "@/lib/matter-code";
 import type { MatterFormData } from "@/lib/matter-form-data";
+import type {
+  ActiveWorkflowTemplate,
+  MatterPlanStepApplyDraft,
+} from "@/lib/workflow-types";
+import { WorkflowApplyDialog } from "@/components/workflows/workflow-apply-dialog";
 import {
   VIETNAM_CITY_SUGGESTIONS,
 } from "@/lib/constants";
@@ -20,6 +25,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label, Select } from "@/components/ui/card";
+import {
+  OutlinedField,
+  outlinedFieldControlClass,
+} from "@/components/ui/outlined-field";
 import { cn } from "@/lib/utils";
 
 const matterTypeControlClass =
@@ -27,33 +36,6 @@ const matterTypeControlClass =
 
 const matterTypeChevronClass =
   "absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground";
-
-const outlinedFieldLabelClass =
-  "pointer-events-none absolute left-3 top-0 z-[1] -translate-y-1/2 bg-surface px-1.5 text-sm font-medium text-foreground";
-
-const outlinedFieldInputClass =
-  "interactive-field w-full rounded-md border border-border bg-surface px-3 pb-2.5 pt-3 text-sm leading-normal text-foreground";
-
-function OutlinedField({
-  label,
-  htmlFor,
-  children,
-  className,
-}: {
-  label: string;
-  htmlFor: string;
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={cn("relative", className)}>
-      {children}
-      <Label htmlFor={htmlFor} className={outlinedFieldLabelClass}>
-        {label}
-      </Label>
-    </div>
-  );
-}
 
 function normalizeSearchText(value: string) {
   return value
@@ -237,8 +219,8 @@ function AssociateMultiSelect({
     <OutlinedField label={t("associates")} htmlFor={id}>
       <div
         className={cn(
-          outlinedFieldInputClass,
-          "flex min-h-10 flex-wrap items-center gap-1.5 px-2 py-1.5",
+          outlinedFieldControlClass,
+          "flex h-auto min-h-10 flex-wrap items-center gap-1.5 px-2 py-1.5",
         )}
       >
         {selectedIds.map((memberId) => {
@@ -412,6 +394,13 @@ export function CreateMatterModal({
   const [draftClientCity, setDraftClientCity] = useState("");
   const [draftClientError, setDraftClientError] = useState("");
   const draftPhoneInputRef = useRef<HTMLInputElement>(null);
+  const [workflows, setWorkflows] = useState<ActiveWorkflowTemplate[]>([]);
+  const [workflowsFetchDone, setWorkflowsFetchDone] = useState(false);
+  const [selectedWorkflowId, setSelectedWorkflowId] = useState("");
+  const [planStepsDraft, setPlanStepsDraft] = useState<MatterPlanStepApplyDraft[] | null>(null);
+  const [workflowDialogOpen, setWorkflowDialogOpen] = useState(false);
+  const [activeTemplate, setActiveTemplate] = useState<ActiveWorkflowTemplate | null>(null);
+  const [workflowDialogKey, setWorkflowDialogKey] = useState(0);
 
   const applyEditMatter = useCallback((matter: MatterEditInitial) => {
     setType(matter.type);
@@ -444,6 +433,12 @@ export function CreateMatterModal({
     setType("CIVIL");
     setLeadLawyerId(getDefaultLeadLawyerId(formData));
     setNewClientOpen(false);
+    setSelectedWorkflowId("");
+    setPlanStepsDraft(null);
+    setActiveTemplate(null);
+    setWorkflowDialogOpen(false);
+    setWorkflows([]);
+    setWorkflowsFetchDone(false);
     setFormKey((key) => key + 1);
   }, [formData]);
 
@@ -460,6 +455,55 @@ export function CreateMatterModal({
   useEffect(() => {
     setSelectedMembers((current) => current.filter((id) => id !== leadLawyerId));
   }, [leadLawyerId]);
+
+  useEffect(() => {
+    if (!open || isEdit) return;
+    let cancelled = false;
+    fetch("/api/workflows")
+      .then(async (res) => {
+        if (!res.ok) throw new Error("fetch failed");
+        return res.json() as Promise<{ templates: ActiveWorkflowTemplate[] }>;
+      })
+      .then((data) => {
+        if (!cancelled) setWorkflows(data.templates ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setWorkflows([]);
+      })
+      .finally(() => {
+        if (!cancelled) setWorkflowsFetchDone(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, isEdit]);
+
+  const workflowsLoading = open && !isEdit && !workflowsFetchDone;
+
+  function handleWorkflowSelect(value: string) {
+    setSelectedWorkflowId(value);
+    if (!value) {
+      setPlanStepsDraft(null);
+      setActiveTemplate(null);
+      setWorkflowDialogOpen(false);
+      return;
+    }
+    const template = workflows.find((item) => item.id === value);
+    if (!template) return;
+    setActiveTemplate(template);
+    setWorkflowDialogKey((key) => key + 1);
+    setWorkflowDialogOpen(true);
+  }
+
+  function handleWorkflowApply(steps: MatterPlanStepApplyDraft[]) {
+    setPlanStepsDraft(steps);
+  }
+
+  function reopenWorkflowEditor() {
+    if (!activeTemplate) return;
+    setWorkflowDialogKey((key) => key + 1);
+    setWorkflowDialogOpen(true);
+  }
 
   const handleOpenTypeList = useCallback(() => {
     if (type === "OTHER" && customTypeInputOpen) {
@@ -671,6 +715,14 @@ export function CreateMatterModal({
             ? associates.map((member) => `${member.name} (${roles[member.role]})`).join("\n")
             : "",
       },
+      ...(planStepsDraft && planStepsDraft.length > 0
+        ? [
+            {
+              label: t("workflowLabel"),
+              value: t("workflowApplied", { count: planStepsDraft.length }),
+            },
+          ]
+        : []),
     ];
 
     confirm({
@@ -685,6 +737,20 @@ export function CreateMatterModal({
         formDataPayload.delete("clientPhone");
         phones.forEach((phone) => formDataPayload.append("clientPhones", phone));
         selectedMembers.forEach((id) => formDataPayload.append("memberIds", id));
+        if (!isEdit && planStepsDraft && planStepsDraft.length > 0) {
+          formDataPayload.set(
+            "planStepsJson",
+            JSON.stringify(
+              planStepsDraft.map((step) => ({
+                title: step.title.trim(),
+                description: step.description.trim() || null,
+                assigneeIds: step.assigneeIds,
+                startedAt: step.startedAt || null,
+                dueAt: step.dueAt || null,
+              })),
+            ),
+          );
+        }
 
         startTransition(async () => {
           const result = isEdit && editMatter
@@ -837,36 +903,36 @@ export function CreateMatterModal({
                 </div>
               </div>
 
-              <div className="relative">
+              <OutlinedField label={t("matterName")} htmlFor="title">
                 <Input
                   id="title"
                   name="title"
                   required
                   defaultValue={editMatter?.title ?? ""}
                   placeholder={t("titlePlaceholder")}
-                  className={outlinedFieldInputClass}
+                  className={outlinedFieldControlClass}
                 />
-                <Label htmlFor="title" className={outlinedFieldLabelClass}>
-                  {t("matterName")}
-                </Label>
-              </div>
+              </OutlinedField>
 
-              <div className="relative">
+              <OutlinedField
+                label={tMatters("fieldDescription")}
+                htmlFor="description"
+              >
                 <Textarea
                   id="description"
                   name="description"
                   rows={3}
                   defaultValue={editMatter?.description ?? ""}
                   placeholder={t("descriptionPlaceholder")}
-                  className={cn(outlinedFieldInputClass, "min-h-[6.5rem] resize-y")}
+                  className={cn(
+                    outlinedFieldControlClass,
+                    "h-auto min-h-[6.5rem] resize-y py-2.5",
+                  )}
                 />
-                <Label htmlFor="description" className={outlinedFieldLabelClass}>
-                  {tMatters("fieldDescription")}
-                </Label>
-              </div>
+              </OutlinedField>
 
               <div className="relative rounded-md border border-border p-4">
-                <div className="mb-6 flex flex-wrap items-center justify-between gap-2 text-sm font-semibold text-foreground">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-sm font-semibold text-foreground">
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 shrink-0 text-primary" aria-hidden />
                     {tMatters("client")}
@@ -885,7 +951,7 @@ export function CreateMatterModal({
                   ) : null}
                 </div>
 
-                <div className="space-y-7">
+                <div className="space-y-4">
                   {clientMode === "new" ? (
                     <>
                       <input type="hidden" name="clientName" value={clientName} />
@@ -945,7 +1011,7 @@ export function CreateMatterModal({
                             name="clientId"
                             value={selectedClientId}
                             onChange={(e) => handleClientChange(e.target.value)}
-                            className={cn(outlinedFieldInputClass, "h-11")}
+                            className={cn(outlinedFieldControlClass, "appearance-none")}
                           >
                             <option value="">{t("selectClientPlaceholder")}</option>
                             {formData.clients.map((client) => (
@@ -957,7 +1023,7 @@ export function CreateMatterModal({
                         </OutlinedField>
                       </div>
 
-                      <div className="flex items-stretch gap-2">
+                      <div className="flex items-end gap-2">
                         <OutlinedField
                           label={t("clientPhone")}
                           htmlFor="clientPhone"
@@ -965,8 +1031,8 @@ export function CreateMatterModal({
                         >
                           <div
                             className={cn(
-                              outlinedFieldInputClass,
-                              "client-phone-field flex min-h-10 flex-wrap items-center gap-1.5 px-2 focus-within:outline-none focus-within:ring-2 focus-within:ring-primary/40",
+                              outlinedFieldControlClass,
+                              "client-phone-field flex h-auto min-h-10 flex-wrap items-center gap-1.5 px-2 focus-within:outline-none focus-within:ring-2 focus-within:ring-primary/40",
                             )}
                             onClick={() => phoneInputRef.current?.focus()}
                           >
@@ -1023,7 +1089,7 @@ export function CreateMatterModal({
                           variant="outline"
                           disabled={clientFieldsDisabled}
                           onClick={commitPhoneDraft}
-                          className="interactive-press h-auto w-10 shrink-0 self-stretch rounded-md p-0"
+                          className="interactive-press h-10 w-10 shrink-0 rounded-md p-0"
                           aria-label={t("addPhone")}
                         >
                           <Plus className="h-4 w-4" />
@@ -1038,7 +1104,7 @@ export function CreateMatterModal({
                           onChange={setClientCity}
                           placeholder={t("cityPlaceholder")}
                           disabled={clientFieldsDisabled}
-                          className={outlinedFieldInputClass}
+                          className={outlinedFieldControlClass}
                         />
                       </OutlinedField>
 
@@ -1050,7 +1116,7 @@ export function CreateMatterModal({
                           onChange={(e) => setClientAddress(e.target.value)}
                           placeholder={t("addressPlaceholder")}
                           disabled={clientFieldsDisabled}
-                          className={outlinedFieldInputClass}
+                          className={outlinedFieldControlClass}
                         />
                       </OutlinedField>
                     </>
@@ -1058,15 +1124,86 @@ export function CreateMatterModal({
                 </div>
               </div>
 
-              <div className="relative rounded-md border border-border px-4 pb-5 pt-8">
-                <div className="absolute left-3 top-0 -translate-y-1/2">
-                  <div className="flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-base font-semibold text-white shadow-sm">
-                    <Scale className="h-4 w-4 shrink-0" aria-hidden />
-                    {tMatters("leadLawyer")}
+              {!isEdit ? (
+                <div className="relative rounded-md border border-border p-4">
+                  <div className="mb-4 text-sm font-semibold text-foreground">
+                    {t("workflowLabel")}
+                  </div>
+                  <div className="space-y-3">
+                    <div className="relative">
+                      <Select
+                        id="workflowTemplate"
+                        value={selectedWorkflowId}
+                        onChange={(event) => handleWorkflowSelect(event.target.value)}
+                        disabled={workflowsLoading || isPending}
+                        aria-label={t("workflowLabel")}
+                        className={cn(
+                          outlinedFieldControlClass,
+                          "appearance-none pr-10",
+                        )}
+                      >
+                        <option value="">
+                          {workflowsLoading ? t("workflowLoading") : t("workflowNone")}
+                        </option>
+                        {workflows.map((template) => (
+                          <option key={template.id} value={template.id}>
+                            {template.name} ({template.steps.length})
+                          </option>
+                        ))}
+                      </Select>
+                      <ChevronDown
+                        className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                        aria-hidden
+                      />
+                    </div>
+                    {planStepsDraft && planStepsDraft.length > 0 ? (
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-md bg-muted px-2.5 py-1 text-sm text-foreground">
+                            {t("workflowApplied", { count: planStepsDraft.length })}
+                          </span>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="outline"
+                            className="interactive-press h-8 w-8 shrink-0"
+                            onClick={reopenWorkflowEditor}
+                            aria-label={t("editWorkflow")}
+                            title={t("editWorkflow")}
+                          >
+                            <Pencil className="h-3.5 w-3.5" aria-hidden />
+                          </Button>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="outline"
+                            className="interactive-press h-8 w-8 shrink-0 text-red-600 hover:border-red-300 hover:bg-red-50 hover:text-red-700 dark:hover:border-red-800 dark:hover:bg-red-950/40"
+                            onClick={() => handleWorkflowSelect("")}
+                            aria-label={t("clearWorkflow")}
+                            title={t("clearWorkflow")}
+                          >
+                            <X className="h-3.5 w-3.5" aria-hidden />
+                          </Button>
+                        </div>
+                        <p
+                          role="status"
+                          className="rounded-md border border-red-200/80 bg-red-50 px-2.5 py-2 text-xs leading-relaxed text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300"
+                        >
+                          {t("workflowPlanLaterNote")}
+                        </p>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
+              ) : null}
 
-                <div className="space-y-7">
+              <div className="relative rounded-md border border-border p-4">
+                <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Scale className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                  {tMatters("leadLawyer")}
+                </div>
+
+                <div className="space-y-4">
                   {canPickLeadLawyer ? (
                     <OutlinedField label={t("leadLawyerMain")} htmlFor="leadLawyerDisplay">
                       <div className="relative">
@@ -1074,7 +1211,10 @@ export function CreateMatterModal({
                           id="leadLawyerDisplay"
                           value={leadLawyerId}
                           onChange={(event) => setLeadLawyerId(event.target.value)}
-                          className={cn(outlinedFieldInputClass, "h-11 appearance-none pr-10")}
+                          className={cn(
+                            outlinedFieldControlClass,
+                            "appearance-none pr-10",
+                          )}
                         >
                           {formData.lawyers.map((lawyer) => (
                             <option key={lawyer.id} value={lawyer.id}>
@@ -1095,7 +1235,7 @@ export function CreateMatterModal({
                         value={`${formData.currentUser.name} (${roles[formData.currentUser.role]})`}
                         readOnly
                         disabled
-                        className={outlinedFieldInputClass}
+                        className={outlinedFieldControlClass}
                       />
                     </OutlinedField>
                   )}
@@ -1179,11 +1319,11 @@ export function CreateMatterModal({
                   onChange={(e) => setDraftClientName(e.target.value)}
                   placeholder={t("clientNamePlaceholder")}
                   autoFocus
-                  className={outlinedFieldInputClass}
+                  className={outlinedFieldControlClass}
                 />
               </OutlinedField>
 
-              <div className="flex items-stretch gap-2">
+              <div className="flex items-end gap-2">
                 <OutlinedField
                   label={t("clientPhone")}
                   htmlFor="draftClientPhone"
@@ -1191,8 +1331,8 @@ export function CreateMatterModal({
                 >
                   <div
                     className={cn(
-                      outlinedFieldInputClass,
-                      "client-phone-field flex min-h-10 flex-wrap items-center gap-1.5 px-2 focus-within:outline-none focus-within:ring-2 focus-within:ring-primary/40",
+                      outlinedFieldControlClass,
+                      "client-phone-field flex h-auto min-h-10 flex-wrap items-center gap-1.5 px-2 focus-within:outline-none focus-within:ring-2 focus-within:ring-primary/40",
                     )}
                     onClick={() => draftPhoneInputRef.current?.focus()}
                   >
@@ -1246,7 +1386,7 @@ export function CreateMatterModal({
                   type="button"
                   variant="outline"
                   onClick={commitDraftPhone}
-                  className="interactive-press h-auto w-10 shrink-0 self-stretch rounded-md p-0"
+                  className="interactive-press h-10 w-10 shrink-0 rounded-md p-0"
                   aria-label={t("addPhone")}
                 >
                   <Plus className="h-4 w-4" />
@@ -1259,7 +1399,7 @@ export function CreateMatterModal({
                   value={draftClientCity}
                   onChange={setDraftClientCity}
                   placeholder={t("cityPlaceholder")}
-                  className={outlinedFieldInputClass}
+                  className={outlinedFieldControlClass}
                 />
               </OutlinedField>
 
@@ -1269,7 +1409,7 @@ export function CreateMatterModal({
                   value={draftClientAddress}
                   onChange={(e) => setDraftClientAddress(e.target.value)}
                   placeholder={t("addressPlaceholder")}
-                  className={outlinedFieldInputClass}
+                  className={outlinedFieldControlClass}
                 />
               </OutlinedField>
 
@@ -1288,6 +1428,16 @@ export function CreateMatterModal({
             </div>
           </div>
         </div>
+      ) : null}
+      {activeTemplate ? (
+        <WorkflowApplyDialog
+          key={workflowDialogKey}
+          open={workflowDialogOpen}
+          template={activeTemplate}
+          assigneeOptions={formData.members}
+          onClose={() => setWorkflowDialogOpen(false)}
+          onApply={handleWorkflowApply}
+        />
       ) : null}
     </>,
     document.body,

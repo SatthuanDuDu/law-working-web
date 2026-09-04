@@ -14,13 +14,14 @@ export function CreateClientButton() {
     <>
       <Button
         type="button"
-        size="icon"
+        size="sm"
         onClick={() => setOpen(true)}
-        aria-label={t("newClient")}
-        title={t("newClient")}
-        className="h-10 w-10 shrink-0 rounded-md p-0 [&_svg]:h-4 [&_svg]:w-4"
+        aria-label={t("create")}
+        className="interactive-press shrink-0 gap-1.5"
       >
-        <Plus />
+        <Plus className="h-3.5 w-3.5" aria-hidden />
+        <span className="sm:hidden">{t("createShort")}</span>
+        <span className="hidden sm:inline">{t("create")}</span>
       </Button>
       <ClientFormModal open={open} onClose={() => setOpen(false)} />
     </>

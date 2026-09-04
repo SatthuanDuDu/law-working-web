@@ -13,6 +13,7 @@ const ROUTE_NAV_KEYS: Record<string, string> = {
   "/settings": "settings",
   "/chat": "chat",
   "/workload": "workload",
+  "/workflows": "workflows",
   "/expenses": "expenses",
   "/admin/users": "users",
   "/admin/work-types": "workTypes",
@@ -150,7 +151,6 @@ export function getBreadcrumbs(
     if (segments[i - 2] === "matters") {
       const keyMap: Record<string, string> = {
         plan: "plan",
-        report: "report",
       };
       const key = keyMap[segments[i]];
       crumbs.push({

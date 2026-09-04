@@ -80,6 +80,8 @@
     "calendarDue": "Calendar & deadlines, {count} upcoming",
     "settings": "Settings",
     "workload": "Workload",
+    "workflows": "Workflow",
+    "badgeNew": "NEW",
     "expenses": "Cashflow",
     "wallet": "Wallet",
     "spendCategories": "Spend categories",
@@ -92,7 +94,6 @@
     "websiteTraffic": "Website traffic",
     "matterDetail": "Matter details",
     "plan": "Plan",
-    "report": "Report",
     "myWork": "My work"
   },
   "pages": {
@@ -104,10 +105,6 @@
     "plan": {
       "title": "Matter plan",
       "description": "Build and track the matter execution roadmap"
-    },
-    "report": {
-      "title": "Matter report",
-      "description": "Activity summary and progress overview"
     },
     "matters": {
       "title": "Matters",
@@ -136,6 +133,10 @@
     "workload": {
       "title": "Workload",
       "description": "Work distribution by staff and department"
+    },
+    "workflows": {
+      "title": "Workflow",
+      "description": "Design reusable plan templates for new matters"
     },
     "expenses": {
       "title": "Internal cashflow",
@@ -333,6 +334,7 @@
   },
   "matters": {
     "create": "Create matter",
+    "createShort": "Create",
     "title": "Title",
     "client": "Client",
     "leadLawyer": "Lead lawyer",
@@ -434,7 +436,14 @@
       "newClientSubtitle": "Fill in client details to attach to this matter.",
       "clientFullName": "Client full name",
       "clientNamePlaceholder": "John Doe",
-      "saveClient": "Save client"
+      "saveClient": "Save client",
+      "workflowLabel": "Workflow",
+      "workflowNone": "— No workflow —",
+      "workflowLoading": "Loading workflows...",
+      "workflowApplied": "{count} plan steps",
+      "workflowPlanLaterNote": "You can add or edit details (dates, assignees, descriptions…) later on the Plan page after the matter is created.",
+      "editWorkflow": "Edit workflow",
+      "clearWorkflow": "Clear workflow"
     },
     "aiSummary": {
       "title": "AI summary",
@@ -446,19 +455,29 @@
       "regenerate": "Regenerate",
       "empty": "No summary content yet."
     },
-    "report": {
-      "currentStatus": "Current status",
+    "overview": {
+      "timelineTitle": "Execution roadmap",
+      "progressTitle": "Progress",
+      "startLabel": "Started",
+      "dueLabel": "Due",
+      "expectedEnd": "Expected end",
+      "openPlan": "Open plan",
+      "openStepAria": "Open plan step: {title}",
+      "expandStep": "Show step details",
+      "collapseStep": "Hide step details",
+      "noAssignee": "No assignee yet",
+      "overdue": "Overdue",
+      "overdueCount": "{count, plural, one {# overdue step} other {# overdue steps}}",
+      "stepSummary": "{total} steps · {done} done · {inProgress} in progress · {waiting} waiting",
+      "noSteps": "No plan steps yet. Add the first step to build the roadmap.",
+      "addFirstStep": "Add first step",
       "planSteps": "Plan steps",
       "inProgress": "In progress",
       "done": "Done",
       "blocked": "Waiting",
-      "recentActivity": "Recent activity",
-      "noActivity": "No activity yet.",
-      "relatedTasks": "Related tasks",
-      "noRelatedTasks": "No related tasks yet.",
-      "dueLabel": "Due: {date}",
       "commentsTitle": "Discussion / Comments",
-      "planFallback": "Plan"
+      "planFallback": "Plan",
+      "completedPercent": "{percent}% complete"
     }
   },
   "filters": {
@@ -500,6 +519,8 @@
     "deleteStep": "Delete step",
     "dragHint": "Drag the card to reorder steps",
     "docsTitle": "Documents & discussion",
+    "docsExpand": "View files & comments",
+    "docsCollapse": "Hide files & comments",
     "statusLabel": "Status:",
     "workTypeLabel": "Work type:",
     "startedLabel": "Starts:",
@@ -570,6 +591,7 @@
   },
   "clients": {
     "create": "Add client",
+    "createShort": "Add",
     "code": "Client code",
     "codeAutoHint": "Leave blank to auto-generate",
     "name": "Client name",
@@ -1030,7 +1052,7 @@
     "addLocation": "Location",
     "attachmentOnly": "(Attachment)",
     "removeFile": "Remove {name}",
-    "fileTooLarge": "File must be smaller than 25MB",
+    "fileTooLarge": "File must be smaller than 500MB",
     "uploadSessionFailed": "Could not start upload session",
     "uploadFailed": "Upload to storage failed",
     "uploadCorsFailed": "Upload blocked (CORS/R2). Check bucket CORS and S3_PUBLIC_ENDPOINT on Vercel.",
@@ -1747,5 +1769,63 @@
     "markOpen": "Reopen",
     "editTitle": "Edit title",
     "doneHidden": "Completed ({count})"
+  },
+  "workflows": {
+    "addTitle": "Add workflow",
+    "listTitle": "Workflow list",
+    "nameLabel": "Workflow name",
+    "namePlaceholder": "e.g. Basic civil dispute",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "When to use this template",
+    "activeLabel": "Active",
+    "stepsTitle": "Steps",
+    "addStep": "Add step",
+    "noStepsYet": "No steps yet. Add at least one step.",
+    "stepTitleLabel": "Step name",
+    "stepTitlePlaceholder": "e.g. Collect documents",
+    "stepDescriptionLabel": "Description",
+    "stepDescriptionPlaceholder": "Short description of this step",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "removeStep": "Remove step",
+    "stepsRequired": "Workflow needs at least one named step",
+    "createButton": "Create workflow",
+    "confirmCreateTitle": "Confirm create workflow",
+    "confirmCreateMessage": "Create workflow \"{name}\"?",
+    "created": "Workflow created",
+    "searchPlaceholder": "Search workflows...",
+    "filterAll": "All",
+    "filterActive": "Active",
+    "filterInactive": "Inactive",
+    "emptyTitle": "No workflows",
+    "emptyDescription": "No workflows yet. Create your first plan template for new matters.",
+    "flowEditorHint": "Design a sequential route — each step flows top to bottom.",
+    "flowCanvasHint": "Hover between steps to add · click a step to edit",
+    "startMarker": "Start",
+    "endMarker": "End",
+    "insertStep": "Insert step",
+    "expandStep": "Expand step {number}",
+    "stepCount": "{count} steps",
+    "activeBadge": "Active",
+    "inactiveBadge": "Inactive",
+    "deactivate": "Deactivate",
+    "activate": "Activate",
+    "editTitle": "Edit workflow",
+    "deleteConfirmTitle": "Delete workflow",
+    "deleteConfirmMessage": "Delete workflow \"{name}\"? Existing matters are not affected.",
+    "apply": {
+      "title": "Customize workflow",
+      "hint": "Optionally adjust titles, descriptions, dates, or assignees — none are required here. You can fill in details later on the Plan page.",
+      "addStep": "Add step",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "removeStep": "Remove step",
+      "stepTitleLabel": "Step name",
+      "stepTitlePlaceholder": "Step task name",
+      "stepDescriptionLabel": "Description",
+      "stepsRequired": "At least one named step is required",
+      "applyButton": "Apply workflow",
+      "assigneeCount": "{count} assignees"
+    }
   }
 }

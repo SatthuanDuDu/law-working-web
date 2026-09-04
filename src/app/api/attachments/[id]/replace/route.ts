@@ -2,15 +2,13 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
 import { canAccessAttachmentTarget } from "@/lib/access";
-import { buildStorageKey, createUploadUrl, deleteObject } from "@/lib/storage";
+import { buildStorageKey, createUploadUrl, deleteObject, ATTACHMENT_MAX_BYTES } from "@/lib/storage";
 import { createAuditLog } from "@/lib/audit";
 import { canManageMatterDocuments } from "@/lib/permissions";
 import {
   isMatterEditLocked,
   MATTER_EDIT_LOCKED_MESSAGE,
 } from "@/lib/matter-status";
-
-const MAX_SIZE_BYTES = 25 * 1024 * 1024;
 
 /**
  * Prepare a new version that replaces the latest matter attachment
@@ -38,9 +36,9 @@ export async function POST(
   if (!fileName || !mimeType || typeof sizeBytes !== "number") {
     return NextResponse.json({ error: "Thiếu thông tin file" }, { status: 400 });
   }
-  if (sizeBytes <= 0 || sizeBytes > MAX_SIZE_BYTES) {
+  if (sizeBytes <= 0 || sizeBytes > ATTACHMENT_MAX_BYTES) {
     return NextResponse.json(
-      { error: "File phải nhỏ hơn 25MB" },
+      { error: "File phải nhỏ hơn 500MB" },
       { status: 400 },
     );
   }

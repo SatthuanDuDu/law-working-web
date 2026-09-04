@@ -35,6 +35,7 @@ import {
   Globe,
   BarChart3,
   ClipboardList,
+  GitBranch,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
@@ -71,6 +72,7 @@ const iconMap = {
   Globe,
   BarChart3,
   ClipboardList,
+  GitBranch,
 };
 
 function SidebarTooltip({
@@ -184,16 +186,20 @@ function NavLinkContent({
   label,
   collapsed,
   badge,
+  featureBadge,
   active,
 }: {
   Icon: (typeof iconMap)[keyof typeof iconMap];
   label: string;
   collapsed: boolean;
   badge?: number;
+  featureBadge?: string;
   active: boolean;
 }) {
   const { pending } = useLinkStatus();
   const badgeText = formatNavBadge(badge ?? 0);
+  const featureBadgeClass =
+    "inline-flex h-4 items-center justify-center rounded-full bg-rose-500 px-1.5 text-[9px] font-bold uppercase leading-none tracking-wide text-white";
 
   return (
     <>
@@ -215,9 +221,20 @@ function NavLinkContent({
             {badgeText}
           </span>
         ) : null}
+        {collapsed && !badgeText && featureBadge ? (
+          <span
+            className="absolute -right-1.5 -top-1 h-2 w-2 rounded-full bg-rose-500"
+            aria-hidden
+          />
+        ) : null}
       </span>
       {!collapsed && <span className="min-w-0 flex-1 truncate">{label}</span>}
-      {!collapsed && badgeText ? (
+      {!collapsed && featureBadge ? (
+        <span className={cn("ml-auto h-4 shrink-0", featureBadgeClass)}>
+          {featureBadge}
+        </span>
+      ) : null}
+      {!collapsed && !featureBadge && badgeText ? (
         <span
           className={cn(
             "ml-auto inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold leading-none tabular-nums",
@@ -241,6 +258,7 @@ function NavLink({
   collapsed,
   onNavigate,
   badge,
+  featureBadge,
   ariaLabel,
 }: {
   href: string;
@@ -250,6 +268,7 @@ function NavLink({
   collapsed: boolean;
   onNavigate?: () => void;
   badge?: number;
+  featureBadge?: string;
   ariaLabel?: string;
 }) {
   const Icon = iconMap[icon];
@@ -274,6 +293,7 @@ function NavLink({
           label={label}
           collapsed={collapsed}
           badge={badge}
+          featureBadge={featureBadge}
           active={active}
         />
       </Link>
@@ -727,12 +747,18 @@ function SidebarContent({
               : item.href === "/calendar"
                 ? upcomingDueCount
                 : undefined;
+          const featureBadge =
+            "featureBadge" in item && item.featureBadge === "new"
+              ? tNav("badgeNew")
+              : undefined;
           const ariaLabel =
             item.href === "/chat" && unreadChatCount > 0
               ? tNav("chatUnread", { count: unreadChatCount })
               : item.href === "/calendar" && upcomingDueCount > 0
                 ? tNav("calendarDue", { count: upcomingDueCount })
-                : label;
+                : featureBadge
+                  ? `${label} · ${featureBadge}`
+                  : label;
 
           return (
             <NavLink
@@ -744,6 +770,7 @@ function SidebarContent({
               collapsed={collapsed}
               onNavigate={onNavigate}
               badge={badge}
+              featureBadge={featureBadge}
               ariaLabel={ariaLabel}
             />
           );
@@ -758,6 +785,10 @@ function SidebarContent({
             )}
             {MANAGER_NAV_ITEMS.map((item) => {
               const active = isNavHrefActive(pathname, item.href, allNavHrefs);
+              const featureBadge =
+                "featureBadge" in item && item.featureBadge === "new"
+                  ? tNav("badgeNew")
+                  : undefined;
 
               return (
                 <NavLink
@@ -768,6 +799,12 @@ function SidebarContent({
                   active={active}
                   collapsed={collapsed}
                   onNavigate={onNavigate}
+                  featureBadge={featureBadge}
+                  ariaLabel={
+                    featureBadge
+                      ? `${tNav(item.labelKey)} · ${featureBadge}`
+                      : undefined
+                  }
                 />
               );
             })}

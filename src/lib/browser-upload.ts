@@ -59,9 +59,11 @@ export function uploadWithProgress(
   });
 }
 
+import { PROXY_UPLOAD_MAX_BYTES } from "@/lib/upload-limits";
+
 /**
  * Prefer same-origin proxy (no R2/MinIO CORS or public bucket endpoint).
- * Fall back to presigned PUT when proxy rejects (e.g. Vercel 4MB body limit).
+ * Fall back to presigned PUT when proxy rejects or file exceeds proxy max.
  */
 export async function putAttachmentBytes(options: {
   attachmentId: string;
@@ -74,19 +76,22 @@ export async function putAttachmentBytes(options: {
   const contentType = mimeType || "application/octet-stream";
   const headers = { "Content-Type": contentType };
 
-  const proxy = await uploadWithProgress(
-    `/api/attachments/${attachmentId}/content`,
-    file,
-    { headers, onProgress },
-  );
+  // Avoid buffering huge files through Next.js; go straight to signed URL.
+  const tryProxy = file.size <= PROXY_UPLOAD_MAX_BYTES;
 
-  if (proxy.ok) return { ok: true };
-
-  if (!uploadUrl) {
-    return { ok: false, corsLikely: false, status: proxy.status };
+  if (tryProxy) {
+    const proxy = await uploadWithProgress(
+      `/api/attachments/${attachmentId}/content`,
+      file,
+      { headers, onProgress },
+    );
+    if (proxy.ok) return { ok: true };
   }
 
-  // Restart progress for the direct fallback attempt.
+  if (!uploadUrl) {
+    return { ok: false, corsLikely: false };
+  }
+
   onProgress?.(0);
 
   const direct = await uploadWithProgress(uploadUrl, file, {
@@ -98,6 +103,6 @@ export async function putAttachmentBytes(options: {
   return {
     ok: false,
     corsLikely: direct.networkError,
-    status: direct.status ?? proxy.status,
+    status: direct.status,
   };
 }

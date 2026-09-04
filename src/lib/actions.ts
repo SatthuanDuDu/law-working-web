@@ -11,6 +11,7 @@ import {
   departmentSchema,
   matterPlanStepSchema,
   matterPlanStepUpdateSchema,
+  matterPlanStepsDraftSchema,
   reorderMatterPlanStepsSchema,
   matterSchema,
   taskSchema,
@@ -32,6 +33,7 @@ import { deleteObject } from "@/lib/storage";
 import { actionError } from "@/i18n/server-labels";
 import { notifyUsersPush } from "@/lib/web-push";
 import type { MatterPlanStepStatus } from "@prisma/client";
+import type { z } from "zod";
 import {
   locationToPrismaFields,
   parseLocationFromFormData,
@@ -383,6 +385,95 @@ export async function bulkDeleteClientsAction(ids: string[]) {
   }
 }
 
+function parsePlanStepsJson(raw: FormDataEntryValue | null) {
+  if (!raw || typeof raw !== "string" || !raw.trim()) return null;
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return undefined;
+  }
+}
+
+async function seedPlanStepsForMatter(
+  matterId: string,
+  matterCode: string,
+  planSteps: z.infer<typeof matterPlanStepsDraftSchema>,
+  actorUserId: string,
+) {
+  const allAssigneeIds = Array.from(
+    new Set(planSteps.flatMap((step) => step.assigneeIds)),
+  );
+  const validAssignees = await prisma.user.findMany({
+    where: { id: { in: allAssigneeIds }, isActive: true },
+    select: { id: true },
+  });
+  const validAssigneeSet = new Set(validAssignees.map((u) => u.id));
+  for (const step of planSteps) {
+    if (!step.assigneeIds.every((id) => validAssigneeSet.has(id))) {
+      throw new Error("INVALID_ASSIGNEES");
+    }
+  }
+
+  const planLink = `/matters/${matterId}/plan`;
+  const createdSteps = await prisma.$transaction(async (tx) => {
+    const rows = [];
+    for (let index = 0; index < planSteps.length; index++) {
+      const step = planSteps[index]!;
+      const created = await tx.matterPlanStep.create({
+        data: {
+          matterId,
+          title: step.title.trim(),
+          description: step.description?.trim() || null,
+          startedAt: parseAppDateTime(step.startedAt),
+          dueAt: parseAppDateTime(step.dueAt),
+          status: "NOT_STARTED",
+          priority: "MEDIUM",
+          sortOrder: index + 1,
+          assignees: {
+            create: step.assigneeIds.map((userId) => ({ userId })),
+          },
+        },
+      });
+      rows.push(created);
+    }
+    return rows;
+  });
+
+  const notifications = createdSteps.flatMap((step, index) => {
+    const assigneeIds = planSteps[index]!.assigneeIds;
+    return assigneeIds.map((userId) => ({
+      userId,
+      type: "PLAN_ASSIGNED" as const,
+      title: "Được giao bước kế hoạch",
+      message: `${matterCode}: ${step.title}`,
+      link: planLink,
+    }));
+  });
+
+  if (notifications.length > 0) {
+    await prisma.notification.createMany({ data: notifications });
+    for (const step of createdSteps) {
+      const assigneeIds = planSteps[createdSteps.indexOf(step)]!.assigneeIds;
+      void notifyUsersPush(assigneeIds, {
+        title: "Được giao bước kế hoạch",
+        body: `${matterCode}: ${step.title}`,
+        url: planLink,
+        tag: `plan-assigned-${step.id}`,
+      });
+    }
+  }
+
+  for (const step of createdSteps) {
+    await createAuditLog({
+      userId: actorUserId,
+      action: "CREATE",
+      entityType: "MatterPlanStep",
+      entityId: step.id,
+      details: `${matterCode}: ${step.title}`,
+    });
+  }
+}
+
 export async function createMatterAction(formData: FormData) {
   const user = await requireAuth();
   const memberIds = formData.getAll("memberIds").map(String);
@@ -414,6 +505,21 @@ export async function createMatterAction(formData: FormData) {
 
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? (await actionError("invalidData")) };
+  }
+
+  const planStepsRaw = parsePlanStepsJson(formData.get("planStepsJson"));
+  let planSteps: z.infer<typeof matterPlanStepsDraftSchema> | null = null;
+  if (planStepsRaw !== null) {
+    if (planStepsRaw === undefined) {
+      return { error: "Danh sách bước kế hoạch không hợp lệ" };
+    }
+    const planParsed = matterPlanStepsDraftSchema.safeParse(planStepsRaw);
+    if (!planParsed.success) {
+      return {
+        error: planParsed.error.issues[0]?.message ?? "Danh sách bước kế hoạch không hợp lệ",
+      };
+    }
+    planSteps = planParsed.data;
   }
 
   try {
@@ -504,7 +610,24 @@ export async function createMatterAction(formData: FormData) {
       details: matter.code,
     });
 
+    if (planSteps && planSteps.length > 0) {
+      try {
+        await seedPlanStepsForMatter(matter.id, matter.code, planSteps, user.id);
+      } catch (error) {
+        if (error instanceof Error && error.message === "INVALID_ASSIGNEES") {
+          return { error: "Không tìm thấy nhân viên phụ trách trong kế hoạch" };
+        }
+        throw error;
+      }
+    }
+
     revalidateMatters();
+    if (planSteps && planSteps.length > 0) {
+      revalidatePath(`/matters/${matter.id}`);
+      revalidatePath(`/matters/${matter.id}/plan`);
+      revalidatePath("/calendar");
+      revalidatePath("/dashboard");
+    }
     if (parsed.data.clientMode === "new") {
       revalidatePath("/clients");
     }
@@ -722,7 +845,7 @@ export async function updateMatterMembersAction(
     revalidateMatters();
     revalidatePath(`/matters/${matterId}`);
     revalidatePath(`/matters/${matterId}/plan`);
-    revalidatePath(`/matters/${matterId}/report`);
+    revalidatePath(`/matters/${matterId}`);
     return { success: true };
   } catch (error) {
     console.error("updateMatterMembersAction failed:", error);
@@ -987,7 +1110,7 @@ export async function createCommentAction(formData: FormData) {
 
         const link = matterPlanStepId
           ? `/matters/${matterId}/plan`
-          : `/matters/${matterId}/report`;
+          : `/matters/${matterId}`;
         await tx.notification.createMany({
           data: mentionedUserIds.map((userId) => ({
             userId,
@@ -1005,7 +1128,7 @@ export async function createCommentAction(formData: FormData) {
     if (mentionedUserIds.length > 0) {
       const link = matterPlanStepId
         ? `/matters/${matterId}/plan`
-        : `/matters/${matterId}/report`;
+        : `/matters/${matterId}`;
       void notifyUsersPush(mentionedUserIds, {
         title: "Bạn được nhắc đến",
         body: `${user.name} đã nhắc bạn trong ${matter.code}`,
@@ -1022,7 +1145,7 @@ export async function createCommentAction(formData: FormData) {
       details: `${matter.code}: ${body.slice(0, 120) || "(Đính kèm)"}`,
     });
 
-    revalidatePath(`/matters/${matterId}/report`);
+    revalidatePath(`/matters/${matterId}`);
     revalidatePath(`/matters/${matterId}/plan`);
     revalidatePath(`/matters/${matterId}`);
     return { success: true, commentId: comment.id };
@@ -1131,7 +1254,7 @@ export async function updateCommentAction(formData: FormData) {
     });
   });
 
-  revalidatePath(`/matters/${comment.matterId}/report`);
+  revalidatePath(`/matters/${comment.matterId}`);
   revalidatePath(`/matters/${comment.matterId}/plan`);
   revalidatePath(`/matters/${comment.matterId}`);
   return { success: true };
@@ -1176,7 +1299,7 @@ export async function deleteCommentAction(commentId: string) {
     details: `Matter ${comment.matterId}`,
   });
 
-  revalidatePath(`/matters/${comment.matterId}/report`);
+  revalidatePath(`/matters/${comment.matterId}`);
   revalidatePath(`/matters/${comment.matterId}/plan`);
   revalidatePath(`/matters/${comment.matterId}`);
   return { success: true };
@@ -1198,6 +1321,7 @@ export async function createMatterPlanStepAction(formData: FormData) {
   const parsed = matterPlanStepSchema.safeParse({
     matterId: formData.get("matterId"),
     title: formData.get("title"),
+    description: formData.get("description") || null,
     workTypeId: formData.get("workTypeId") || null,
     assigneeIds: parseAssigneeIds(formData),
     startedAt: formData.get("startedAt") || null,
@@ -1241,6 +1365,7 @@ export async function createMatterPlanStepAction(formData: FormData) {
       data: {
         matterId: parsed.data.matterId,
         title,
+        description: parsed.data.description?.trim() || null,
         workTypeId: parsed.data.workTypeId || null,
         startedAt: parseAppDateTime(parsed.data.startedAt),
         dueAt: parseAppDateTime(parsed.data.dueAt),
@@ -1298,6 +1423,9 @@ export async function updateMatterPlanStepAction(formData: FormData) {
   const parsed = matterPlanStepUpdateSchema.safeParse({
     id: formData.get("id"),
     title: formData.get("title") || undefined,
+    description: formData.has("description")
+      ? formData.get("description") || null
+      : undefined,
     workTypeId: formData.has("workTypeId") ? formData.get("workTypeId") || null : undefined,
     assigneeIds: hasAssigneeIds ? parseAssigneeIds(formData) : undefined,
     startedAt: formData.has("startedAt") ? formData.get("startedAt") || null : undefined,
@@ -1375,6 +1503,9 @@ export async function updateMatterPlanStepAction(formData: FormData) {
       where: { id: step.id },
       data: {
         ...(parsed.data.title !== undefined ? { title: parsed.data.title.trim() } : {}),
+        ...(parsed.data.description !== undefined
+          ? { description: parsed.data.description?.trim() || null }
+          : {}),
         ...(parsed.data.workTypeId !== undefined
           ? { workTypeId: parsed.data.workTypeId || null }
           : {}),
@@ -1599,7 +1730,6 @@ export async function updateMatterStatusAction(matterId: string, status: string)
   revalidateMatters();
   revalidatePath(`/matters/${matterId}`);
   revalidatePath(`/matters/${matterId}/plan`);
-  revalidatePath(`/matters/${matterId}/report`);
 
   await createAuditLog({
     userId: user.id,

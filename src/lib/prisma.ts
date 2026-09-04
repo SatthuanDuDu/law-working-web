@@ -6,8 +6,8 @@ const globalForPrisma = globalThis as unknown as {
   prismaSchemaRev?: number;
 };
 
-/** Soft-delete + PLAN_DUE + perf indexes — must recreate cached client. */
-const PRISMA_SCHEMA_REV = 2;
+/** Soft-delete + PLAN_DUE + perf indexes + WorkflowTemplate — must recreate cached client. */
+const PRISMA_SCHEMA_REV = 3;
 
 function createPrismaClient() {
   return new PrismaClient({
@@ -19,7 +19,10 @@ function getPrismaClient() {
   const existing = globalForPrisma.prisma;
   const staleRev = globalForPrisma.prismaSchemaRev !== PRISMA_SCHEMA_REV;
   // After `prisma generate`, a cached client can miss new delegates/fields until recreate.
-  const staleDelegate = Boolean(existing && !("matterPlanStepAssignee" in existing));
+  const staleDelegate = Boolean(
+    existing &&
+      (!("matterPlanStepAssignee" in existing) || !("workflowTemplate" in existing)),
+  );
   if (existing && (staleRev || staleDelegate)) {
     void existing.$disconnect().catch(() => {});
     globalForPrisma.prisma = undefined;

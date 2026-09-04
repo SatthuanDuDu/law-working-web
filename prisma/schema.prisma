@@ -227,6 +227,7 @@ model User {
   budgetTopupRequests     BudgetTopupRequest[] @relation("BudgetTopupRequester")
   budgetTopupDecisions    BudgetTopupRequest[] @relation("BudgetTopupDecider")
   entityRevisions         EntityRevision[]
+  workflowTemplatesCreated WorkflowTemplate[] @relation("WorkflowTemplateCreator")
   attachmentAccessUpdates AttachmentAccess[]     @relation("AttachmentAccessUpdater")
   attachmentAccessEntries AttachmentAccessUser[]
   pushSubscriptions       PushSubscription[]
@@ -483,6 +484,7 @@ model MatterPlanStep {
   matterId         String
   matter           Matter                   @relation(fields: [matterId], references: [id], onDelete: Cascade)
   title            String
+  description      String?
   workTypeId       String?
   workType         WorkType?                @relation(fields: [workTypeId], references: [id], onDelete: SetNull)
   startedAt        DateTime?
@@ -542,6 +544,33 @@ model WorkType {
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
   planSteps MatterPlanStep[]
+}
+
+model WorkflowTemplate {
+  id          String                 @id @default(cuid())
+  name        String
+  description String?
+  isActive    Boolean                @default(true)
+  createdById String
+  createdBy   User                   @relation("WorkflowTemplateCreator", fields: [createdById], references: [id])
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  steps       WorkflowTemplateStep[]
+
+  @@index([isActive, name])
+}
+
+model WorkflowTemplateStep {
+  id          String           @id @default(cuid())
+  templateId  String
+  template    WorkflowTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  sortOrder   Int              @default(0)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([templateId, sortOrder])
 }
 
 model AttachmentLabel {

@@ -21,12 +21,15 @@ import { isMatterEditLocked } from "@/lib/matter-status";
 
 export default async function MatterPlanPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ step?: string }>;
 }) {
   const user = await requireAuth();
   const tPages = await getTranslations("pages.plan");
   const { id } = await params;
+  const { step: focusStepId } = await searchParams;
   const matterIds = await getAccessibleMatterIds(user.id, user.role);
   if (matterIds && !matterIds.includes(id)) notFound();
 
@@ -118,6 +121,7 @@ export default async function MatterPlanPage({
   const planSteps = matter.planSteps.map((step) => ({
     id: step.id,
     title: step.title,
+    description: step.description,
     status: step.status,
     priority: step.priority,
     startedAt: step.startedAt?.toISOString() ?? null,
@@ -188,7 +192,7 @@ export default async function MatterPlanPage({
     <>
       <PageHeaderSlot title={tPages("title")} />
 
-      <div className="grid min-w-0 items-start gap-5 @5xl/workspace:grid-cols-[minmax(16rem,18.5rem)_minmax(0,1fr)] @5xl/workspace:gap-6">
+      <div className="grid min-w-0 items-start gap-5 @5xl/workspace:grid-cols-[minmax(20rem,24rem)_minmax(0,1fr)] @5xl/workspace:gap-6">
         {/* Info rail: full width when workspace is squeezed; left column when main ≥ 64rem */}
         <aside className="order-1 min-w-0 space-y-3 self-start @5xl/workspace:sticky @5xl/workspace:top-0 @5xl/workspace:z-10">
           <MatterInfoCard
@@ -217,6 +221,7 @@ export default async function MatterPlanPage({
               canModerate={canManageDocs}
               canDeleteAsAdmin={isAdmin(user.role)}
               mentionUsers={mentionUsers}
+              focusStepId={focusStepId ?? null}
             />
           </CardContent>
         </Card>

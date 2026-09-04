@@ -1,13 +1,14 @@
-import Link from "next/link";
+import dynamic from "next/dynamic";
 import { notFound } from "next/navigation";
-import { ClipboardList, ListTodo, Route } from "lucide-react";
 import { PageHeaderSlot } from "@/components/layout/page-header-slot";
 import { AttachmentPanel } from "@/components/attachments/attachment-panel";
 import { MatterAiSummary } from "@/components/matters/matter-ai-summary";
 import { MatterInfoCard } from "@/components/matters/matter-info-card";
 import { MatterOverviewExport } from "@/components/matters/matter-overview-export";
-import { TaskForm } from "@/components/tasks/task-form";
-import { TaskList } from "@/components/tasks/task-list";
+import {
+  MatterPlanOverview,
+  MatterPlanProgress,
+} from "@/components/matters/matter-plan-overview";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
@@ -23,6 +24,16 @@ import {
 import { getTranslations } from "next-intl/server";
 import { isMatterEditLocked } from "@/lib/matter-status";
 
+const CommentThread = dynamic(
+  () =>
+    import("@/components/comments/comment-thread").then((m) => m.CommentThread),
+  {
+    loading: () => (
+      <div className="h-48 animate-pulse rounded-md bg-muted" />
+    ),
+  },
+);
+
 export default async function MatterHubPage({
   params,
 }: {
@@ -33,24 +44,65 @@ export default async function MatterHubPage({
   const matterIds = await getAccessibleMatterIds(user.id, user.role);
   if (matterIds && !matterIds.includes(id)) notFound();
 
-  const matter = await prisma.matter.findUnique({
-    where: { id },
-    include: {
-      client: true,
-      leadLawyer: true,
-      members: { include: { user: true } },
-      attachments: {
-        where: { isLatest: true },
-        include: {
-          uploadedBy: { select: { id: true, name: true } },
-          matterPlanStep: { select: { title: true } },
-          label: { select: { name: true } },
-          folder: { select: { id: true, name: true } },
+  const [matter, tOverview] = await Promise.all([
+    prisma.matter.findUnique({
+      where: { id },
+      include: {
+        client: true,
+        leadLawyer: true,
+        members: { include: { user: true } },
+        planSteps: {
+          include: {
+            workType: { select: { id: true, name: true } },
+            assignees: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    avatarKey: true,
+                    role: true,
+                  },
+                },
+              },
+            },
+            _count: {
+              select: { attachments: true, comments: true },
+            },
+          },
+          orderBy: { sortOrder: "asc" },
         },
-        orderBy: { createdAt: "desc" },
+        comments: {
+          where: { matterPlanStepId: null },
+          include: {
+            author: { select: { id: true, name: true, avatarKey: true } },
+            attachments: {
+              select: {
+                id: true,
+                fileName: true,
+                mimeType: true,
+                sizeBytes: true,
+              },
+              orderBy: { createdAt: "asc" },
+            },
+          },
+          orderBy: { createdAt: "asc" },
+        },
+        attachments: {
+          where: { isLatest: true },
+          include: {
+            uploadedBy: { select: { id: true, name: true } },
+            matterPlanStep: { select: { title: true } },
+            label: { select: { name: true } },
+            folder: { select: { id: true, name: true } },
+          },
+          orderBy: { createdAt: "desc" },
+        },
       },
-    },
-  });
+    }),
+    getTranslations("matters.overview"),
+  ]);
+
   if (!matter || matter.deletedAt) notFound();
 
   const isLocked = isMatterEditLocked(matter.status);
@@ -68,39 +120,32 @@ export default async function MatterHubPage({
     (isManagerOrAbove(user.role) || matter.leadLawyerId === user.id);
 
   const formData = canEditMembers ? await getMatterFormData(user) : null;
-  const tReport = await getTranslations("matters.report");
-  const canViewAllTasks = isManagerOrAbove(user.role);
 
-  const [matterTasks, staffUsers] = await Promise.all([
-    prisma.task.findMany({
-      where: { matterId: matter.id },
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        status: true,
-        priority: true,
-        dueDate: true,
-        assigneeId: true,
-        createdById: true,
-        matterId: true,
-        createdAt: true,
-        updatedAt: true,
-        assignee: { select: { id: true, name: true, email: true, role: true } },
-        createdBy: { select: { id: true, name: true, email: true, role: true } },
-        matter: { select: { id: true, code: true, title: true, status: true } },
-      },
-      orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }],
-      take: 100,
-    }),
-    prisma.user.findMany({
-      where: { isActive: true },
-      select: { id: true, name: true, email: true, role: true },
-      orderBy: { name: "asc" },
-    }),
-  ]);
+  const mentionUsers = Array.from(
+    new Map(
+      [
+        { id: matter.leadLawyer.id, name: matter.leadLawyer.name },
+        ...matter.members.map((member) => ({
+          id: member.user.id,
+          name: member.user.name,
+        })),
+      ].map((u) => [u.id, u]),
+    ).values(),
+  );
 
-  const matterOption = [{ id: matter.id, code: matter.code, title: matter.title }];
+  const matterComments = matter.comments.map((comment) => ({
+    id: comment.id,
+    body: comment.body,
+    createdAt: comment.createdAt.toISOString(),
+    updatedAt: comment.updatedAt.toISOString(),
+    author: comment.author,
+    attachments: comment.attachments,
+    locationName: comment.locationName,
+    locationAddress: comment.locationAddress,
+    locationPlaceId: comment.locationPlaceId,
+    locationLat: comment.locationLat,
+    locationLng: comment.locationLng,
+  }));
 
   const attachmentsWithCounts = await attachVersionCounts(matter.attachments);
   const visibleAttachments = await filterVisibleAttachments(
@@ -143,8 +188,8 @@ export default async function MatterHubPage({
     <>
       <PageHeaderSlot title={matter.title} />
 
-      <div className="grid gap-6 xl:grid-cols-3">
-        <div className="space-y-3 xl:col-span-1">
+      <div className="grid min-w-0 items-start gap-5 @5xl/workspace:grid-cols-[minmax(20rem,24rem)_minmax(0,1fr)] @5xl/workspace:gap-6">
+        <aside className="order-1 min-w-0 space-y-3 self-start @5xl/workspace:sticky @5xl/workspace:top-0 @5xl/workspace:z-10">
           <MatterInfoCard
             matter={matter}
             canEditStatus={canEditStatus}
@@ -153,73 +198,21 @@ export default async function MatterHubPage({
             staffOptions={formData?.members ?? []}
           />
           <MatterOverviewExport matterId={matter.id} />
+        </aside>
+
+        <div className="order-2 min-w-0 space-y-4">
+          <MatterPlanProgress
+            planSteps={matter.planSteps}
+            matterCreatedAt={matter.createdAt}
+            referenceNow={new Date()}
+          />
+          <MatterPlanOverview
+            matterId={matter.id}
+            planSteps={matter.planSteps}
+            referenceNow={new Date()}
+          />
+          <MatterAiSummary matterId={matter.id} />
         </div>
-
-        <div className="grid gap-4 sm:grid-cols-2 xl:col-span-2 xl:grid-cols-1 xl:content-start">
-          <Link href={`/matters/${matter.id}/report`} className="group block">
-            <Card className="h-full rounded-md transition-colors group-hover:border-primary/40 group-hover:bg-primary-muted/40">
-              <CardHeader className="flex flex-row items-center gap-3 space-y-0">
-                <span className="flex h-11 w-11 items-center justify-center rounded-md bg-primary text-white transition-colors group-hover:bg-primary-hover">
-                  <ClipboardList className="h-5 w-5" />
-                </span>
-                <div>
-                  <CardTitle>Báo cáo vụ việc</CardTitle>
-                  <p className="mt-1 text-sm font-normal text-slate-500">
-                    Xem tình hình hiện tại, hoạt động, công việc và tài liệu đính kèm.
-                  </p>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0 text-sm font-medium text-primary transition-colors group-hover:text-primary-hover">
-                Mở báo cáo →
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link href={`/matters/${matter.id}/plan`} className="group block">
-            <Card className="h-full rounded-md transition-colors group-hover:border-primary/40 group-hover:bg-primary-muted/40">
-              <CardHeader className="flex flex-row items-center gap-3 space-y-0">
-                <span className="flex h-11 w-11 items-center justify-center rounded-md bg-primary text-white transition-colors group-hover:bg-primary-hover">
-                  <Route className="h-5 w-5" />
-                </span>
-                <div>
-                  <CardTitle>Lên kế hoạch vụ việc</CardTitle>
-                  <p className="mt-1 text-sm font-normal text-slate-500">
-                    Thêm các bước thực hiện, loại công việc, thời gian và theo dõi tiến độ.
-                  </p>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0 text-sm font-medium text-primary transition-colors group-hover:text-primary-hover">
-                Mở kế hoạch →
-              </CardContent>
-            </Card>
-          </Link>
-
-          <MatterAiSummary matterId={matter.id} className="sm:col-span-2 xl:col-span-1" />
-        </div>
-      </div>
-
-      <div className="mt-8 space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
-            <ListTodo className="h-4 w-4 text-primary" />
-            {tReport("relatedTasks")}
-          </h2>
-          {canEditContent ? (
-            <TaskForm
-              users={staffUsers}
-              matters={matterOption}
-              defaultMatterId={matter.id}
-            />
-          ) : null}
-        </div>
-        <TaskList
-          tasks={matterTasks}
-          totalCount={matterTasks.length}
-          currentUserId={user.id}
-          canManage={canViewAllTasks || canEditContent}
-          users={staffUsers}
-          matters={matterOption}
-        />
       </div>
 
       <div className="mt-8">
@@ -232,6 +225,24 @@ export default async function MatterHubPage({
           canManageAccess={canEditMembers}
           initialAttachments={initialAttachments}
         />
+      </div>
+
+      <div className="mt-8">
+        <Card className="rounded-md">
+          <CardHeader>
+            <CardTitle>{tOverview("commentsTitle")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CommentThread
+              matterId={matter.id}
+              currentUserId={user.id}
+              canDeleteAsAdmin={isAdmin(user.role)}
+              canPost={canEditContent}
+              mentionUsers={mentionUsers}
+              comments={matterComments}
+            />
+          </CardContent>
+        </Card>
       </div>
     </>
   );

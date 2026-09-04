@@ -173,11 +173,7 @@ export async function deleteObject(storageKey: string) {
   );
 }
 
-/**
- * Same-origin upload proxy max.
- * Vercel serverless body limit is ~4.5MB; self-hosted (VPS) can take full
- * attachment max (25MB) so MinIO stays private (no public S3 hostname).
- */
-export const PROXY_UPLOAD_MAX_BYTES = process.env.VERCEL
-  ? 4 * 1024 * 1024
-  : 25 * 1024 * 1024;
+export {
+  ATTACHMENT_MAX_BYTES,
+  PROXY_UPLOAD_MAX_BYTES,
+} from "@/lib/upload-limits";

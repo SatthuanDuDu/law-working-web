@@ -865,7 +865,7 @@ function TaskPreviewChip({ task }: { task: CalendarTask }) {
                   <div className="border-t border-border p-3.5 pt-3">
                     <Link
                       href={href}
-                      className="interactive-press inline-flex w-full items-center justify-center rounded-md bg-primary px-3 py-2.5 text-sm font-medium text-white"
+                      className="interactive-press inline-flex w-full items-center justify-center rounded-md bg-primary px-3 py-2.5 text-sm font-medium text-primary-foreground"
                       onClick={hidePopup}
                     >
                       {t("viewMatter")}
@@ -1376,7 +1376,7 @@ function MonthYearPicker({
                       className={cn(
                         "interactive-press rounded-md px-2 py-2 text-center text-sm capitalize text-foreground transition-colors hover:bg-muted",
                         selected &&
-                          "bg-primary text-white hover:bg-primary hover:text-white",
+                          "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
                       )}
                     >
                       {option.label}

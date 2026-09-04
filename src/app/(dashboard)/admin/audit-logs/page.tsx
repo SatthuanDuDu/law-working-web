@@ -54,7 +54,7 @@ async function resolveAuditHrefs(
     hrefByKey.set(`MatterPlanStep:${step.id}`, `/matters/${step.matterId}/plan`);
   }
   for (const comment of comments) {
-    hrefByKey.set(`Comment:${comment.id}`, `/matters/${comment.matterId}/report`);
+    hrefByKey.set(`Comment:${comment.id}`, `/matters/${comment.matterId}`);
   }
   for (const attachment of attachments) {
     hrefByKey.set(

@@ -663,7 +663,7 @@ export function AttachmentPanel({
         />
         <span
           className={cn(
-            "interactive-press inline-flex items-center gap-2 rounded-md bg-primary font-medium text-white hover:bg-primary-hover",
+            "interactive-press inline-flex items-center gap-2 rounded-md bg-primary font-medium text-primary-foreground hover:bg-primary-hover",
             compact ? "h-8 px-2.5 text-xs" : "h-9 px-3 text-sm",
           )}
         >
@@ -828,7 +828,7 @@ export function AttachmentPanel({
           className={cn(
             "interactive-press inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium",
             folderFilter === "all"
-              ? "bg-primary text-white"
+              ? "bg-primary text-primary-foreground"
               : "bg-muted text-muted-foreground hover:bg-primary-muted hover:text-primary",
           )}
         >
@@ -841,7 +841,7 @@ export function AttachmentPanel({
           className={cn(
             "interactive-press inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium",
             folderFilter === "unfiled"
-              ? "bg-primary text-white"
+              ? "bg-primary text-primary-foreground"
               : "bg-muted text-muted-foreground hover:bg-primary-muted hover:text-primary",
           )}
         >
@@ -855,7 +855,7 @@ export function AttachmentPanel({
               className={cn(
                 "interactive-press inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium",
                 folderFilter === folder.id
-                  ? "bg-primary text-white"
+                  ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground hover:bg-primary-muted hover:text-primary",
               )}
             >

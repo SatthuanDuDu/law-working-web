@@ -60,6 +60,7 @@ export const matterSchema = z.object({
 export const matterPlanStepSchema = z.object({
   matterId: z.string().min(1),
   title: z.string().min(1, "Vui lòng nhập chi tiết công việc"),
+  description: z.string().optional().nullable(),
   workTypeId: z.string().optional().nullable(),
   assigneeIds: z
     .array(z.string().min(1))
@@ -81,6 +82,7 @@ export const matterPlanStepSchema = z.object({
 export const matterPlanStepUpdateSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1).optional(),
+  description: z.string().optional().nullable(),
   workTypeId: z.string().optional().nullable(),
   assigneeIds: z.array(z.string().min(1)).min(1).optional(),
   startedAt: z.string().optional().nullable(),
@@ -217,3 +219,27 @@ export const EXPENSE_TYPES = [
   "EXPERTISE",
   "OTHER",
 ] as const;
+
+export const workflowTemplateStepSchema = z.object({
+  title: z.string().min(1, "Vui lòng nhập tên bước"),
+  description: z.string().optional().nullable(),
+});
+
+export const workflowTemplateSchema = z.object({
+  name: z.string().min(1, "Vui lòng nhập tên workflow"),
+  description: z.string().optional().nullable(),
+  isActive: z.boolean().default(true),
+  steps: z
+    .array(workflowTemplateStepSchema)
+    .min(1, "Workflow cần ít nhất một bước"),
+});
+
+export const matterPlanStepDraftSchema = z.object({
+  title: z.string().min(1, "Vui lòng nhập tên bước"),
+  description: z.string().optional().nullable(),
+  assigneeIds: z.array(z.string().min(1)).default([]),
+  startedAt: z.string().optional().nullable(),
+  dueAt: z.string().optional().nullable(),
+});
+
+export const matterPlanStepsDraftSchema = z.array(matterPlanStepDraftSchema);

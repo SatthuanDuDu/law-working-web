@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useTransition, type DragEvent, type FormEvent } from "react";
+import { useState, useTransition, useEffect, type DragEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   ChevronDown,
   ChevronRight,
   GripVertical,
+  MessageSquare,
+  Paperclip,
   Pencil,
   Plus,
   Trash2,
@@ -43,6 +45,7 @@ import {
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { MatterPlanAddDialog } from "@/components/matters/matter-plan-add-dialog";
 import { PlanAssigneeMultiSelect } from "@/components/matters/plan-assignee-multi-select";
+import { PlanStepStatusSelect } from "@/components/matters/plan-step-status-select";
 import { LocationPicker } from "@/components/location/location-picker";
 import { LocationChip } from "@/components/location/location-chip";
 import {
@@ -166,6 +169,7 @@ export function MatterPlanTimeline({
   canModerate,
   canDeleteAsAdmin,
   mentionUsers,
+  focusStepId = null,
 }: {
   matterId: string;
   steps: MatterPlanStepItem[];
@@ -179,6 +183,8 @@ export function MatterPlanTimeline({
   canModerate: boolean;
   canDeleteAsAdmin: boolean;
   mentionUsers: CommentMentionUser[];
+  /** Scroll + highlight this step (from hub overview `?step=`). */
+  focusStepId?: string | null;
 }) {
   const router = useRouter();
   const t = useTranslations("plan");
@@ -197,6 +203,21 @@ export function MatterPlanTimeline({
   const [editError, setEditError] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [expandedDocs, setExpandedDocs] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (!focusStepId) return;
+    if (!steps.some((step) => step.id === focusStepId)) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      document
+        .getElementById(`plan-step-${focusStepId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, [focusStepId, steps]);
 
   if (steps !== stepsSnapshot) {
     setStepsSnapshot(steps);
@@ -432,6 +453,7 @@ export function MatterPlanTimeline({
               {orderedSteps.length > 0
                 ? ` · ${t("stepCount", { count: orderedSteps.length })}`
                 : ""}
+              {canEdit && orderedSteps.length > 1 ? ` · ${t("dragHint")}` : ""}
             </p>
           </div>
           {canEdit ? (
@@ -466,21 +488,20 @@ export function MatterPlanTimeline({
             ) : null}
           </div>
         ) : (
-          <ol className="relative ml-0 min-w-0 space-y-0 border-l-2 border-primary/40 pl-5 pt-1 @md/workspace:ml-1 @md/workspace:pl-7 @xl/workspace:ml-2 @xl/workspace:pl-9">
+          <ol className="relative min-w-0 space-y-3 pt-1">
             {orderedSteps.map((step, index) => {
               const isDragging = draggingId === step.id;
               const isDropTarget =
                 dropTargetId === step.id && draggingId !== step.id;
               const isEditing = editingId === step.id && editDraft;
               const docsOpen = Boolean(expandedDocs[step.id]);
-              const docsCount =
-                step.attachments.length + step.comments.length;
 
               return (
                 <li
                   key={step.id}
+                  id={`plan-step-${step.id}`}
                   className={cn(
-                    "relative pb-8 last:pb-0 transition-transform",
+                    "relative scroll-mt-24 transition-transform",
                     isDragging && "opacity-60",
                   )}
                   onDragOver={(event) => handleDragOver(event, step.id)}
@@ -491,21 +512,19 @@ export function MatterPlanTimeline({
                     draggable={canEdit && !editingId}
                     onDragStart={(event) => handleDragStart(event, step.id)}
                     onDragEnd={handleDragEnd}
-                    title={
-                      canEdit && !editingId
-                        ? t("dragHint")
-                        : undefined
-                    }
+                    aria-grabbed={draggingId === step.id}
                     className={cn(
-                      "@container/step group relative min-w-0 rounded-md border border-border/50 bg-[color-mix(in_oklab,var(--muted)_8%,var(--surface))] p-3 transition-[border-color,background-color,transform] duration-150 @min-[28rem]/step:p-4",
+                      "@container/step group relative min-w-0 rounded-md border border-border/50 bg-[color-mix(in_oklab,var(--muted)_8%,var(--surface))] p-3 transition-[border-color,background-color,transform,box-shadow] duration-150 @min-[28rem]/step:p-4",
                       canEdit &&
                         !editingId &&
                         "cursor-grab active:cursor-grabbing",
                       isDropTarget &&
-                        "z-[1] border-primary bg-primary-muted ring-1 ring-primary/30",
+                        "z-[1] border-primary/40 bg-primary-muted ring-1 ring-primary/20",
                       isDragging && "border-dashed border-primary/60 bg-primary-muted/50 opacity-70",
                       isEditing &&
-                        "border-primary/50 bg-surface ring-1 ring-primary/25",
+                        "border-primary/40 bg-surface ring-1 ring-primary/20",
+                      focusStepId === step.id &&
+                        "z-[1] border-primary/50 bg-primary-muted/40 ring-1 ring-primary/25",
                     )}
                   >
                     <div className="flex flex-col gap-3 @min-[32rem]/step:flex-row @min-[32rem]/step:items-start @min-[32rem]/step:justify-between">
@@ -853,36 +872,24 @@ export function MatterPlanTimeline({
                         >
                           {!isEditing ? (
                             <>
-                              <div className="relative min-w-0 flex-1 sm:flex-none">
-                                <Select
-                                  value={step.status}
-                                  disabled={isUpdatingStep}
-                                  onChange={(event) =>
-                                    handleStatusChange(
-                                      step.id,
-                                      event.target
-                                        .value as MatterPlanStepStatus,
-                                    )
-                                  }
-                                  className="h-9 w-full min-w-0 appearance-none rounded-md py-0 pl-3 pr-9 text-center @min-[32rem]/step:w-auto @min-[32rem]/step:min-w-[10rem]"
-                                  aria-label={t("statusLabel")}
-                                >
-                                  {(
-                                    Object.keys(
-                                      planStepStatus,
-                                    ) as MatterPlanStepStatus[]
-                                  ).map((status) => (
-                                    <option key={status} value={status}>
-                                      {planStepStatus[status]}
-                                    </option>
-                                  ))}
-                                </Select>
-                                <ChevronDown
-                                  className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                                  aria-hidden
-                                />
-                              </div>
-                              <div className="flex shrink-0 items-center gap-0.5">
+                              <PlanStepStatusSelect
+                                value={step.status}
+                                disabled={isUpdatingStep}
+                                onChange={(status) =>
+                                  handleStatusChange(step.id, status)
+                                }
+                                aria-label={t("statusLabel")}
+                                className="min-w-0 flex-1 sm:flex-none"
+                                options={(
+                                  Object.keys(
+                                    planStepStatus,
+                                  ) as MatterPlanStepStatus[]
+                                ).map((status) => ({
+                                  value: status,
+                                  label: planStepStatus[status],
+                                }))}
+                              />
+                              <div className="flex shrink-0 overflow-hidden rounded-md border border-border bg-surface">
                                 <Button
                                   type="button"
                                   variant="ghost"
@@ -890,10 +897,11 @@ export function MatterPlanTimeline({
                                   disabled={isUpdatingStep || Boolean(editingId)}
                                   onClick={() => beginEdit(step)}
                                   aria-label={t("editStep")}
-                                  className="h-9 w-9 rounded-md text-muted-foreground hover:bg-primary-muted hover:text-primary"
+                                  className="h-8 w-8 rounded-none text-muted-foreground hover:bg-muted hover:text-foreground"
                                 >
-                                  <Pencil className="h-4 w-4" />
+                                  <Pencil className="h-3.5 w-3.5" />
                                 </Button>
+                                <span className="w-px self-stretch bg-border" aria-hidden />
                                 <Button
                                   type="button"
                                   variant="ghost"
@@ -901,9 +909,9 @@ export function MatterPlanTimeline({
                                   disabled={isUpdatingStep}
                                   onClick={() => handleDelete(step)}
                                   aria-label={t("deleteStep")}
-                                  className="h-9 w-9 rounded-md text-muted-foreground hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"
+                                  className="h-8 w-8 rounded-none text-muted-foreground hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
                               </div>
                             </>
@@ -921,24 +929,29 @@ export function MatterPlanTimeline({
                         <button
                           type="button"
                           onClick={() => toggleDocs(step.id)}
-                          className="interactive-press flex w-full items-center justify-between gap-2 rounded-md px-0 py-1.5 text-left hover:bg-transparent hover:[filter:none] active:[filter:none]"
+                          className="interactive-press flex w-full items-center justify-between gap-2 rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-left hover:border-border hover:bg-muted/50"
                           aria-expanded={docsOpen}
                         >
-                          <span className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+                          <span className="flex min-w-0 items-center gap-2 text-xs font-medium text-foreground">
                             {docsOpen ? (
-                              <ChevronDown className="h-3.5 w-3.5 text-primary" />
+                              <ChevronDown className="h-3.5 w-3.5 shrink-0 text-primary" />
                             ) : (
-                              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                             )}
-                            {t("docsTitle")}
-                            {docsCount > 0 ? (
-                              <span className="rounded-full bg-primary-muted px-1.5 py-0.5 text-[10px] tabular-nums font-semibold text-primary">
-                                {docsCount}
+                            <span className="truncate">{t("docsTitle")}</span>
+                            <span className="flex items-center gap-1 text-muted-foreground">
+                              <Paperclip className="h-3 w-3" aria-hidden />
+                              <span className="tabular-nums text-[11px]">
+                                {step.attachments.length}
                               </span>
-                            ) : null}
+                              <MessageSquare className="ml-1 h-3 w-3" aria-hidden />
+                              <span className="tabular-nums text-[11px]">
+                                {step.comments.length}
+                              </span>
+                            </span>
                           </span>
-                          <span className="text-[11px] text-muted-foreground">
-                            {docsOpen ? tCommon("collapse") : tCommon("open")}
+                          <span className="shrink-0 text-[11px] font-medium text-muted-foreground">
+                            {docsOpen ? t("docsCollapse") : t("docsExpand")}
                           </span>
                         </button>
                         {docsOpen ? (

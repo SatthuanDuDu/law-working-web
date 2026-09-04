@@ -105,6 +105,7 @@ export type NavLabelKey =
   | "tasks"
   | "workload"
   | "expenses"
+  | "workflows"
   | "wallet"
   | "spendCategories"
   | "users"
@@ -122,12 +123,28 @@ export const NAV_ITEMS = [
   { href: "/tasks", labelKey: "tasks" as const, icon: "ClipboardList" },
   { href: "/chat", labelKey: "chat" as const, icon: "MessageCircle" },
   { href: "/calendar", labelKey: "calendar" as const, icon: "CalendarDays" },
-  { href: "/wallet", labelKey: "wallet" as const, icon: "Wallet" },
+  {
+    href: "/wallet",
+    labelKey: "wallet" as const,
+    icon: "Wallet",
+    featureBadge: "new" as const,
+  },
 ] as const;
 
 export const MANAGER_NAV_ITEMS = [
   { href: "/workload", labelKey: "workload" as const, icon: "Gauge" },
-  { href: "/expenses", labelKey: "expenses" as const, icon: "CircleDollarSign" },
+  {
+    href: "/workflows",
+    labelKey: "workflows" as const,
+    icon: "GitBranch",
+    featureBadge: "new" as const,
+  },
+  {
+    href: "/expenses",
+    labelKey: "expenses" as const,
+    icon: "CircleDollarSign",
+    featureBadge: "new" as const,
+  },
   { href: "/admin/spend-categories", labelKey: "spendCategories" as const, icon: "Tags" },
   { href: "/website", labelKey: "website" as const, icon: "Globe" },
   { href: "/website/traffic", labelKey: "websiteTraffic" as const, icon: "BarChart3" },

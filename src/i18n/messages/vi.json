@@ -1114,7 +1114,7 @@
     "folderLoadFailed": "Không tải được danh sách thư mục",
     "folderCreateFailed": "Không tạo được thư mục",
     "folderDeleteTitle": "Xóa thư mục",
-    "folderDeleteMessage": "Xóa thư mục \"{name}\"? Tài liệu bên trong sẽ chuyển về Chưa xếp.",
+    "folderDeleteMessage": "Xóa thư mục \"{name}\" và toàn bộ tài liệu bên trong? Thao tác không thể hoàn tác.",
     "folderDeleteFailed": "Không xóa được thư mục",
     "openFileFailed": "Không mở được file",
     "previewImageFailed": "Không tải được ảnh xem trước",

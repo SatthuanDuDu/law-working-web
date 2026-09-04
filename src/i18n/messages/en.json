@@ -1114,7 +1114,7 @@
     "folderLoadFailed": "Could not load folders",
     "folderCreateFailed": "Could not create folder",
     "folderDeleteTitle": "Delete folder",
-    "folderDeleteMessage": "Delete folder \"{name}\"? Files inside will move to Unfiled.",
+    "folderDeleteMessage": "Delete folder \"{name}\" and all files inside it? This cannot be undone.",
     "folderDeleteFailed": "Could not delete folder",
     "openFileFailed": "Could not open file",
     "previewImageFailed": "Could not load preview image",

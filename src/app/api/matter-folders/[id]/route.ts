@@ -4,6 +4,12 @@ import { getSessionUser } from "@/lib/session";
 import { canAccessAttachmentTarget } from "@/lib/access";
 import { createAuditLog } from "@/lib/audit";
 import { canManageMatterDocuments } from "@/lib/permissions";
+import { deleteObject } from "@/lib/storage";
+import { cleanupAttachmentAccessIfOrphan } from "@/lib/attachment-access";
+import {
+  isMatterEditLocked,
+  MATTER_EDIT_LOCKED_MESSAGE,
+} from "@/lib/matter-status";
 
 export async function PATCH(
   request: Request,
@@ -91,21 +97,55 @@ export async function DELETE(
     return NextResponse.json({ error: "Không có quyền xóa thư mục" }, { status: 403 });
   }
 
+  const matter = await prisma.matter.findUnique({
+    where: { id: folder.matterId },
+    select: { status: true },
+  });
+  if (isMatterEditLocked(matter?.status)) {
+    return NextResponse.json(
+      { error: MATTER_EDIT_LOCKED_MESSAGE },
+      { status: 403 },
+    );
+  }
+
+  // Include every version that still points at this folder.
+  const attachments = await prisma.attachment.findMany({
+    where: { folderId: id },
+    select: { id: true, storageKey: true, fileName: true, versionGroupId: true },
+  });
+
+  for (const row of attachments) {
+    try {
+      await deleteObject(row.storageKey);
+    } catch {
+      // Object may already be missing in storage.
+    }
+  }
+
+  const groupIds = [...new Set(attachments.map((row) => row.versionGroupId))];
+
   await prisma.$transaction([
-    prisma.attachment.updateMany({
-      where: { folderId: id },
-      data: { folderId: null },
-    }),
+    prisma.attachment.deleteMany({ where: { folderId: id } }),
     prisma.matterFolder.delete({ where: { id } }),
   ]);
+
+  for (const groupId of groupIds) {
+    await cleanupAttachmentAccessIfOrphan(groupId);
+  }
 
   await createAuditLog({
     userId: user.id,
     action: "DELETE",
     entityType: "MatterFolder",
     entityId: id,
-    details: folder.name,
+    details:
+      attachments.length > 0
+        ? `${folder.name} (+${attachments.length} file)`
+        : folder.name,
   });
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({
+    ok: true,
+    deletedAttachments: attachments.length,
+  });
 }

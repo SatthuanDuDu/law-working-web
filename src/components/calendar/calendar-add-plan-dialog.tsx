@@ -8,6 +8,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { createMatterPlanStepAction } from "@/lib/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label, Select } from "@/components/ui/card";
 import { useOverlayAnimation } from "@/hooks/use-overlay-animation";
 import { cn } from "@/lib/utils";
@@ -122,6 +123,18 @@ function CalendarAddPlanForm({
           name="title"
           required
           placeholder={t("planStepPlaceholder")}
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="calendar-plan-description">
+          {t("planStepDescription")}
+        </Label>
+        <Textarea
+          id="calendar-plan-description"
+          name="description"
+          rows={2}
+          placeholder={t("planStepDescriptionPlaceholder")}
+          className="min-h-[4.5rem] resize-y"
         />
       </div>
       <PlanAssigneeMultiSelect

@@ -59,6 +59,12 @@ export function MatterPlanOverviewStepCard({
   }
   const dateLine = dateParts.length > 0 ? dateParts.join(" · ") : null;
 
+  const detailText = step.description?.trim() ?? "";
+  // Only show a separate description block when it adds info beyond the title
+  // (legacy steps often stored the long text in `title` only).
+  const showDetail =
+    detailText.length > 0 && detailText !== step.title.trim();
+
   return (
     <li className="relative flex gap-3 pb-3 last:pb-0">
       <span
@@ -178,14 +184,16 @@ export function MatterPlanOverviewStepCard({
 
         {expanded ? (
           <div className="space-y-3 border-t border-border px-3 py-3">
-            <div>
-              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                {tPlan("detail")}
-              </p>
-              <p className="mt-1 whitespace-pre-wrap break-words text-sm text-foreground">
-                {step.description?.trim() || step.title}
-              </p>
-            </div>
+            {showDetail ? (
+              <div>
+                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {tPlan("detail")}
+                </p>
+                <p className="mt-1 whitespace-pre-wrap break-words text-sm text-foreground">
+                  {detailText}
+                </p>
+              </div>
+            ) : null}
 
             <dl className="grid gap-2 sm:grid-cols-2">
               <DetailItem label={tPlan("workType")}>{workLabel}</DetailItem>

@@ -60,12 +60,13 @@ function useNowMs(intervalMs = 30_000) {
 }
 
 const CALENDAR_CHIP_BASE =
-  "interactive-press flex w-full min-w-0 items-center gap-0.5 rounded px-1 py-0.5 text-left text-[10px] font-medium text-white sm:gap-1 sm:px-1.5 sm:text-[11px]";
+  "interactive-press flex w-full min-w-0 items-center gap-0.5 rounded px-1 py-0.5 text-left text-[10px] font-medium sm:gap-1 sm:px-1.5 sm:text-[11px]";
 /** Week-row floor so a day cell can show the date header + at least 4 chips. */
 const MONTH_WEEK_ROW_MIN = "10.75rem";
-const CALENDAR_CHIP_NORMAL = "bg-primary hover:bg-primary-hover";
+const CALENDAR_CHIP_NORMAL =
+  "bg-primary text-primary-foreground hover:bg-primary-hover";
 const CALENDAR_CHIP_URGENT =
-  "bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600";
+  "bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600";
 
 /**
  * Mobile ghost-click guard: after opening/dismissing a chip sheet, ignore day-cell
@@ -178,9 +179,9 @@ function CalendarChipLabel({
         <Icon className="h-2.5 w-2.5" strokeWidth={3} aria-hidden />
       </span>
       {urgent ? (
-        <Clock className="h-3 w-3 shrink-0 text-white" aria-hidden />
+        <Clock className="h-3 w-3 shrink-0 opacity-95" aria-hidden />
       ) : null}
-      <span className="min-w-0 truncate text-white">{title}</span>
+      <span className="min-w-0 truncate">{title}</span>
     </>
   );
 }

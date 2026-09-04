@@ -59,7 +59,7 @@ export const matterSchema = z.object({
 
 export const matterPlanStepSchema = z.object({
   matterId: z.string().min(1),
-  title: z.string().min(1, "Vui lòng nhập chi tiết công việc"),
+  title: z.string().min(1, "Vui lòng nhập tên bước"),
   description: z.string().optional().nullable(),
   workTypeId: z.string().optional().nullable(),
   assigneeIds: z

@@ -32,7 +32,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const matterTypeControlClass =
-  "interactive-field h-full w-full appearance-none rounded-md border-0 bg-surface pl-5 pr-12 text-base font-bold text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40";
+  "interactive-field h-full w-full appearance-none rounded-md border-0 bg-surface pl-5 pr-12 text-base font-bold text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/35";
 
 const matterTypeChevronClass =
   "absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground";
@@ -820,9 +820,9 @@ export function CreateMatterModal({
               <input type="hidden" name="clientMode" value={clientMode} />
               <input type="hidden" name="leadLawyerId" value={leadLawyerId} />
 
-              <div className="grid w-full grid-cols-1 gap-4 rounded-md bg-primary px-4 py-4 shadow-md md:grid-cols-2 md:items-center md:gap-6">
+              <div className="grid w-full grid-cols-1 gap-4 rounded-md bg-primary px-4 py-4 text-primary-foreground shadow-md md:grid-cols-2 md:items-center md:gap-6">
                 <div className="flex flex-col justify-center">
-                  <p className="break-all font-mono text-2xl font-bold leading-tight tracking-tight text-white sm:text-3xl">
+                  <p className="break-all font-mono text-2xl font-bold leading-tight tracking-tight text-primary-foreground sm:text-3xl">
                     {previewCode}
                   </p>
                 </div>
@@ -830,7 +830,7 @@ export function CreateMatterModal({
                 <div className="flex flex-col justify-center space-y-3">
                   <Label
                     htmlFor={type === "OTHER" && customTypeInputOpen ? "customTypeLabel" : "type"}
-                    className="text-base font-bold text-white"
+                    className="text-base font-bold text-primary-foreground"
                   >
                     {t("matterType")}
                   </Label>

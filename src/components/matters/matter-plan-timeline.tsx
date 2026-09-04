@@ -31,6 +31,7 @@ import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { DatetimeLocalWithNow } from "@/components/ui/datetime-local-with-now";
 import { parseAppDateTime, toVietnamDatetimeLocalValue } from "@/lib/datetime";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label, Select } from "@/components/ui/card";
 import {
@@ -57,6 +58,7 @@ import {
 export type MatterPlanStepItem = {
   id: string;
   title: string;
+  description: string | null;
   status: MatterPlanStepStatus;
   priority: TaskPriority;
   startedAt: string | null;
@@ -148,6 +150,7 @@ function reorderList(
 
 type EditDraft = {
   title: string;
+  description: string;
   workTypeId: string;
   assigneeIds: string[];
   startedAt: string;
@@ -235,8 +238,12 @@ export function MatterPlanTimeline({
 
   function beginEdit(step: MatterPlanStepItem) {
     setEditingId(step.id);
+    // Legacy steps only filled `title` (old "chi tiết" field). Prefill
+    // description from title so users can shorten the name and keep detail.
+    const legacyDescription = step.description?.trim() || step.title;
     setEditDraft({
       title: step.title,
+      description: legacyDescription,
       workTypeId: step.workType?.id ?? "",
       assigneeIds: step.assignees.map((user) => user.id),
       startedAt: toDatetimeLocalValue(step.startedAt),
@@ -262,10 +269,12 @@ export function MatterPlanTimeline({
       setEditError(t("titleRequired"));
       return;
     }
+    const nextDescription = editDraft.description.trim();
     setEditError("");
     const formData = new FormData();
     formData.set("id", editingId);
     formData.set("title", nextTitle);
+    formData.set("description", nextDescription);
     formData.set("workTypeId", editDraft.workTypeId);
     for (const id of editDraft.assigneeIds) formData.append("assigneeIds", id);
     formData.set("startedAt", editDraft.startedAt);
@@ -294,6 +303,7 @@ export function MatterPlanTimeline({
             ? {
                 ...item,
                 title: nextTitle,
+                description: nextDescription || null,
                 workType: nextWorkType,
                 assignees: editDraft.assigneeIds.flatMap((id) => {
                   const user = assigneeById.get(id);
@@ -553,10 +563,10 @@ export function MatterPlanTimeline({
                               onMouseDown={(event) => event.stopPropagation()}
                             >
                               <OutlinedField
-                                label={t("detail")}
+                                label={t("stepTitle")}
                                 htmlFor={`edit-title-${step.id}`}
                               >
-                                <Textarea
+                                <Input
                                   id={`edit-title-${step.id}`}
                                   value={editDraft.title}
                                   onChange={(event) =>
@@ -570,7 +580,30 @@ export function MatterPlanTimeline({
                                     )
                                   }
                                   required
+                                  placeholder={t("stepTitlePlaceholder")}
+                                  className={outlinedFieldInputClass}
+                                />
+                              </OutlinedField>
+
+                              <OutlinedField
+                                label={t("detail")}
+                                htmlFor={`edit-description-${step.id}`}
+                              >
+                                <Textarea
+                                  id={`edit-description-${step.id}`}
+                                  value={editDraft.description}
+                                  onChange={(event) =>
+                                    setEditDraft((current) =>
+                                      current
+                                        ? {
+                                            ...current,
+                                            description: event.target.value,
+                                          }
+                                        : current,
+                                    )
+                                  }
                                   rows={3}
+                                  placeholder={t("detailPlaceholder")}
                                   className={cn(
                                     outlinedFieldInputClass,
                                     "h-auto min-h-[5rem] resize-y py-2.5",
@@ -764,6 +797,12 @@ export function MatterPlanTimeline({
                                 <p className="break-words whitespace-pre-wrap text-base font-semibold leading-snug text-foreground">
                                   {step.title}
                                 </p>
+                                {step.description?.trim() &&
+                                step.description.trim() !== step.title.trim() ? (
+                                  <p className="break-words whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+                                    {step.description.trim()}
+                                  </p>
+                                ) : null}
                                 <div className="flex flex-wrap items-center gap-1.5">
                                   <StatusChip
                                     label={planStepStatus[step.status]}

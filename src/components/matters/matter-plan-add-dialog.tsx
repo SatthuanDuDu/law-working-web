@@ -12,6 +12,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useOverlayAnimation } from "@/hooks/use-overlay-animation";
 import { Button } from "@/components/ui/button";
 import { DatetimeLocalWithNow } from "@/components/ui/datetime-local-with-now";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label, Select } from "@/components/ui/card";
 import { LocationPicker } from "@/components/location/location-picker";
@@ -83,6 +84,7 @@ function MatterPlanAddForm({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [workTypeId, setWorkTypeId] = useState("");
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [startedAt, setStartedAt] = useState("");
@@ -93,13 +95,19 @@ function MatterPlanAddForm({
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    const nextTitle = title.trim();
+    if (!nextTitle) {
+      setError(t("titleRequired"));
+      return;
+    }
     if (assigneeIds.length === 0) {
       setError(t("assigneeRequired"));
       return;
     }
     const formData = new FormData();
     formData.set("matterId", matterId);
-    formData.set("title", title.trim());
+    formData.set("title", nextTitle);
+    formData.set("description", description.trim());
     formData.set("workTypeId", workTypeId);
     for (const id of assigneeIds) formData.append("assigneeIds", id);
     formData.set("startedAt", startedAt);
@@ -181,17 +189,27 @@ function MatterPlanAddForm({
           {t("newStepInfo")}
         </p>
 
-        <OutlinedField label={t("detail")} htmlFor="add-plan-title">
-          <Textarea
+        <OutlinedField label={t("stepTitle")} htmlFor="add-plan-title">
+          <Input
             id="add-plan-title"
             value={title}
             onChange={(event) => setTitle(event.target.value)}
-            placeholder={t("detailPlaceholder")}
+            placeholder={t("stepTitlePlaceholder")}
             required
-            rows={4}
+            className={outlinedFieldInputClass}
+          />
+        </OutlinedField>
+
+        <OutlinedField label={t("detail")} htmlFor="add-plan-description">
+          <Textarea
+            id="add-plan-description"
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            placeholder={t("detailPlaceholder")}
+            rows={3}
             className={cn(
               outlinedFieldInputClass,
-              "h-auto min-h-[6rem] resize-y py-2.5",
+              "h-auto min-h-[5rem] resize-y py-2.5",
             )}
           />
         </OutlinedField>

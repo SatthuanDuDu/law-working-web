@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,9 @@ export function RevisionHistory({
 }) {
   const t = useTranslations("revision");
   const locale = useLocale();
-  const [expanded, setExpanded] = useState(false);
+  const menuId = useId();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
   const [latest, setLatest] = useState<RevisionListItem | null>(null);
   const [revisions, setRevisions] = useState<RevisionListItem[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -46,7 +48,7 @@ export function RevisionHistory({
       if (cancelled) return;
       setLatest(res.revisions[0] ?? null);
       setRevisions(null);
-      setExpanded(false);
+      setOpen(false);
       setError("");
       setLoadedFor(entityKey);
     });
@@ -54,6 +56,27 @@ export function RevisionHistory({
       cancelled = true;
     };
   }, [entityType, entityId, entityKey]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    function onPointerDown(event: MouseEvent | PointerEvent) {
+      const root = rootRef.current;
+      if (!root || root.contains(event.target as Node)) return;
+      setOpen(false);
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
 
   const loadFull = useCallback(async () => {
     setLoading(true);
@@ -69,32 +92,28 @@ export function RevisionHistory({
   }, [entityType, entityId, t]);
 
   async function toggle() {
-    const next = !expanded;
-    setExpanded(next);
+    const next = !open;
+    setOpen(next);
     if (next && revisions === null) {
       await loadFull();
     }
   }
 
-  // Hide while entity changed and summary not yet for this key
   if (loadedFor !== entityKey || !latest) return null;
 
   const list = revisions ?? [latest];
 
   return (
-    <div
-      className={cn(
-        "rounded-md border border-border bg-muted/20",
-        className,
-      )}
-    >
+    <div ref={rootRef} className={cn("relative inline-flex max-w-full", className)}>
       <Button
         type="button"
         variant="ghost"
         size="sm"
-        className="interactive-press flex h-auto w-full items-center justify-between gap-2 px-2.5 py-2 text-left font-normal"
+        className="interactive-press inline-flex h-auto max-w-full items-center gap-2 rounded-full border border-border/70 bg-surface-container px-3 py-1.5 text-left font-normal hover:bg-surface-container-high"
         onClick={() => void toggle()}
-        aria-expanded={expanded}
+        aria-expanded={open}
+        aria-controls={menuId}
+        aria-haspopup="listbox"
       >
         <span className="min-w-0 truncate text-xs text-muted-foreground">
           {t("latestSummary", {
@@ -105,17 +124,19 @@ export function RevisionHistory({
         <ChevronDown
           className={cn(
             "h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-150",
-            expanded && "rotate-180",
+            open && "rotate-180",
           )}
           aria-hidden
         />
       </Button>
 
-      {expanded ? (
-        <div className="space-y-2 border-t border-border/60 px-2.5 py-2">
-          {error ? (
-            <p className="text-xs text-destructive">{error}</p>
-          ) : null}
+      {open ? (
+        <div
+          id={menuId}
+          role="listbox"
+          className="absolute left-0 top-[calc(100%+0.35rem)] z-50 w-[min(22rem,calc(100vw-2rem))] max-h-72 overflow-y-auto rounded-xl border border-border/70 bg-surface p-3 shadow-[var(--shadow-overlay)]"
+        >
+          {error ? <p className="text-xs text-destructive">{error}</p> : null}
           {loading && revisions === null ? (
             <p className="text-xs text-muted-foreground">{t("loading")}</p>
           ) : list.length === 0 ? (

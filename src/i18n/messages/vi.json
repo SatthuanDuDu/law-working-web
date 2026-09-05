@@ -66,6 +66,7 @@
     "brandSubtitle": "Quản lý nội bộ",
     "closeMenu": "Đóng menu",
     "openMenu": "Mở menu",
+    "sectionMain": "Không gian chính",
     "sectionManager": "Quản lý",
     "sectionAdmin": "Quản trị"
   },
@@ -108,11 +109,11 @@
     },
     "matters": {
       "title": "Vụ việc",
-      "description": "Quản lý vụ việc và thành viên tham gia"
+      "description": "Quản lý vụ việc & hồ sơ pháp lý"
     },
     "clients": {
-      "title": "Khách hàng",
-      "description": "Quản lý thông tin khách hàng"
+      "title": "Quản lý Khách hàng",
+      "description": "Cơ sở dữ liệu đối tác pháp lý, khách hàng doanh nghiệp và hồ sơ thuộc NSLAW Workspace"
     },
     "chat": {
       "title": "Trò chuyện",
@@ -123,8 +124,8 @@
       "description": "Tạo và theo dõi công việc nội bộ"
     },
     "calendar": {
-      "title": "Lịch & hạn",
-      "description": "Theo dõi deadline task, hạn kế hoạch và thêm bước từ lịch"
+      "title": "Lịch & Hạn Tố Tụng",
+      "description": "Theo dõi hạn công việc, bước kế hoạch và thêm bước mới từ lịch"
     },
     "settings": {
       "title": "Cài đặt",
@@ -135,16 +136,16 @@
       "description": "Phân bổ công việc theo nhân viên và phòng ban"
     },
     "workflows": {
-      "title": "Workflow",
-      "description": "Thiết kế lộ trình mẫu khi tạo vụ việc mới"
+      "title": "Quản lý Quy trình & Lộ trình mẫu",
+      "description": "Thiết lập lộ trình chuẩn hóa cho các loại vụ việc, phân công bước và kiểm soát hạn khi mở hồ sơ mới."
     },
     "expenses": {
       "title": "Dòng tiền nội bộ",
       "description": "Phát budget, số dư ví và giao dịch toàn công ty"
     },
     "wallet": {
-      "title": "Ví tạm ứng",
-      "description": "Số dư, lịch sử nhận budget và ghi chi"
+      "title": "Ví tạm ứng & Quyết toán chi phí",
+      "description": "Quản lý tạm ứng công tác, tiền khách, gói chi phí và lịch sử thu chi nội bộ."
     },
     "spendCategories": {
       "title": "Nhóm chi phí",
@@ -369,6 +370,8 @@
     "deleteMatter": "Xóa vụ việc",
     "setupPlan": "Kế hoạch",
     "setupPlanLong": "Thiết lập kế hoạch",
+    "viewHub": "Xem hồ sơ",
+    "tasksLabel": "Công việc",
     "emptyHint": "Chưa có vụ việc nào. Bấm \"Tạo vụ việc\" ở góc trên bên phải để bắt đầu.",
     "noFilterMatch": "Không có vụ việc khớp bộ lọc hiện tại.",
     "matterCount": "{count} vụ việc",
@@ -377,6 +380,17 @@
     "fieldLeadLawyer": "Luật sư phụ trách",
     "fieldMembers": "Thành viên",
     "fieldCreatedAt": "Tạo lúc",
+    "fieldUpdatedAt": "Cập nhật",
+    "metrics": {
+      "active": "Vụ việc đang thụ lý",
+      "activeSub": "Trong tổng {total} hồ sơ",
+      "inProgress": "Đang xử lý",
+      "inProgressSub": "Đang triển khai kế hoạch",
+      "onHold": "Tạm dừng",
+      "onHoldSub": "Chờ xử lý / tạm ngừng",
+      "new": "Mới mở",
+      "newSub": "Chưa vào giai đoạn xử lý"
+    },
     "fieldDescription": "Mô tả",
     "taskCount": "{count} task",
     "fieldTaskCount": "Số task",
@@ -457,7 +471,8 @@
     },
     "overview": {
       "timelineTitle": "Lộ trình thực hiện",
-      "progressTitle": "Tiến độ",
+      "timelineHint": "Theo dõi hạn định, phân công và chứng từ từng bước.",
+      "progressTitle": "Tiến độ tổng thể hồ sơ",
       "startLabel": "Bắt đầu",
       "dueLabel": "Hạn",
       "expectedEnd": "Dự kiến xong",
@@ -480,7 +495,16 @@
       "stepSequenceAria": "Thứ tự bước theo trạng thái",
       "commentsTitle": "Trao đổi / Bình luận",
       "planFallback": "Kế hoạch",
-      "completedPercent": "{percent}% hoàn thành"
+      "completedPercent": "{percent}% hoàn thành",
+      "hubNavAria": "Điều hướng hồ sơ vụ việc",
+      "hubTabOverview": "Tổng quan & Lộ trình",
+      "hubTabPlan": "Chi tiết kế hoạch",
+      "hubTabDocs": "Tài liệu",
+      "hubTabComments": "Trao đổi",
+      "clientCardTitle": "Hồ sơ khách hàng",
+      "teamCardTitle": "Luật sư & Nhân sự phụ trách",
+      "leadBadge": "Chủ trì",
+      "memberBadge": "Thành viên"
     }
   },
   "filters": {
@@ -597,6 +621,7 @@
   "clients": {
     "create": "Thêm khách hàng",
     "createShort": "Thêm",
+    "createNew": "+ Thêm khách hàng mới",
     "code": "Mã khách hàng",
     "codeAutoHint": "Để trống để tự tạo",
     "name": "Tên khách hàng",
@@ -607,7 +632,7 @@
     "address": "Địa chỉ",
     "taxCode": "Mã số thuế",
     "noClients": "Chưa có khách hàng",
-    "searchPlaceholder": "Tìm khách hàng...",
+    "searchPlaceholder": "Tìm theo tên, mã KH, địa chỉ, SĐT, email...",
     "deleteTitle": "Xóa khách hàng",
     "deleteConfirm": "Bạn có chắc muốn xóa khách hàng \"{name}\"? Có thể hoàn tác ngay sau khi xóa.",
     "deleteConfirmLabel": "Xóa khách hàng",
@@ -632,7 +657,7 @@
     "filterMatterCount": "Số vụ việc",
     "clientCount": "{count} khách hàng",
     "clientCountFiltered": "{visible}/{total} khách hàng",
-    "emptyHint": "Chưa có khách hàng nào. Bấm \"+ Khách hàng mới\" phía trên để thêm.",
+    "emptyHint": "Chưa có khách hàng nào. Bấm \"+ Thêm khách hàng mới\" phía trên để thêm.",
     "noFilterMatch": "Không có khách hàng khớp bộ lọc hiện tại.",
     "fieldMatters": "{count} vụ việc",
     "viewRelatedMatters": "Xem {count} vụ việc liên quan",
@@ -643,7 +668,23 @@
     "bulkDelete": "Xóa đã chọn",
     "confirmBulkDeleteTitle": "Xóa khách hàng đã chọn",
     "confirmBulkDeleteMessage": "Bạn có chắc muốn xóa {count} khách hàng đã chọn? Chỉ xóa được khách hàng không còn vụ việc. Hành động này không hoàn tác.",
-    "bulkDeletePartial": "Đã xóa {deleted} khách hàng. Bỏ qua {skipped} khách hàng còn vụ việc liên quan."
+    "bulkDeletePartial": "Đã xóa {deleted} khách hàng. Bỏ qua {skipped} khách hàng còn vụ việc liên quan.",
+    "activeBadge": "{count} khách hàng",
+    "cardOpenMatters": "Vụ việc đang thụ lý",
+    "cardOpenMattersCount": "{count} vụ đang mở",
+    "cardLeadLawyers": "Luật sư phụ trách",
+    "cardUpdated": "Cập nhật {date}",
+    "viewProfile": "Xem vụ việc",
+    "metrics": {
+      "total": "Tổng khách hàng",
+      "totalSub": "{business} doanh nghiệp · {individual} cá nhân",
+      "business": "Doanh nghiệp",
+      "businessSub": "{individual} khách hàng cá nhân",
+      "openMatters": "Vụ việc đang mở",
+      "openMattersSub": "{clients} khách đang thụ lý",
+      "withoutMatters": "Chưa có vụ việc",
+      "withoutMattersSub": "Hồ sơ chưa gắn vụ việc"
+    }
   },
   "calendar": {
     "title": "Lịch & hạn",
@@ -677,6 +718,20 @@
     "dragSheet": "Kéo xuống để đóng",
     "kindTask": "Công việc",
     "kindPlan": "Kế hoạch",
+    "legendTask": "Công việc",
+    "legendPlan": "Kế hoạch",
+    "legendUrgent": "Sắp đến hạn",
+    "todayBadge": "Hôm nay",
+    "selectedBadge": "Đang chọn",
+    "urgentBadge": "{count} hạn nguy cấp",
+    "urgentRailTitle": "Hạn khẩn cấp cần chốt",
+    "allDay": "Cả ngày",
+    "timezone": "GMT+7",
+    "miniMonth": "Tháng {month}/{year}",
+    "categories": "Phân loại lịch",
+    "selectAll": "Chọn tất cả",
+    "viewDetail": "Chi tiết",
+    "dayFocus": "Tiêu điểm ngày {date}",
     "dueSoon": "Sắp đến hạn",
     "viewPlan": "Xem kế hoạch",
     "scrollMore": "Cuộn để xem thêm",
@@ -758,7 +813,18 @@
     "collapseCard": "Thu gọn {label}",
     "personalTodos": "To-do",
     "noPersonalTodos": "Chưa có việc trong To-do.",
-    "personalTodoDoneCount": "{done}/{total} mục"
+    "personalTodoDoneCount": "{done}/{total} mục",
+    "heroWorkspace": "NSLAW Workspace",
+    "heroSummary": "Bạn có <strong>{tasks} việc chưa xong</strong> và <strong>{deadlines} hạn sắp tới</strong> trong 3 ngày tới.",
+    "priorityToday": "Việc ưu tiên hôm nay",
+    "prioritySubtitle": "Tập trung các hạng mục có tác động cao nhất",
+    "viewAllTasks": "Xem tất cả",
+    "metricUpcoming": "Hạn sắp tới",
+    "metricUpcomingSub": "Trong 3 ngày tới",
+    "metricTodos": "To-do cá nhân",
+    "metricTodosSub": "Chưa hoàn thành",
+    "metricMattersRatio": "đang mở",
+    "onTrackPercent": "{percent}% đúng hạn"
   },
   "workload": {
     "openWork": "Việc đang mở",
@@ -1082,6 +1148,7 @@
     "empty": "Chưa có tài liệu",
     "delete": "Xóa tài liệu",
     "important": "Quan trọng",
+    "markImportantShort": "Gắn sao",
     "loadListFailed": "Không tải được danh sách file",
     "loadFileFailed": "Không tải được file",
     "uploadSessionFailed": "Không thể tạo phiên upload",
@@ -1093,6 +1160,8 @@
     "uploadedBy": "Người upload",
     "source": "Nguồn",
     "date": "Ngày",
+    "showDetails": "Chi tiết",
+    "hideDetails": "Ẩn chi tiết",
     "defaultSource": "Tài liệu",
     "commentOrigin": "Bình luận",
     "markImportant": "Đánh dấu Quan trọng",
@@ -1283,26 +1352,35 @@
   },
   "wallet": {
     "title": "Ví tạm ứng",
-    "balance": "Số dư hiện tại",
+    "balance": "Số dư ví khả dụng",
+    "balanceHint": "Sẵn sàng chi cho tạm ứng án phí, công tác và giải quyết hồ sơ.",
     "packageBalance": "Số dư gói (chi được)",
     "packageRemainingHint": "Tổng còn lại trên các gói đang mở của bạn",
     "clientCashHeld": "Tiền khách đang giữ",
-    "clientCashHeldHint": "Không dùng để chi theo gói — chỉ bàn giao tiếp",
-    "myPackages": "Gói chi phí của tôi",
+    "clientCashHeldHint": "Không cộng gộp vào ngân sách gói văn phòng — chỉ bàn giao tiếp.",
+    "pendingConfirm": "Chờ xác nhận & duyệt",
+    "pendingConfirmHint": "{count, plural, =0 {Không có giao dịch chờ} one {# giao dịch đang chờ} other {# giao dịch đang chờ}}",
+    "monthSpend": "Tổng chi tháng này",
+    "myPackages": "Gói chi phí & hạn mức đang mở",
+    "myPackagesHint": "Các hạn mức đã được phê chuẩn để bạn chủ động giải ngân.",
+    "pkgUsed": "Đã dùng",
+    "pkgRemaining": "Còn lại",
+    "pkgBudget": "Ngân sách duyệt",
     "filterPackage": "Gói",
-    "history": "Lịch sử giao dịch",
+    "history": "Sổ nhật ký thu chi & lịch sử giao dịch",
+    "historyHint": "Đối soát tạm ứng, chi phí phát sinh và duyệt hóa đơn.",
     "credits": "Lịch sử nhận budget",
     "spend": "Ghi chi",
-    "filterDirection": "Chiều",
+    "filterDirection": "Chiều giao dịch",
     "filterCategory": "Loại chi",
     "filterSort": "Sắp xếp",
     "all": "Tất cả",
     "credit": "Nhận budget",
     "debit": "Chi",
-    "newest": "Mới nhất",
-    "oldest": "Cũ nhất",
-    "amountDesc": "Số tiền cao → thấp",
-    "amountAsc": "Số tiền thấp → cao",
+    "newest": "Mới nhất trước",
+    "oldest": "Cũ nhất trước",
+    "amountDesc": "Giá trị lớn nhất",
+    "amountAsc": "Giá trị nhỏ nhất",
     "empty": "Chưa có giao dịch",
     "allocatedBy": "Cấp bởi",
     "legacy": "Dữ liệu cũ",
@@ -1576,6 +1654,13 @@
   "commandPalette": {
     "placeholder": "Tìm vụ việc, khách hàng, công việc...",
     "openHint": "Tìm kiếm nhanh",
+    "typewriter": {
+      "everything": "Tìm kiếm mọi thứ trên workspace…",
+      "matter": "Tạo vụ việc mới…",
+      "client": "Tạo khách hàng…",
+      "task": "Tạo nhiệm vụ…",
+      "calendar": "Mở lịch & hạn tố tụng…"
+    },
     "matters": "Vụ việc",
     "clients": "Khách hàng",
     "tasks": "Công việc",
@@ -1596,6 +1681,9 @@
   },
   "moneyConfirm": {
     "title": "Chờ xác nhận tiền",
+    "actionNeeded": "Cần xử lý ngay",
+    "actionHint": "Xác nhận thực nhận để tiền ghi nhận vào ví",
+    "flow": "Luồng",
     "empty": "Không có khoản nào đang chờ xác nhận.",
     "kindBudget": "Phát budget",
     "kindClient": "Tiền khách",
@@ -1604,13 +1692,13 @@
     "approveSettle": "Duyệt chốt gói",
     "rejectSettle": "Từ chối chốt",
     "status": {
-      "PENDING_RECIPIENT": "Chờ người nhận",
+      "PENDING_RECIPIENT": "Chờ người nhận xác nhận",
       "PENDING_ALLOCATOR": "Chờ người phát xác nhận",
       "CONFIRMED": "Đã xác nhận",
       "REJECTED": "Từ chối",
       "DISPUTED": "Khiếu nại số tiền"
     },
-    "accept": "Đã nhận",
+    "accept": "Xác nhận đã nhận",
     "reject": "Từ chối",
     "dispute": "Sai số tiền",
     "disputeNote": "Ghi chú khiếu nại",
@@ -1779,8 +1867,27 @@
     "doneHidden": "Đã hoàn thành ({count})"
   },
   "workflows": {
-    "addTitle": "Thêm workflow",
+    "addTitle": "Thêm workflow mới",
     "listTitle": "Danh sách workflow",
+    "templatesBadge": "Templates",
+    "statTotal": "Tổng quy trình mẫu",
+    "statTotalUnit": "Quy trình",
+    "statActiveCount": "{count} kích hoạt",
+    "statInactiveCount": "{count} đã tắt",
+    "statActive": "Đang bật",
+    "statActiveHint": "Có thể chọn khi tạo vụ việc mới",
+    "statInactive": "Đã tắt",
+    "statInactiveHint": "Ẩn khỏi danh sách chọn khi mở vụ",
+    "statAvgSteps": "Số bước trung bình",
+    "statAvgStepsUnit": "bước / mẫu",
+    "statAvgStepsHint": "Độ dài lộ trình mẫu hiện có",
+    "sortUpdated": "Mới cập nhật nhất",
+    "sortName": "Theo tên A→Z",
+    "sortSteps": "Theo số bước (tăng dần)",
+    "sortLabel": "Sắp xếp",
+    "editRoute": "Sửa lộ trình",
+    "author": "Tác giả",
+    "updatedAt": "Cập nhật",
     "nameLabel": "Tên workflow",
     "namePlaceholder": "VD: Tranh chấp dân sự cơ bản",
     "descriptionLabel": "Mô tả",
@@ -1801,7 +1908,7 @@
     "confirmCreateTitle": "Xác nhận tạo workflow",
     "confirmCreateMessage": "Tạo workflow \"{name}\"?",
     "created": "Đã tạo workflow",
-    "searchPlaceholder": "Tìm workflow...",
+    "searchPlaceholder": "Tìm workflow theo tên, bước thực hiện...",
     "filterAll": "Tất cả",
     "filterActive": "Đang bật",
     "filterInactive": "Đã tắt",
@@ -1813,7 +1920,7 @@
     "endMarker": "Kết thúc",
     "insertStep": "Chèn bước",
     "expandStep": "Mở bước {number}",
-    "stepCount": "{count} bước",
+    "stepCount": "{count} bước quy chuẩn",
     "activeBadge": "Đang bật",
     "inactiveBadge": "Đã tắt",
     "deactivate": "Tắt",

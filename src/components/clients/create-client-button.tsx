@@ -17,11 +17,11 @@ export function CreateClientButton() {
         size="sm"
         onClick={() => setOpen(true)}
         aria-label={t("create")}
-        className="interactive-press shrink-0 gap-1.5"
+        className="interactive-press shrink-0 gap-1.5 rounded-full px-4"
       >
         <Plus className="h-3.5 w-3.5" aria-hidden />
         <span className="sm:hidden">{t("createShort")}</span>
-        <span className="hidden sm:inline">{t("create")}</span>
+        <span className="hidden sm:inline">{t("createNew")}</span>
       </Button>
       <ClientFormModal open={open} onClose={() => setOpen(false)} />
     </>

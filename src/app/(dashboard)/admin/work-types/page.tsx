@@ -1,4 +1,5 @@
 import { PageHeaderSlot } from "@/components/layout/page-header-slot";
+import { PageIntro } from "@/components/layout/page-intro";
 import { WorkTypeForm } from "@/components/admin/work-type-form";
 import { WorkTypesList } from "@/components/admin/work-types-list";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,7 +26,8 @@ export default async function AdminWorkTypesPage() {
 
   return (
     <>
-      <PageHeaderSlot title={tPages("title")} />
+      <PageHeaderSlot title="" />
+      <PageIntro title={tPages("title")} description={tPages("description")} />
       <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
         <Card className="rounded-md">
           <CardHeader>

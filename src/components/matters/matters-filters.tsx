@@ -83,19 +83,22 @@ export function MattersFiltersBar({
     Boolean(filters.dateTo);
 
   return (
-    <div className={cn("w-full min-w-0 space-y-2.5", className)}>
+    <div className={cn("w-full min-w-0 space-y-3", className)}>
       <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           type="search"
           value={filters.query}
           onChange={(event) => onChange({ ...filters, query: event.target.value })}
           placeholder={t("searchPlaceholder")}
           aria-label={t("searchPlaceholder")}
-          className="h-10 pl-9"
+          className="h-11 rounded-full border-0 bg-surface-container pl-10 shadow-none focus-visible:ring-primary/30"
         />
       </div>
       <div className="flex items-end gap-2 overflow-x-auto pb-0.5">
+        <span className="mb-2.5 hidden shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sm:inline">
+          {t("filters")}
+        </span>
         <div className="min-w-[8.5rem] flex-1">
           <MultiSelectFilter
             label={t("filterType")}
@@ -168,7 +171,7 @@ export function MattersFiltersBar({
             type="date"
             value={filters.dateFrom}
             onChange={(event) => onChange({ ...filters, dateFrom: event.target.value })}
-            className="min-w-0 cursor-pointer hover:border-primary/35 hover:bg-muted/90"
+            className="min-w-0 cursor-pointer rounded-full hover:border-primary/35 hover:bg-muted/90"
           />
         </div>
         <div className="min-w-[9rem] flex-1 sm:max-w-[11rem]">
@@ -183,7 +186,7 @@ export function MattersFiltersBar({
             type="date"
             value={filters.dateTo}
             onChange={(event) => onChange({ ...filters, dateTo: event.target.value })}
-            className="min-w-0 cursor-pointer hover:border-primary/35 hover:bg-muted/90"
+            className="min-w-0 cursor-pointer rounded-full hover:border-primary/35 hover:bg-muted/90"
           />
         </div>
         <div className="w-[4.75rem] shrink-0">
@@ -192,7 +195,7 @@ export function MattersFiltersBar({
           </p>
           <div
             className={cn(
-              "flex h-10 items-center justify-center rounded-md border border-border bg-surface",
+              "flex h-10 items-center justify-center rounded-full border border-border bg-surface",
               filters.sortBy === "createdAt" &&
                 "border-primary/40 bg-primary-muted/40",
             )}
@@ -214,7 +217,7 @@ export function MattersFiltersBar({
           aria-disabled={!hasActiveFilters}
           aria-label={tFilters("clearFilters")}
           className={cn(
-            "h-10 shrink-0 text-red-600 transition-[opacity,background-color,color] duration-500 ease-out hover:bg-red-50 hover:text-red-700",
+            "h-10 shrink-0 rounded-full text-red-600 transition-[opacity,background-color,color] duration-500 ease-out hover:bg-red-50 hover:text-red-700",
             hasActiveFilters ? "opacity-100" : "pointer-events-none opacity-0",
           )}
           onClick={() => {

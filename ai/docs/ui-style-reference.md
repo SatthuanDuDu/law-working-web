@@ -1,47 +1,43 @@
-# UI style reference — neutral-first SaaS
+# UI style reference — M3 Nexus workspace
 
-Reference: Behance “SAAS - Management Application” (workspace Cases dashboard).
+Reference: Stitch Nexus M3 export (`modern_enterprise_workspace_m3/DESIGN.md`).
 
 ## Name
 
-**Neutral-first, typography-led enterprise SaaS** (Linear / Vercel / Stripe / shadcn aesthetic).
+**M3 Nexus** — indigo–lavender tonal enterprise workspace (NSLAW).
 
 ## Decisions locked
 
 | Topic | Choice |
 |-------|--------|
 | Font | **Inter** via `next/font` (`--font-sans-app`) |
-| Primary buttons / Selected chips | Deep slate `#0f172a` (the dark “Selected” pills in the reference) |
-| Interactive accent | Same slate family — not soft sky blue |
-| Surfaces | Canvas `#f8f9fa`, sidebar `#f3f4f6`, white cards, border `#e5e7eb` |
-| Pastel status | Only on status pills (draft/repair/complete) — not chrome |
-| Brand green / gold | Logo only; not UI chrome |
+| Primary / CTA | Indigo `#3525cd` |
+| Canvas / sidebar | Lavender `#faf8ff` / `#f2f3ff` |
+| Buttons / filter chips | `rounded-full` |
+| Inputs / cards | `rounded-xl` / `--radius-lg` |
+| Status pills | Semantic pastels — unchanged from pre-Nexus |
+| Logo green / gold | Logo only; not UI chrome |
 
 ## Tokens
 
 ```css
---action: #0f172a;           /* Selected chip + CTA fill */
+--action: #3525cd;
 --action-foreground: #ffffff;
---primary: #0f172a;          /* links / focus same family */
---primary-muted: #f1f5f9;
---canvas: #f8f9fa;
---sidebar: #f3f4f6;
---border: #e5e7eb;
+--primary: #3525cd;
+--primary-muted: #e2dfff;
+--canvas: #faf8ff;
+--sidebar: #f2f3ff;
+--border: #c7c4d8;
+--radius-md: 0.75rem;
+--radius-lg: 1rem;
 ```
 
-## Selected filter chip (reference)
+## Selected filter chip
 
-Dark filled pill: `bg-action text-action-foreground`, white “Selected”, optional avatar stack, chevron + clear — matches the Behance filter bar.
+Tonal or filled indigo pill: `bg-primary-muted text-primary` or `bg-action text-action-foreground`.
 
-## Patterns still to deepen (follow-ups)
+## Docs
 
-- Workspace switcher + nav group labels + count badges on sidebar
-- Filter chip bar with “+ Add filter” popover
-- Avatar stack in assignee columns
-- Numbered pagination
-
-## Do not
-
-- Put brand green on every CTA
-- Use heavy colored shadows
-- Force desktop-only tables without mobile fallback
+- Slice 1 chrome: `ai/docs/m3-nexus-chrome.md`
+- Slice 3 pass: `ai/docs/m3-nexus-full-pass.md`
+- Dashboard baseline: `ai/docs/dashboard-overview-baseline.md`

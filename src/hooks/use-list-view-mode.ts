@@ -9,7 +9,7 @@ const VALID_MODES: ListViewMode[] = ["list", "grid", "table"];
 const EVENT_PREFIX = "nslaw:list-view-change:";
 
 function storageKey(scope: string) {
-  return `nslaw:list-view:${scope}`;
+  return `nslaw:list-view:v2:${scope}`;
 }
 
 function eventName(scope: string) {
@@ -21,9 +21,9 @@ function readMode(scope: string): ListViewMode {
     const raw = localStorage.getItem(storageKey(scope));
     return (VALID_MODES as string[]).includes(raw ?? "")
       ? (raw as ListViewMode)
-      : "list";
+      : "grid";
   } catch {
-    return "list";
+    return "grid";
   }
 }
 
@@ -51,7 +51,7 @@ export function useListViewMode(scope: string) {
   const mode = useSyncExternalStore(
     (onStoreChange) => subscribe(scope, onStoreChange),
     () => readMode(scope),
-    () => "list" as ListViewMode,
+    () => "grid" as ListViewMode,
   );
 
   const setMode = useCallback(

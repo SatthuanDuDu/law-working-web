@@ -1,4 +1,5 @@
 import { PageHeaderSlot } from "@/components/layout/page-header-slot";
+import { PageIntro } from "@/components/layout/page-intro";
 import { UsersList } from "@/components/admin/users-list";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
@@ -36,7 +37,8 @@ export default async function AdminUsersPage() {
 
   return (
     <>
-      <PageHeaderSlot title={tPages("title")} />
+      <PageHeaderSlot title="" />
+      <PageIntro title={tPages("title")} description={tPages("description")} />
       <UsersList
         users={listItems}
         currentUserId={user.id}

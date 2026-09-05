@@ -33,7 +33,7 @@ export function SortToggle({
         onToggle();
       }}
       className={cn(
-        "interactive-press inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors",
+        "interactive-press inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors",
         "hover:bg-muted hover:text-foreground",
         active &&
           "bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary",
@@ -178,7 +178,7 @@ export function MultiSelectFilter({
       <div
         ref={fieldRef}
         className={cn(
-          "interactive-field flex h-10 w-full cursor-pointer items-center rounded-md border border-border bg-surface pl-3 pr-1 text-sm leading-normal",
+          "interactive-field flex h-10 w-full cursor-pointer items-center rounded-full border border-border bg-surface pl-3 pr-1 text-sm leading-normal",
           "hover:border-primary/40 hover:bg-muted/90",
           open && "border-primary/40 bg-muted/90",
           values.length > 0 &&
@@ -209,7 +209,7 @@ export function MultiSelectFilter({
           tabIndex={-1}
           aria-hidden
           onClick={toggleMenu}
-          className="interactive-press inline-flex h-7 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="interactive-press inline-flex h-7 w-6 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <ChevronDown
             className={cn(
@@ -231,7 +231,7 @@ export function MultiSelectFilter({
                 left: menuBox.left,
                 width: menuBox.width,
               }}
-              className="fixed z-[60] max-h-56 overflow-y-auto rounded-md border border-border bg-surface py-1 shadow-[var(--shadow-overlay)]"
+              className="fixed z-[60] max-h-56 overflow-y-auto rounded-xl border border-border bg-surface py-1 shadow-[var(--shadow-overlay)]"
             >
               {options.length === 0 ? (
                 <li className="px-3 py-2 text-sm text-muted-foreground">

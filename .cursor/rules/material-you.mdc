@@ -6,7 +6,7 @@ alwaysApply: true
 # Material You UI
 
 This project follows **Material You (Material Design 3)** for UI chrome,
-with a **neutral charcoal** workspace palette (Cases-style SaaS), not green-as-primary.
+with a **neutral charcoal / deep slate** workspace palette (Cases-style SaaS), not green-as-primary or purple-indigo.
 
 ## Brand palette (NSLAW workspace)
 
@@ -14,34 +14,36 @@ Tokens live in `src/app/globals.css` (`:root` / `.dark`):
 
 - `--primary` / `--action: #0f172a` (deep slate / charcoal) — main CTAs, Selected chips, `bg-primary` / `bg-action`
 - `--primary-foreground` / `--action-foreground: #ffffff`
+- `--primary-hover: #020617`
+- `--primary-muted: #f1f5f9` — tonal containers, active nav, secondary buttons
 - `--accent: #475569` (slate) + `--accent-muted: #f8fafc`
-- Soft sky is **not** brand chrome — only optional info/status tint
-- Radius: `--radius-md: 0.5rem` (8px) default scale; prefer `rounded-md`
+- `--canvas: #f8f9fa`, `--sidebar: #f3f4f6`, `--border: #e5e7eb`
+- Radius: `--radius-md: 0.75rem` (12px); cards `--radius-lg` 16px
+- CTA + filter chips: `rounded-full`; inputs/selects: `rounded-xl`
 - Overlay shadow: `var(--shadow-overlay)` for modal/panel/menu
 
-Logo mark (`public/logo-nslaw.png`) may still show **green + gold**; do not force those hexes as app primary unless the user asks to restore green chrome.
+Logo mark (`public/logo-nslaw.png`) may still show **green + gold**; do not force those hexes as app primary unless the user asks.
 
-Không hardcode hex navy/sky cũ làm primary (`#152d4f`, `#0f2138`, `#3b82c4`, `#14532d` as UI primary); luôn dùng CSS tokens.
+Không hardcode hex navy/sky cũ làm primary (`#152d4f`, `#0f2138`, `#3b82c4`, `#3525cd` purple); luôn dùng CSS tokens.
 
 ## Do
 
 - Prefer toned surfaces, soft tonal fills, and clear hierarchy over heavy decoration
 - Use color to convey meaning (status, emphasis) with readable contrast
 - Prefer light elevation: thin borders / surface tint; avoid flashy glow and multi-layer colored drop shadows
-- Keep interactive chrome simple: chips/tags, clean menus, restrained motion
+- Keep interactive chrome simple: pill chips/tags, clean menus, restrained motion
 - Status / chips: flat tonal pill (filled or soft container), no colored outer glow
-- Dropdowns/menus: compact, quiet list — white/surface background, hairline divider optional, soft hover, no loud option background blocks
+- Sidebar active item: tonal pill (`bg-primary-muted text-primary`), not solid fill block
+- Dropdowns/menus: compact, quiet list — white/surface background, hairline divider optional, soft hover
 
 ## Don't
 
 - Colored `box-shadow` / neon glow on chips, badges, or buttons (except brief success feedback when explicitly requested)
 - Heavy `shadow-lg` + saturated option rows that fight the rest of the UI
 - Overbuilt cards with multi-layer shadows for decoration
-- Soft-sky or purple gradients as default brand chrome
+- Purple/indigo or soft-sky gradients as default brand chrome
 
-## Status colors (example)
-
-Use saturated fill on the active tag; keep the open menu plain (label + subtle hover):
+## Status colors (semantic, not brand primary)
 
 - NEW — sky / info tonal
 - IN_PROGRESS — amber / caution tonal

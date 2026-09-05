@@ -41,6 +41,14 @@ export const PLAN_STEP_STATUS_TONES: Record<MatterPlanStepStatus, string> = {
   BLOCKED: "bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300",
 };
 
+/** Compact dots for quiet status menus (avoid nested pill-in-menu chrome). */
+export const PLAN_STEP_STATUS_DOT: Record<MatterPlanStepStatus, string> = {
+  NOT_STARTED: "bg-slate-400",
+  IN_PROGRESS: "bg-sky-500",
+  DONE: "bg-emerald-500",
+  BLOCKED: "bg-rose-500",
+};
+
 export const TASK_PRIORITY_TONES: Record<TaskPriority, string> = {
   LOW: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200",
   MEDIUM: "bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300",

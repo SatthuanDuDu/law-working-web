@@ -1,22 +1,19 @@
 "use client";
 
-import {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  useTransition,
-} from "react";
-import { createPortal } from "react-dom";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { ChevronDown } from "lucide-react";
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  Package,
+  Shield,
+  Wallet,
+} from "lucide-react";
 import type { BudgetPackageStatus } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { Label, Select } from "@/components/ui/card";
-import { SectionPanel } from "@/components/ui/section-panel";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusChip } from "@/components/ui/status-chip";
 import { AddExpenseModal } from "@/components/expenses/add-expense-modal";
@@ -32,8 +29,6 @@ import { MoneyConfirmationsPanel } from "@/components/wallet/money-confirmations
 import { ClientReceiptModal } from "@/components/wallet/client-receipt-modal";
 import { budgetPackageStatusTone } from "@/lib/budget-package-ui";
 import { formatVndDigits } from "@/lib/wallet";
-import { liquidPanelClass } from "@/lib/liquid-panel";
-import { listDivideClass, listRowClass } from "@/lib/list-surface";
 import { cn } from "@/lib/utils";
 
 function formatWhen(iso: string) {
@@ -45,6 +40,19 @@ function formatWhen(iso: string) {
     });
   } catch {
     return iso;
+  }
+}
+
+function pctUsed(allocated: string, remaining: string) {
+  try {
+    const a = BigInt(allocated);
+    if (a <= BigInt(0)) return 0;
+    const rem = BigInt(remaining);
+    const used = a - rem;
+    const p = Number((used * BigInt(1000)) / a) / 10;
+    return Math.max(0, Math.min(100, p));
+  } catch {
+    return 0;
   }
 }
 
@@ -64,19 +72,12 @@ export function WalletView({
   confirmations?: MoneyConfirmationListItem[];
 }) {
   const t = useTranslations("wallet");
+  const tPages = useTranslations("pages.wallet");
   const tPkg = useTranslations("budgetPackage");
   const router = useRouter();
   const [spendOpen, setSpendOpen] = useState(false);
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [editTx, setEditTx] = useState<WalletTxListItem | null>(null);
-  const [txMenuOpen, setTxMenuOpen] = useState(false);
-  const [txMenuBox, setTxMenuBox] = useState<{
-    top: number;
-    left: number;
-    width: number;
-  } | null>(null);
-  const txMenuRef = useRef<HTMLDivElement>(null);
-  const txTriggerRef = useRef<HTMLButtonElement>(null);
   const [direction, setDirection] = useState<"ALL" | "CREDIT" | "DEBIT">("ALL");
   const [categoryId, setCategoryId] = useState<string>("ALL");
   const [packageId, setPackageId] = useState<string>("ALL");
@@ -85,56 +86,6 @@ export function WalletView({
   );
   const [includeLegacy, setIncludeLegacy] = useState(false);
   const [, startTransition] = useTransition();
-
-  useLayoutEffect(() => {
-    if (!txMenuOpen) return;
-    function place() {
-      const el = txTriggerRef.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const width = rect.width;
-      const left = Math.min(
-        Math.max(8, rect.left),
-        window.innerWidth - width - 8,
-      );
-      setTxMenuBox({
-        top: rect.bottom + 6,
-        left,
-        width,
-      });
-    }
-    const raf = window.requestAnimationFrame(place);
-    window.addEventListener("resize", place);
-    window.addEventListener("scroll", place, true);
-    return () => {
-      window.cancelAnimationFrame(raf);
-      window.removeEventListener("resize", place);
-      window.removeEventListener("scroll", place, true);
-    };
-  }, [txMenuOpen]);
-
-  useEffect(() => {
-    if (!txMenuOpen) return;
-    function onPointerDown(event: MouseEvent) {
-      const target = event.target as Node;
-      if (
-        txTriggerRef.current?.contains(target) ||
-        txMenuRef.current?.contains(target)
-      ) {
-        return;
-      }
-      setTxMenuOpen(false);
-    }
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setTxMenuOpen(false);
-    }
-    document.addEventListener("mousedown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [txMenuOpen]);
 
   const categoryOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -148,9 +99,7 @@ export function WalletView({
 
   const packageOptions = useMemo(() => {
     const map = new Map<string, string>();
-    for (const p of packages) {
-      map.set(p.id, p.name);
-    }
+    for (const p of packages) map.set(p.id, p.name);
     for (const tx of initialTransactions) {
       if (tx.budgetPackageId && tx.budgetPackageName) {
         map.set(tx.budgetPackageId, tx.budgetPackageName);
@@ -158,6 +107,35 @@ export function WalletView({
     }
     return [...map.entries()].map(([id, name]) => ({ id, name }));
   }, [packages, initialTransactions]);
+
+  const pendingSumVnd = useMemo(() => {
+    try {
+      return confirmations
+        .reduce((acc, c) => acc + BigInt(c.amountVnd), BigInt(0))
+        .toString();
+    } catch {
+      return "0";
+    }
+  }, [confirmations]);
+
+  const monthDebitVnd = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    let sum = BigInt(0);
+    for (const tx of initialTransactions) {
+      if (tx.direction !== "DEBIT" || tx.legacyImported) continue;
+      const d = new Date(tx.createdAt);
+      if (d.getFullYear() === y && d.getMonth() === m) {
+        try {
+          sum += BigInt(tx.amountVnd);
+        } catch {
+          /* skip */
+        }
+      }
+    }
+    return sum.toString();
+  }, [initialTransactions]);
 
   const filtered = useMemo(() => {
     let rows = initialTransactions.filter((tx) => {
@@ -187,148 +165,223 @@ export function WalletView({
     includeLegacy,
   ]);
 
+  const metricCard =
+    "rounded-2xl border border-border/70 bg-surface p-4 shadow-[var(--shadow-card)] sm:p-5";
+
   return (
-    <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div
-          className={cn(liquidPanelClass, "rounded-md border border-border p-4")}
-        >
-          <p className="text-xs text-muted-foreground">{t("balance")}</p>
-          <p className="mt-1 text-xl font-semibold tracking-tight text-primary tabular-nums">
-            {formatVndDigits(balanceVnd)} ₫
-          </p>
+    <div className="space-y-5 sm:space-y-6">
+      {/* Hero */}
+      <section className="flex flex-col gap-4 rounded-2xl border border-border/70 bg-surface p-4 shadow-[var(--shadow-card)] sm:p-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+            <Wallet className="h-5 w-5" aria-hidden />
+          </span>
+          <div className="min-w-0 space-y-1">
+            <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+              {tPages("title")}
+            </h1>
+            <p className="max-w-2xl text-sm text-muted-foreground">
+              {tPages("description")}
+            </p>
+          </div>
         </div>
-        <div
-          className={cn(liquidPanelClass, "rounded-md border border-border p-4")}
-        >
-          <p className="text-xs text-muted-foreground">{t("packageBalance")}</p>
-          <p className="mt-1 text-xl font-semibold tracking-tight tabular-nums">
-            {formatVndDigits(packageRemainingSumVnd)} ₫
-          </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {t("packageRemainingHint")}
-          </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            className="interactive-press rounded-full"
+            onClick={() => setReceiptOpen(true)}
+          >
+            <ArrowDownLeft className="h-4 w-4" aria-hidden />
+            {t("addReceive")}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            className="interactive-press rounded-full"
+            onClick={() => setSpendOpen(true)}
+          >
+            <ArrowUpRight className="h-4 w-4" aria-hidden />
+            {t("addSpend")}
+          </Button>
         </div>
-        <div
-          className={cn(liquidPanelClass, "rounded-md border border-border p-4")}
-        >
-          <p className="text-xs text-muted-foreground">{t("clientCashHeld")}</p>
-          <p className="mt-1 text-xl font-semibold tracking-tight tabular-nums">
-            {formatVndDigits(clientCashHeldVnd)} ₫
-          </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
+      </section>
+
+      {/* Metrics */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 sm:gap-4">
+        <div className={metricCard}>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {t("balance")}
+              </p>
+              <p className="mt-1 text-2xl font-bold tracking-tight text-primary tabular-nums">
+                {formatVndDigits(balanceVnd)}{" "}
+                <span className="text-sm font-medium text-muted-foreground">₫</span>
+              </p>
+            </div>
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-muted text-primary">
+              <Wallet className="h-4 w-4" aria-hidden />
+            </span>
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">{t("balanceHint")}</p>
+        </div>
+
+        <div className={metricCard}>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {t("clientCashHeld")}
+              </p>
+              <p className="mt-1 text-2xl font-bold tracking-tight text-sky-800 tabular-nums dark:text-sky-300">
+                {formatVndDigits(clientCashHeldVnd)}{" "}
+                <span className="text-sm font-medium text-muted-foreground">₫</span>
+              </p>
+            </div>
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-200">
+              <Shield className="h-4 w-4" aria-hidden />
+            </span>
+          </div>
+          <p className="mt-3 rounded-lg bg-surface-container-low px-2.5 py-2 text-xs text-muted-foreground">
             {t("clientCashHeldHint")}
           </p>
         </div>
-      </div>
 
-      <div className="flex justify-end">
-        <div className="relative w-full sm:w-auto">
-          <Button
-            ref={txTriggerRef}
-            type="button"
-            className="interactive-press w-full sm:w-auto"
-            aria-haspopup="menu"
-            aria-expanded={txMenuOpen}
-            onClick={() => setTxMenuOpen((v) => !v)}
-          >
-            {t("addTransaction")}
-            <ChevronDown
-              className={cn(
-                "size-4 transition-transform",
-                txMenuOpen && "rotate-180",
-              )}
-              aria-hidden
-            />
-          </Button>
-          {txMenuOpen && txMenuBox
-            ? createPortal(
-                <div
-                  ref={txMenuRef}
-                  role="menu"
-                  className="fixed z-[70] overflow-hidden rounded-md border border-border bg-surface py-1 shadow-[var(--shadow-overlay)]"
-                  style={{
-                    top: txMenuBox.top,
-                    left: txMenuBox.left,
-                    width: txMenuBox.width,
-                  }}
-                >
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="interactive-press flex w-full items-center px-3 py-2.5 text-left text-sm text-foreground transition-colors duration-150 hover:bg-primary-muted hover:text-primary focus-visible:bg-primary-muted focus-visible:text-primary focus-visible:outline-none"
-                    onClick={() => {
-                      setTxMenuOpen(false);
-                      setReceiptOpen(true);
-                    }}
-                  >
-                    {t("addReceive")}
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="interactive-press flex w-full items-center px-3 py-2.5 text-left text-sm text-foreground transition-colors duration-150 hover:bg-primary-muted hover:text-primary focus-visible:bg-primary-muted focus-visible:text-primary focus-visible:outline-none"
-                    onClick={() => {
-                      setTxMenuOpen(false);
-                      setSpendOpen(true);
-                    }}
-                  >
-                    {t("addSpend")}
-                  </button>
-                </div>,
-                document.body,
-              )
-            : null}
+        <div className={metricCard}>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {t("pendingConfirm")}
+              </p>
+              <p className="mt-1 text-2xl font-bold tracking-tight tabular-nums text-foreground">
+                {formatVndDigits(pendingSumVnd)}{" "}
+                <span className="text-sm font-medium text-muted-foreground">₫</span>
+              </p>
+            </div>
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface-container text-foreground">
+              <ArrowDownLeft className="h-4 w-4" aria-hidden />
+            </span>
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            {t("pendingConfirmHint", { count: confirmations.length })}
+          </p>
+        </div>
+
+        <div className={metricCard}>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {t("monthSpend")}
+              </p>
+              <p className="mt-1 text-2xl font-bold tracking-tight tabular-nums text-foreground">
+                {formatVndDigits(monthDebitVnd)}{" "}
+                <span className="text-sm font-medium text-muted-foreground">₫</span>
+              </p>
+            </div>
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface-container text-foreground">
+              <ArrowUpRight className="h-4 w-4" aria-hidden />
+            </span>
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            {t("packageBalance")}: {formatVndDigits(packageRemainingSumVnd)} ₫
+          </p>
         </div>
       </div>
 
       <MoneyConfirmationsPanel confirmations={confirmations} />
 
-      <SectionPanel title={t("myPackages")}>
+      {/* Packages */}
+      <section className="space-y-4 rounded-2xl border border-border/70 bg-surface p-4 shadow-[var(--shadow-card)] sm:p-5">
+        <div>
+          <h2 className="text-base font-semibold text-foreground sm:text-lg">
+            {t("myPackages")}
+          </h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            {t("myPackagesHint")}
+          </p>
+        </div>
         {packages.length === 0 ? (
           <EmptyState className="border-0 bg-transparent py-4">
             {tPkg("noOpenPackages")}
           </EmptyState>
         ) : (
-          <ul className={cn(listDivideClass)}>
-            {packages.map((pkg) => (
-              <li
-                key={pkg.id}
-                className={cn(
-                  listRowClass,
-                  "flex flex-wrap items-center justify-between gap-2",
-                )}
-              >
-                <div className="min-w-0">
-                  <Link
-                    href={`/expenses/packages/${pkg.id}`}
-                    className="text-sm font-medium text-primary hover:underline"
-                  >
-                    {pkg.name}
-                  </Link>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-2">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4">
+            {packages.map((pkg) => {
+              const usedPct = pctUsed(pkg.allocatedVnd, pkg.remainingVnd);
+              return (
+                <article
+                  key={pkg.id}
+                  className="space-y-3 rounded-xl bg-surface-container-low p-3.5 sm:p-4"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <span className="inline-flex items-center gap-1 rounded bg-primary-muted px-2 py-0.5 font-mono text-[10px] font-medium text-primary">
+                        <Package className="h-3 w-3" aria-hidden />
+                        {pkg.matterCode ?? "PKG"}
+                      </span>
+                      <h3 className="mt-1.5 text-sm font-semibold leading-snug text-foreground">
+                        <Link
+                          href={`/expenses/packages/${pkg.id}`}
+                          className="hover:text-primary hover:underline"
+                        >
+                          {pkg.name}
+                        </Link>
+                      </h3>
+                      {pkg.matterTitle ? (
+                        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                          {pkg.matterTitle}
+                        </p>
+                      ) : null}
+                    </div>
                     <StatusChip
                       label={tPkg(`status.${pkg.status as BudgetPackageStatus}`)}
                       tone={budgetPackageStatusTone(pkg.status)}
                     />
-                    {pkg.matterCode ? (
-                      <span className="text-xs text-muted-foreground">
-                        {pkg.matterCode}
-                      </span>
-                    ) : null}
                   </div>
-                </div>
-                <p className="text-sm font-semibold tabular-nums">
-                  {formatVndDigits(pkg.remainingVnd)} ₫
-                </p>
-              </li>
-            ))}
-          </ul>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between gap-2 text-xs tabular-nums">
+                      <span className="text-muted-foreground">
+                        {t("pkgUsed")}:{" "}
+                        <strong className="font-semibold text-foreground">
+                          {formatVndDigits(
+                            (
+                              BigInt(pkg.allocatedVnd) - BigInt(pkg.remainingVnd)
+                            ).toString(),
+                          )}{" "}
+                          ₫
+                        </strong>{" "}
+                        ({usedPct}%)
+                      </span>
+                      <span className="font-semibold text-primary">
+                        {t("pkgRemaining")}: {formatVndDigits(pkg.remainingVnd)} ₫
+                      </span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-surface-container-high">
+                      <div
+                        className="h-full rounded-full bg-primary transition-[width]"
+                        style={{ width: `${usedPct}%` }}
+                      />
+                    </div>
+                    <p className="text-[11px] text-muted-foreground tabular-nums">
+                      {t("pkgBudget")}: {formatVndDigits(pkg.allocatedVnd)} ₫
+                    </p>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
         )}
-      </SectionPanel>
+      </section>
 
-      <SectionPanel title={t("history")}>
-        <div className="mb-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+      {/* History */}
+      <section className="space-y-4 rounded-2xl border border-border/70 bg-surface p-4 shadow-[var(--shadow-card)] sm:p-5">
+        <div>
+          <h2 className="text-base font-semibold text-foreground sm:text-lg">
+            {t("history")}
+          </h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">{t("historyHint")}</p>
+        </div>
+
+        <div className="grid gap-3 rounded-xl bg-surface-container-low p-3 sm:grid-cols-2 sm:p-4 lg:grid-cols-5">
           <div className="space-y-1">
             <Label htmlFor="wallet-dir">{t("filterDirection")}</Label>
             <Select
@@ -394,14 +447,14 @@ export function WalletView({
               <option value="amount_asc">{t("amountAsc")}</option>
             </Select>
           </div>
-          <label className="flex items-end gap-2 pb-2 text-sm">
+          <label className="flex items-end gap-2 pb-2 text-sm sm:col-span-2 lg:col-span-1">
             <input
               type="checkbox"
-              className="h-4 w-4"
+              className="h-4 w-4 accent-primary"
               checked={includeLegacy}
               onChange={(e) => setIncludeLegacy(e.target.checked)}
             />
-            {t("includeLegacy")}
+            <span className="leading-snug">{t("includeLegacy")}</span>
           </label>
         </div>
 
@@ -410,7 +463,7 @@ export function WalletView({
             {t("empty")}
           </EmptyState>
         ) : (
-          <ul className={cn(listDivideClass, "rounded-md border border-border")}>
+          <ul className="divide-y divide-border/50 overflow-hidden rounded-xl border border-border/60">
             {filtered.map((tx) => {
               const metaBits = [
                 formatWhen(tx.createdAt),
@@ -432,11 +485,25 @@ export function WalletView({
               return (
                 <li
                   key={tx.id}
-                  className={cn(listRowClass, "flex flex-col gap-1 py-2")}
+                  className="flex flex-col gap-2 bg-surface px-3 py-3 transition-colors hover:bg-surface-container-low/60 sm:px-4"
                 >
-                  <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-3">
+                    <span
+                      className={cn(
+                        "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+                        tx.direction === "CREDIT"
+                          ? "bg-primary-muted text-primary"
+                          : "bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300",
+                      )}
+                    >
+                      {tx.direction === "CREDIT" ? (
+                        <ArrowDownLeft className="h-3.5 w-3.5" aria-hidden />
+                      ) : (
+                        <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
+                      )}
+                    </span>
                     <div className="min-w-0 flex-1 space-y-0.5">
-                      <p className="truncate text-sm font-medium leading-snug">
+                      <p className="truncate text-sm font-semibold leading-snug text-foreground">
                         {tx.direction === "CREDIT" ? t("credit") : t("debit")}
                         {tx.budgetPackageName
                           ? ` · ${tx.budgetPackageName}`
@@ -447,34 +514,34 @@ export function WalletView({
                         {tx.legacyImported ? ` (${t("legacy")})` : ""}
                       </p>
                       {subtitle ? (
-                        <p className="truncate text-sm leading-snug text-foreground/90">
+                        <p className="truncate text-sm text-foreground/90">
                           {subtitle}
                         </p>
                       ) : null}
-                      <p className="truncate text-[11px] leading-snug text-muted-foreground">
+                      <p className="truncate text-[11px] text-muted-foreground">
                         {metaBits.join(" · ")}
                       </p>
                     </div>
                     <span
                       className={cn(
-                        "inline-flex shrink-0 items-center rounded-md px-2 py-0.5 text-sm font-semibold tabular-nums text-white",
+                        "shrink-0 text-sm font-bold tabular-nums sm:text-[15px]",
                         tx.direction === "CREDIT"
-                          ? "bg-emerald-600"
-                          : "bg-rose-600",
+                          ? "text-primary"
+                          : "text-foreground",
                       )}
                     >
                       {tx.direction === "CREDIT" ? "+" : "−"}
                       {formatVndDigits(tx.amountVnd)} ₫
                     </span>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2 pl-11">
                     <WalletReceiptLinks attachments={tx.attachments ?? []} />
                     {canEditSpendTx(tx) ? (
                       <Button
                         type="button"
                         size="sm"
                         variant="outline"
-                        className="interactive-press h-7 px-2 text-xs"
+                        className="interactive-press h-7 rounded-full px-2.5 text-xs"
                         onClick={() => setEditTx(tx)}
                       >
                         {t("editSpend")}
@@ -486,7 +553,7 @@ export function WalletView({
             })}
           </ul>
         )}
-      </SectionPanel>
+      </section>
 
       <AddExpenseModal
         open={spendOpen}

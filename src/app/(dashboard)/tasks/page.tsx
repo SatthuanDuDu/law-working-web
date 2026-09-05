@@ -1,4 +1,5 @@
 import { PageHeaderSlot } from "@/components/layout/page-header-slot";
+import { PageIntro } from "@/components/layout/page-intro";
 import { TaskForm } from "@/components/tasks/task-form";
 import { TaskList } from "@/components/tasks/task-list";
 import { prisma } from "@/lib/prisma";
@@ -54,7 +55,8 @@ export default async function TasksPage() {
 
   return (
     <>
-      <PageHeaderSlot title={tPages("title")} />
+      <PageHeaderSlot title="" />
+      <PageIntro title={tPages("title")} description={tPages("description")} />
       <TaskList
         tasks={tasks}
         totalCount={totalCount}

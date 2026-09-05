@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type FilterSelectOption = { value: string; label: string };
@@ -39,13 +39,22 @@ export function FilterSelect({
   const selected = options.find((option) => option.value === value);
   const summary = selected?.label ?? options[0]?.label ?? "";
 
-  function measureMenuBox() {
+  const measureMenuBox = useCallback(() => {
     const rect = buttonRef.current?.getBoundingClientRect();
     if (!rect) return null;
-    const width = Math.min(Math.max(rect.width, 160), window.innerWidth - 16);
+    // Prefer fitting the longest option; don't clamp to the often-narrow trigger.
+    const longestChars = options.reduce(
+      (max, option) => Math.max(max, option.label.length),
+      0,
+    );
+    const contentWidth = Math.ceil(longestChars * 8.2) + 56; // approx text + check + pad
+    const width = Math.min(
+      Math.max(rect.width, contentWidth, 200),
+      window.innerWidth - 16,
+    );
     const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
     return { top: rect.bottom + 6, left, width };
-  }
+  }, [options]);
 
   function openMenu() {
     const nextBox = measureMenuBox();
@@ -88,7 +97,7 @@ export function FilterSelect({
       window.removeEventListener("resize", onReposition);
       window.removeEventListener("scroll", onReposition, true);
     };
-  }, [open]);
+  }, [open, measureMenuBox]);
 
   return (
     <div ref={rootRef} className={cn("relative min-w-0", className)}>
@@ -101,7 +110,7 @@ export function FilterSelect({
         aria-label={ariaLabel}
         onClick={() => (open ? closeMenu() : openMenu())}
         className={cn(
-          "interactive-field flex h-10 w-full cursor-pointer items-center gap-1.5 rounded-md border border-border bg-surface px-3 text-left text-sm leading-normal text-foreground",
+          "interactive-field flex h-10 w-full cursor-pointer items-center gap-1.5 rounded-full border border-border bg-surface px-3 text-left text-sm leading-normal text-foreground",
           "hover:border-primary/35 hover:bg-muted/90",
           open && "border-primary/40 bg-muted/90",
         )}
@@ -127,7 +136,7 @@ export function FilterSelect({
                 left: menuBox.left,
                 width: menuBox.width,
               }}
-              className="fixed z-[60] max-h-56 overflow-y-auto rounded-md border border-border bg-surface py-1 shadow-[var(--shadow-overlay)]"
+              className="fixed z-[60] max-h-56 overflow-y-auto rounded-xl border border-border bg-surface py-1 shadow-[var(--shadow-overlay)]"
             >
               {options.map((option) => {
                 const isSelected = option.value === value;
@@ -136,26 +145,17 @@ export function FilterSelect({
                     <button
                       type="button"
                       className={cn(
-                        "interactive-press flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-muted",
-                        isSelected && "bg-muted font-medium hover:bg-muted",
+                        "interactive-press flex w-full cursor-pointer items-center px-3 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-muted",
+                        isSelected && "bg-primary-muted font-medium text-primary hover:bg-primary-muted",
                       )}
                       onClick={() => {
                         onChange(option.value);
                         closeMenu();
                       }}
                     >
-                      <span
-                        className={cn(
-                          "flex h-4 w-4 shrink-0 items-center justify-center rounded border",
-                          isSelected
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border bg-surface",
-                        )}
-                        aria-hidden
-                      >
-                        {isSelected ? <Check className="h-3 w-3" /> : null}
+                      <span className="min-w-0 flex-1 whitespace-normal text-left leading-snug">
+                        {option.label}
                       </span>
-                      <span className="min-w-0 flex-1 truncate">{option.label}</span>
                     </button>
                   </li>
                 );

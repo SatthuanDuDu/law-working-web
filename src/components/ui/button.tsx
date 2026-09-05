@@ -4,7 +4,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "interactive-press inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed",
+  "interactive-press inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed",
   {
     variants: {
       variant: {
@@ -12,18 +12,17 @@ const buttonVariants = cva(
           "bg-action text-action-foreground hover:bg-action-hover",
         secondary: "bg-primary-muted text-primary hover:bg-primary-muted-hover",
         outline:
-          "border border-border bg-surface text-foreground hover:border-primary/45 hover:bg-muted",
+          "rounded-xl border border-border bg-surface text-foreground hover:border-primary/45 hover:bg-muted",
         destructive: "bg-red-600 text-white hover:bg-red-700",
-        ghost: "text-foreground hover:bg-muted hover:text-foreground",
-        /** Brand-tinted CTA when primary green is intentional */
+        ghost: "rounded-xl text-foreground hover:bg-muted hover:text-foreground",
         brand:
           "bg-primary text-primary-foreground hover:bg-primary-hover",
       },
       size: {
         default: "h-10 px-4 py-2",
-        sm: "h-8 rounded-md px-3 text-xs",
-        lg: "h-11 rounded-md px-8",
-        icon: "h-10 w-10 rounded-md",
+        sm: "h-8 rounded-full px-3 text-xs",
+        lg: "h-11 rounded-full px-8",
+        icon: "h-10 w-10 rounded-full",
       },
     },
     defaultVariants: {

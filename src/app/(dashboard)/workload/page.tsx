@@ -1,5 +1,6 @@
 import dynamic from "next/dynamic";
 import { PageHeaderSlot } from "@/components/layout/page-header-slot";
+import { PageIntro } from "@/components/layout/page-intro";
 import {
   WorkloadDepartmentCards,
   WorkloadKpiStrip,
@@ -297,7 +298,8 @@ export default async function WorkloadPage() {
 
   return (
     <>
-      <PageHeaderSlot title={tPages("title")} />
+      <PageHeaderSlot title="" />
+      <PageIntro title={tPages("title")} description={tPages("description")} />
 
       <WorkloadKpiStrip
         totalOpen={totalOpen}

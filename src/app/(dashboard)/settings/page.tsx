@@ -1,4 +1,5 @@
 import { PageHeaderSlot } from "@/components/layout/page-header-slot";
+import { PageIntro } from "@/components/layout/page-intro";
 import { SettingsPageClient } from "@/components/settings/settings-page";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
@@ -29,7 +30,8 @@ export default async function SettingsPage() {
 
   return (
     <>
-      <PageHeaderSlot title={tPages("title")} />
+      <PageHeaderSlot title="" />
+      <PageIntro title={tPages("title")} description={tPages("description")} />
       <SettingsPageClient user={user} />
     </>
   );

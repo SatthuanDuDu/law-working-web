@@ -1,4 +1,5 @@
 import { PageHeaderSlot } from "@/components/layout/page-header-slot";
+import { PageIntro } from "@/components/layout/page-intro";
 import { AuditLogsList } from "@/components/admin/audit-logs-list";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
@@ -146,7 +147,8 @@ export default async function AdminAuditLogsPage() {
 
   return (
     <>
-      <PageHeaderSlot title={tPages("title")} />
+      <PageHeaderSlot title="" />
+      <PageIntro title={tPages("title")} description={tPages("description")} />
       <AuditLogsList logs={listItems} actors={actors} />
     </>
   );

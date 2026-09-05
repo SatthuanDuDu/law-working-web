@@ -25,11 +25,11 @@ export function SectionHeader({
     >
       <div className="flex min-w-0 flex-1 items-center gap-2.5">
         {icon ? (
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary-muted text-primary">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-muted text-primary">
             {icon}
           </span>
         ) : null}
-        <h3 className="min-w-0 truncate text-sm font-semibold text-foreground">
+        <h3 className="min-w-0 truncate text-base font-semibold text-foreground">
           {title}
         </h3>
       </div>
@@ -44,6 +44,7 @@ export function SectionHeader({
  */
 export function SectionPanel({
   title,
+  subtitle,
   icon,
   action,
   children,
@@ -51,6 +52,7 @@ export function SectionPanel({
   solid = false,
 }: {
   title: string;
+  subtitle?: string;
   icon?: ReactNode;
   action?: ReactNode;
   children: ReactNode;
@@ -63,7 +65,7 @@ export function SectionPanel({
     <Card
       solid={solid}
       className={cn(
-        "flex min-w-0 max-w-full flex-col overflow-hidden p-2.5 sm:p-3",
+        "flex h-full min-w-0 max-w-full flex-col overflow-hidden rounded-2xl border-border/80 p-4 shadow-[var(--shadow-card)]",
         className,
       )}
     >
@@ -71,9 +73,16 @@ export function SectionPanel({
         title={title}
         icon={icon}
         action={action}
-        className="mb-2 min-w-0"
+        className="mb-3 min-w-0 shrink-0"
       />
-      <div className="min-w-0 max-w-full flex-1 overflow-x-clip">{children}</div>
+      {subtitle ? (
+        <p className="-mt-1 mb-3 shrink-0 px-1 text-sm text-muted-foreground">
+          {subtitle}
+        </p>
+      ) : null}
+      <div className="min-h-0 min-w-0 max-w-full flex-1 overflow-x-clip">
+        {children}
+      </div>
     </Card>
   );
 }

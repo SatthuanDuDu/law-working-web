@@ -190,7 +190,14 @@ export default async function MatterPlanPage({
 
   return (
     <>
-      <PageHeaderSlot title={tPages("title")} />
+      <PageHeaderSlot title="" />
+
+      <div className="mb-4 min-w-0 space-y-1 sm:mb-5">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
+          {tPages("title")}
+        </h1>
+        <p className="text-sm text-muted-foreground">{tPages("description")}</p>
+      </div>
 
       <div className="grid min-w-0 items-start gap-5 @5xl/workspace:grid-cols-[minmax(20rem,24rem)_minmax(0,1fr)] @5xl/workspace:gap-6">
         {/* Info rail: full width when workspace is squeezed; left column when main ≥ 64rem */}
@@ -199,7 +206,7 @@ export default async function MatterPlanPage({
             matter={matter}
             canEditStatus={canEditStatus}
             isAdmin={isAdmin(user.role)}
-            stickyHeader
+            showTitleBar
             canEditMembers={canEditMembers}
             staffOptions={formData?.members ?? []}
           />

@@ -18,6 +18,7 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import { useListViewMode } from "@/hooks/use-list-view-mode";
 import { useLabelMaps } from "@/i18n/use-label-maps";
 import { cn, formatDate } from "@/lib/utils";
+import { nexusGridCardClass, nexusGridClass } from "@/lib/list-surface";
 import type { Gender, Role } from "@prisma/client";
 
 export type AdminUserListItem = {
@@ -198,18 +199,19 @@ export function UsersList({
                   onChange={setMode}
                   size="sm"
                   showTable={false}
+                  className="rounded-full border-0 bg-surface-container p-1 shadow-inner"
                 />
               </>
             }
           >
             <div className="grid min-w-0 w-full flex-1 grid-cols-2 gap-2 lg:grid-cols-4">
               <div className="relative col-span-2 min-w-0 lg:col-span-1">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder={tUsers("searchPlaceholder")}
-                  className="h-10 pl-9"
+                  className="h-11 rounded-xl border-0 bg-surface-container pl-10 shadow-none focus-visible:ring-primary/30"
                   aria-label={tUsers("searchLabel")}
                 />
               </div>
@@ -268,61 +270,85 @@ export function UsersList({
             </p>
           </CardContent>
         ) : mode === "grid" ? (
-          <CardContent className="grid grid-cols-1 gap-2.5 px-3.5 pb-3.5 pt-2.5 sm:grid-cols-2 sm:gap-3 sm:px-4 sm:pb-4 lg:grid-cols-3 2xl:grid-cols-4">
+          <CardContent className={cn(nexusGridClass, "px-3.5 pb-3.5 pt-2.5 sm:px-4 sm:pb-4")}>
             {visibleUsers.map((item) => {
-              const meta = userMeta(item);
               return (
-                <div
+                <article
                   key={item.id}
                   className={cn(
-                    "relative flex h-full min-w-0 flex-col gap-2.5 rounded-md border border-border/40 bg-[color-mix(in_oklab,var(--muted)_6%,var(--surface))] p-3",
+                    nexusGridCardClass,
                     !item.isActive && "opacity-80",
                   )}
                 >
-                  <div className="absolute top-1.5 right-1.5 z-10">
-                    <DeleteUserButton
-                      userId={item.id}
-                      userName={item.name}
-                      canDelete={item.id !== currentUserId}
-                    />
-                  </div>
-                  <div className="flex min-w-0 items-start gap-2.5 pr-8">
-                    <UserAvatar
-                      userId={item.id}
-                      name={item.name}
-                      avatarKey={item.avatarKey}
-                      size="sm"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <h3 className="truncate text-sm font-semibold text-foreground">
-                          {item.name}
-                        </h3>
-                        <Badge
-                          variant={item.isActive ? "success" : "danger"}
-                          className="px-2 py-0 text-[10px]"
-                        >
-                          {item.isActive ? t("active") : t("inactive")}
-                        </Badge>
-                        <span className="rounded-full bg-primary-muted px-2 py-0 text-[10px] font-semibold text-primary">
-                          {roles[item.role]}
-                        </span>
+                  <div className="min-w-0">
+                    <div className="mb-3.5 flex items-start justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <UserAvatar
+                          userId={item.id}
+                          name={item.name}
+                          avatarKey={item.avatarKey}
+                          size="md"
+                        />
+                        <div className="min-w-0">
+                          <span className="text-[11px] font-medium text-muted-foreground">
+                            @{item.username}
+                          </span>
+                          <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                            <Badge
+                              variant={item.isActive ? "success" : "danger"}
+                              className="px-2 py-0 text-[10px]"
+                            >
+                              {item.isActive ? t("active") : t("inactive")}
+                            </Badge>
+                            <span className="rounded-full bg-primary-muted px-2.5 py-0.5 text-[11px] font-semibold text-primary">
+                              {roles[item.role]}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                        @{item.username}
-                      </p>
-                      <p className="truncate text-xs text-muted-foreground">{item.email}</p>
-                      {meta ? (
-                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                          {meta}
-                        </p>
+                      <DeleteUserButton
+                        userId={item.id}
+                        userName={item.name}
+                        canDelete={item.id !== currentUserId}
+                      />
+                    </div>
+
+                    <h3 className="line-clamp-1 text-lg font-bold tracking-tight text-foreground">
+                      {item.name}
+                    </h3>
+
+                    <div className="mt-3.5 space-y-1.5 rounded-xl bg-surface-container px-3 py-2.5 text-xs">
+                      <p className="truncate text-muted-foreground">{item.email}</p>
+                      {item.phone ? (
+                        <p className="truncate text-muted-foreground">{item.phone}</p>
+                      ) : null}
+                      {item.department ? (
+                        <div className="flex items-center justify-between gap-2 pt-0.5">
+                          <span className="text-muted-foreground">
+                            {tSettings("department")}
+                          </span>
+                          <span className="truncate font-medium text-foreground">
+                            {item.department.name}
+                          </span>
+                        </div>
+                      ) : null}
+                      {item.gender ? (
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-muted-foreground">
+                            {tSettings("gender")}
+                          </span>
+                          <span className="font-medium text-foreground">
+                            {genders[item.gender]}
+                          </span>
+                        </div>
                       ) : null}
                     </div>
                   </div>
-                  <div className="mt-auto">
+
+                  <div className="mt-4 border-t border-border/60 pt-3.5">
                     <UserActions item={item} layout="grid" />
                   </div>
-                </div>
+                </article>
               );
             })}
           </CardContent>

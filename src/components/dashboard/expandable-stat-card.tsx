@@ -88,7 +88,7 @@ export function ExpandableStatCard({
     <div
       className={cn(
         liquidPanelClass,
-        "group min-w-0 max-w-full overflow-hidden rounded-md transition-colors duration-200 hover:border-primary/30",
+        "group min-w-0 max-w-full overflow-hidden rounded-2xl transition-colors duration-200 hover:border-primary/30",
       )}
     >
       <button
@@ -96,7 +96,7 @@ export function ExpandableStatCard({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-label={open ? t("collapseCard", { label }) : t("expandCard", { label })}
-        className="interactive-press flex w-full min-w-0 max-w-full items-center gap-2 p-3 text-left hover:[filter:none] active:[filter:none]"
+        className="interactive-press flex w-full min-w-0 max-w-full items-center gap-3 p-4 text-left hover:[filter:none] active:[filter:none]"
       >
         <div className="min-w-0 flex-1">
           <span className="block truncate text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -121,7 +121,7 @@ export function ExpandableStatCard({
           />
           <span
             className={cn(
-              "flex h-8 w-8 items-center justify-center rounded-md",
+              "flex h-10 w-10 items-center justify-center rounded-full",
               STAT_TONES[tone],
             )}
           >

@@ -3,13 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
-import { ChevronLeft, ChevronRight, ListChecks, Menu, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, ListChecks, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getBreadcrumbs } from "@/lib/navigation";
 import { NotificationPanel } from "@/components/notifications/notification-panel";
 import { CreateMatterButton } from "@/components/matters/create-matter-button";
 import { HEADER_TOOLBAR_BTN } from "@/components/layout/header-toolbar";
-import { OPEN_COMMAND_PALETTE_EVENT } from "@/components/layout/command-palette";
+import {
+  CommandSearchBar,
+  CommandSearchIconButton,
+} from "@/components/layout/command-palette";
 import { UrgentReminderStack } from "@/components/layout/urgent-reminder-stack";
 import { usePageMeta } from "@/contexts/page-meta-context";
 import { usePersonalTodoPanel } from "@/contexts/personal-todo-panel-context";
@@ -62,7 +65,7 @@ export function PageHeader() {
     <header ref={headerRef} className="page-header-shell sticky top-0 z-20">
       <div className="page-header-panel">
         <div className="flex items-center justify-between gap-2 sm:px-1 lg:px-2">
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
             <Button
               type="button"
               variant="ghost"
@@ -100,18 +103,10 @@ export function PageHeader() {
             </Button>
           </div>
 
+          <CommandSearchBar />
+
           <div className="relative flex shrink-0 items-center gap-1.5">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className={HEADER_TOOLBAR_BTN}
-              onClick={() => window.dispatchEvent(new Event(OPEN_COMMAND_PALETTE_EVENT))}
-              aria-label={tCommon("search")}
-              title={`${tCommon("search")} (Ctrl/⌘ K)`}
-            >
-              <Search />
-            </Button>
+            <CommandSearchIconButton />
             <CreateMatterButton />
             <Button
               type="button"
@@ -140,16 +135,12 @@ export function PageHeader() {
           </div>
         </div>
 
-        {meta.title ? (
-          <h1 className="mt-2 min-w-0 break-words text-lg font-bold leading-snug text-foreground sm:text-xl lg:text-2xl">
-            {meta.title}
-          </h1>
-        ) : null}
+        {/* Page titles live in page content (heroes / list intros) — avoid dup with shell. */}
 
         {showBreadcrumbs ? (
           <nav
             aria-label={tCommon("breadcrumb")}
-            className="mt-1 hidden flex-wrap items-center gap-1 text-sm text-muted-foreground sm:flex"
+            className="mt-2 hidden flex-wrap items-center gap-1 text-sm text-muted-foreground sm:mt-2.5 sm:flex"
           >
             {breadcrumbs.map((crumb, index) => (
               <span key={`${crumb.label}-${index}`} className="flex items-center gap-1">

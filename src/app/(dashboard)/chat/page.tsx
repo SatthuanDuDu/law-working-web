@@ -1,5 +1,6 @@
 import dynamic from "next/dynamic";
 import { PageHeaderSlot } from "@/components/layout/page-header-slot";
+import { PageIntro } from "@/components/layout/page-intro";
 import { requireAuth } from "@/lib/session";
 import { getTranslations } from "next-intl/server";
 
@@ -24,7 +25,8 @@ export default async function ChatPage({
 
   return (
     <>
-      <PageHeaderSlot title={tPages("title")} />
+      <PageHeaderSlot title="" />
+      <PageIntro title={tPages("title")} description={tPages("description")} />
       <ChatWorkspace initialConversationId={params.c ?? null} />
     </>
   );

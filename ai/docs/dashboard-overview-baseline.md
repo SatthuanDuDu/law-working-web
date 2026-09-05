@@ -1,12 +1,20 @@
 # Dashboard `/dashboard` baseline
 
-## Layout (keep for compare / revert)
-1. KPI row: ExpandableStatCard (open tasks) + ExpandableMattersCard (open matters) — light glass-surface OK
-2. Grid: SectionPanel “Hạn sắp tới” (`UpcomingDeadlineList`) + status distribution
-3. Grid: My matters + recent tasks (`listDivideClass` / `listRowClass`)
-4. Material You NSLAW: primary `#14532d`, accent gold, canvas gradient, radius-md 6px
+## Layout (top → bottom)
+
+1. **Hero** — greeting + summary + quick links
+2. **KPI ×4** — open tasks · active matters · upcoming · todos
+3. **Focus today** — priority tasks | upcoming deadlines (2 equal columns)
+4. **Matters** — my matters (7/12) | status distribution (5/12)
+5. **Secondary** — recent tasks | personal todos (2 equal columns)
+
+## Visual
+
+- Charcoal primary `#0f172a`, canvas `#f8f9fa`
+- Panels `rounded-2xl`
+- Status bars keep semantic colors
 
 ## Rules
-- Experiments (e.g. liquid glass) **only** on `/dashboard`
-- Respect `prefers-reduced-motion` (disable blur/heavy motion)
-- Project rule: `.cursor/rules/dashboard-overview-ui.mdc` + user baseline note
+
+- Paired rows only — no orphan full-width block at the bottom
+- Desktop + mobile 390px parity

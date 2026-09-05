@@ -1,4 +1,5 @@
 import { PageHeaderSlot } from "@/components/layout/page-header-slot";
+import { PageIntro } from "@/components/layout/page-intro";
 import { CashflowDashboard } from "@/components/expenses/cashflow-dashboard";
 import {
   getCashflowStats,
@@ -48,7 +49,8 @@ export default async function ExpensesPage({
 
   return (
     <div className="space-y-4">
-      <PageHeaderSlot title={tPages("title")} />
+      <PageHeaderSlot title="" />
+      <PageIntro title={tPages("title")} description={tPages("description")} />
       <CashflowDashboard
         stats={stats}
         users={usersRes.users}

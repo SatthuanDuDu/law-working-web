@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { AlertTriangle, ClipboardList, FileSpreadsheet, Pencil, Trash2, X } from "lucide-react";
+import { AlertTriangle, ClipboardList, FileSpreadsheet, Pencil, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { bulkUpdateMatterStatusAction, deleteMatterAction, restoreMatterAction } from "@/lib/actions";
+import { deleteMatterAction, restoreMatterAction } from "@/lib/actions";
 import { useMatterFormData } from "@/hooks/use-matter-form-data";
 import { useListViewMode } from "@/hooks/use-list-view-mode";
 import type { MatterFilterOptions } from "@/lib/matter-form-data";
@@ -14,10 +14,9 @@ import { downloadExcel } from "@/lib/export-excel";
 import { cn, formatDateTime } from "@/lib/utils";
 import { useLabelMaps } from "@/i18n/use-label-maps";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
-import { Card, CardContent, CardHeader, CardTitle, Select } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ListViewToggle } from "@/components/ui/list-view-toggle";
-import { PageToolbar } from "@/components/layout/page-toolbar";
 import { UndoToast } from "@/components/ui/undo-toast";
 import { MatterStatusBadge } from "@/components/matters/matter-status-control";
 import {
@@ -30,15 +29,15 @@ import {
   CreateMatterModal,
   type MatterEditInitial,
 } from "@/components/matters/create-matter-modal";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import {
+  nexusAvatarTone,
+  nexusGridCardClass,
+  nexusGridClass,
+  nexusInitials,
+} from "@/lib/list-surface";
 import type { MatterStatus, MatterType } from "@prisma/client";
 
-const BULK_STATUSES: MatterStatus[] = [
-  "NEW",
-  "IN_PROGRESS",
-  "ON_HOLD",
-  "CLOSED",
-  "TERMINATED",
-];
 export type MatterListItem = {
   id: string;
   code: string;
@@ -185,8 +184,6 @@ export function MattersList({
   const [editMatter, setEditMatter] = useState<MatterEditInitial | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const { mode, setMode } = useListViewMode("matters");
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [bulkStatus, setBulkStatus] = useState<MatterStatus>("IN_PROGRESS");
   const [undoToast, setUndoToast] = useState<{
     key: string;
     matterId: string;
@@ -232,63 +229,6 @@ export function MattersList({
     () => applyMattersFilters(matters, effectiveFilters, labels.matterType, locale),
     [matters, effectiveFilters, labels.matterType, locale],
   );
-
-  const selectableVisibleIds = useMemo(
-    () => visibleMatters.map((matter) => matter.id),
-    [visibleMatters],
-  );
-
-  const activeSelectedIds = useMemo(() => {
-    const visibleIdSet = new Set(visibleMatters.map((matter) => matter.id));
-    return new Set([...selectedIds].filter((id) => visibleIdSet.has(id)));
-  }, [selectedIds, visibleMatters]);
-
-  function toggleSelected(id: string) {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
-  function toggleSelectAllVisible() {
-    setSelectedIds((prev) => {
-      const allSelected = selectableVisibleIds.every((id) => prev.has(id));
-      if (allSelected) return new Set();
-      return new Set(selectableVisibleIds);
-    });
-  }
-
-  function applyBulkStatus() {
-    const ids = [...activeSelectedIds];
-    if (ids.length === 0) return;
-    const statusLabel = labels.matterStatus[bulkStatus];
-    confirm({
-      title: t("confirmBulkStatusTitle"),
-      message: t("confirmBulkStatusMessage", {
-        count: ids.length,
-        status: statusLabel,
-      }),
-      confirmLabel: t("updateStatus"),
-      onConfirm: () => {
-        startTransition(async () => {
-          const result = await bulkUpdateMatterStatusAction(ids, bulkStatus);
-          if (result.error) {
-            confirm({
-              title: t("confirmBulkStatusTitle"),
-              message: result.error,
-              confirmLabel: tCommon("close"),
-              onConfirm: () => undefined,
-            });
-            return;
-          }
-          setSelectedIds(new Set());
-          router.refresh();
-        });
-      },
-    });
-  }
 
   function handleExportExcel() {
     void downloadExcel(
@@ -376,10 +316,10 @@ export function MattersList({
               disabled={isPending || formDataLoading}
               onClick={() => void openEdit(matter)}
               aria-label={t("editMatter")}
-              className="flex-1 sm:flex-none"
+              className={cn("flex-1 sm:flex-none", compact && "h-8 rounded-full px-2.5")}
             >
               <Pencil className="h-3.5 w-3.5" />
-              <span className="sm:inline">{tCommon("edit")}</span>
+              <span className={cn(compact && "sr-only")}>{tCommon("edit")}</span>
             </Button>
             <Button
               type="button"
@@ -387,19 +327,28 @@ export function MattersList({
               size="sm"
               disabled={isPending}
               onClick={() => handleDelete(matter)}
-              className="flex-1 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40 sm:flex-none"
+              className={cn(
+                "flex-1 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40 sm:flex-none",
+                compact && "h-8 rounded-full px-2.5",
+              )}
               aria-label={t("deleteMatter")}
             >
               <Trash2 className="h-3.5 w-3.5" />
-              <span className="sm:inline">{tCommon("delete")}</span>
+              <span className={cn(compact && "sr-only")}>{tCommon("delete")}</span>
             </Button>
           </div>
         ) : null}
-        <Button asChild size="sm" className="w-full">
-          <Link href={`/matters/${matter.id}/plan`}>
+        <Button asChild size="sm" className={cn("w-full", compact && "rounded-full")}>
+          <Link href={compact ? `/matters/${matter.id}` : `/matters/${matter.id}/plan`}>
             <ClipboardList className="h-3.5 w-3.5" />
-            <span className="sm:hidden">{t("setupPlan")}</span>
-            <span className="hidden sm:inline">{t("setupPlanLong")}</span>
+            {compact ? (
+              <span>{t("viewHub")}</span>
+            ) : (
+              <>
+                <span className="sm:hidden">{t("setupPlan")}</span>
+                <span className="hidden sm:inline">{t("setupPlanLong")}</span>
+              </>
+            )}
           </Link>
         </Button>
       </div>
@@ -408,17 +357,10 @@ export function MattersList({
 
   function renderListCard(matter: MatterListItem) {
     return (
-      <Card key={matter.id} solid className="rounded-md border-border/50">
+      <Card key={matter.id} solid className="rounded-xl border-border/50">
         <CardHeader className="flex flex-col gap-2 space-y-0 p-3 sm:flex-row sm:items-start sm:justify-between sm:p-4">
           <div className="min-w-0 flex-1 space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
-              <input
-                type="checkbox"
-                checked={activeSelectedIds.has(matter.id)}
-                onChange={() => toggleSelected(matter.id)}
-                aria-label={matter.title}
-                className="h-4 w-4 shrink-0 cursor-pointer rounded border-border accent-primary"
-              />
               <CardTitle className="min-w-0 text-lg leading-snug">
                 <Link
                   href={`/matters/${matter.id}`}
@@ -483,169 +425,237 @@ export function MattersList({
   }
 
   function renderGridCard(matter: MatterListItem) {
+    const clientLine = [matter.client.city, matter.client.address]
+      .filter(Boolean)
+      .join(" • ");
+    const memberNames = matter.members.map((m) => m.user.name).filter(Boolean);
+
     return (
-      <Card key={matter.id} solid className="flex flex-col rounded-md border-border/50">
-        <CardHeader className="space-y-1.5 p-3 pb-2">
-          <div className="flex flex-wrap items-start gap-2">
-            <input
-              type="checkbox"
-              checked={activeSelectedIds.has(matter.id)}
-              onChange={() => toggleSelected(matter.id)}
-              aria-label={matter.title}
-              className="mt-1 h-4 w-4 shrink-0 cursor-pointer rounded border-border accent-primary"
-            />
-            <CardTitle className="min-w-0 flex-1 text-base leading-snug">
-              <Link
-                href={`/matters/${matter.id}`}
-                className="interactive-link hover:text-primary"
+      <article key={matter.id} className={nexusGridCardClass}>
+        <div className="min-w-0">
+          <div className="mb-3.5 flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <div
+                className={cn(
+                  "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-base font-bold shadow-sm",
+                  nexusAvatarTone(matter.id),
+                )}
               >
-                {matter.title}
-              </Link>
-            </CardTitle>
-            <MatterStatusBadge status={matter.status} />
+                {nexusInitials(matter.client.name)}
+              </div>
+              <div className="min-w-0">
+                <span className="font-mono text-[11px] font-medium text-muted-foreground">
+                  {matter.code}
+                </span>
+                <div className="mt-0.5">
+                  <MatterStatusBadge status={matter.status} />
+                </div>
+              </div>
+            </div>
           </div>
-          <p className="break-all font-mono text-[11px] font-medium tabular-nums tracking-tight text-primary">
-            {matter.code}
-          </p>
-          <p className="truncate text-sm font-semibold text-foreground">
+
+          <h3 className="line-clamp-2 text-lg font-bold tracking-tight text-foreground transition-colors group-hover:text-primary">
+            <Link href={`/matters/${matter.id}`} className="hover:underline">
+              {matter.title}
+            </Link>
+          </h3>
+          <p className="mt-1.5 truncate text-sm font-semibold text-foreground">
             {matter.client.name}
           </p>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-2 p-3 pt-0">
-          <dl className="grid gap-1.5 text-sm">
-            <div className="min-w-0">
-              <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                {t("leadLawyer")}
-              </dt>
-              <dd className="mt-0.5 truncate font-medium text-foreground">
-                {matter.leadLawyer.name}
-              </dd>
+          {clientLine ? (
+            <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+              {clientLine}
+            </p>
+          ) : null}
+
+          <div className="mt-3.5 space-y-1.5 rounded-xl bg-surface-container px-3 py-2.5 text-xs">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-muted-foreground">{t("leadLawyer")}</span>
+              <span className="inline-flex min-w-0 items-center gap-1.5 font-medium text-foreground">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">
+                  {nexusInitials(matter.leadLawyer.name)}
+                </span>
+                <span className="truncate">{matter.leadLawyer.name}</span>
+              </span>
             </div>
-            <div className="min-w-0">
-              <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                {t("fieldType")}
-              </dt>
-              <dd className="mt-0.5 truncate font-medium text-foreground">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-muted-foreground">{t("fieldType")}</span>
+              <span className="truncate font-medium text-foreground">
                 {getMatterTypeDisplay(matter.type, matter.customTypeLabel)}
-              </dd>
+              </span>
             </div>
-          </dl>
-          <p className="text-sm font-medium text-primary">
-            {t("taskCount", { count: matter._count.tasks })}
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-muted-foreground">{t("tasksLabel")}</span>
+              <span className="font-semibold tabular-nums text-primary">
+                {matter._count.tasks}
+              </span>
+            </div>
+          </div>
+
+          {memberNames.length > 0 ? (
+            <p className="mt-2 line-clamp-1 text-[11px] text-muted-foreground">
+              {t("members")}: {memberNames.join(", ")}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="mt-4 space-y-3 border-t border-border/60 pt-3.5">
+          <p className="text-[11px] text-muted-foreground">
+            {t("fieldUpdatedAt")}: {formatDateTime(matter.updatedAt)}
           </p>
           {renderMatterActions(matter, true)}
-        </CardContent>
-      </Card>
+        </div>
+      </article>
     );
   }
 
   function renderTableView() {
     return (
-      <Card solid className="overflow-hidden rounded-md border-border/50 p-0">
+      <Card solid className="overflow-hidden rounded-2xl border-border/50 p-0">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[860px] border-collapse text-sm">
+          <table className="w-full min-w-[960px] border-collapse text-sm">
             <thead>
-              <tr className="border-b border-border/70 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                <th className="w-8 px-3 py-2.5 font-medium">
-                  {selectableVisibleIds.length > 0 ? (
-                    <input
-                      type="checkbox"
-                      checked={selectableVisibleIds.every((id) =>
-                        activeSelectedIds.has(id),
-                      )}
-                      onChange={toggleSelectAllVisible}
-                      aria-label={tCommon("selectAll")}
-                      className="h-4 w-4 cursor-pointer rounded border-border accent-primary"
-                    />
-                  ) : null}
+              <tr className="bg-surface-container-low text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <th className="min-w-[16rem] px-4 py-3.5 font-medium">
+                  {t("code")} · {t("title")}
                 </th>
-                <th className="px-3 py-2.5 font-medium">{t("fieldType")}</th>
-                <th className="px-3 py-2.5 font-medium">{t("title")}</th>
-                <th className="px-3 py-2.5 font-medium">{t("client")}</th>
-                <th className="px-3 py-2.5 font-medium">{t("leadLawyer")}</th>
-                <th className="px-3 py-2.5 font-medium">{t("status")}</th>
-                <th className="px-3 py-2.5 text-right font-medium">
-                  {t("fieldCreatedAt")}
-                </th>
+                <th className="min-w-[12rem] px-4 py-3.5 font-medium">{t("client")}</th>
+                <th className="min-w-[10rem] px-4 py-3.5 font-medium">{t("leadLawyer")}</th>
+                <th className="min-w-[8rem] px-4 py-3.5 font-medium">{t("status")}</th>
+                <th className="min-w-[8rem] px-4 py-3.5 font-medium">{t("fieldUpdatedAt")}</th>
                 {canManage ? (
-                  <th className="px-3 py-2.5 text-right font-medium">
+                  <th className="px-4 py-3.5 text-right font-medium">
                     <span className="sr-only">{tCommon("actions")}</span>
                   </th>
                 ) : null}
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/60">
-              {visibleMatters.map((matter) => (
-                <tr key={matter.id} className="interactive-row">
-                  <td className="w-8 px-3 py-2.5 align-top">
-                    <input
-                      type="checkbox"
-                      checked={activeSelectedIds.has(matter.id)}
-                      onChange={() => toggleSelected(matter.id)}
-                      aria-label={matter.title}
-                      className="h-4 w-4 cursor-pointer rounded border-border accent-primary"
-                    />
-                  </td>
-                  <td className="max-w-[9rem] truncate px-3 py-2.5 align-top text-foreground">
-                    {getMatterTypeDisplay(matter.type, matter.customTypeLabel)}
-                  </td>
-                  <td className="min-w-[14rem] px-3 py-2.5 align-top">
-                    <Link
-                      href={`/matters/${matter.id}`}
-                      className="interactive-link block truncate font-medium text-foreground hover:text-primary"
-                    >
-                      {matter.title}
-                    </Link>
-                    <p className="truncate font-mono text-[11px] text-primary/80">
-                      {matter.code}
-                    </p>
-                  </td>
-                  <td className="max-w-[10rem] truncate px-3 py-2.5 align-top text-foreground">
-                    {matter.client.name}
-                  </td>
-                  <td className="max-w-[9rem] truncate px-3 py-2.5 align-top text-foreground">
-                    {matter.leadLawyer.name}
-                  </td>
-                  <td className="px-3 py-2.5 align-top">
-                    <MatterStatusBadge status={matter.status} />
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-right align-top tabular-nums text-muted-foreground">
-                    {formatDateTime(matter.createdAt)}
-                  </td>
-                  {canManage ? (
-                    <td className="px-3 py-2.5 text-right align-top">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          disabled={isPending || formDataLoading}
-                          onClick={() => void openEdit(matter)}
-                          aria-label={t("editMatter")}
-                          title={t("editMatter")}
+            <tbody className="divide-y divide-border/50">
+              {visibleMatters.map((matter) => {
+                const team = [
+                  matter.leadLawyer,
+                  ...matter.members
+                    .map((m) => m.user)
+                    .filter((u) => u.id !== matter.leadLawyer.id),
+                ].slice(0, 3);
+                const extraMembers = Math.max(
+                  0,
+                  1 + matter.members.length - team.length,
+                );
+
+                return (
+                  <tr
+                    key={matter.id}
+                    className="group transition-colors hover:bg-surface-container-low/70"
+                  >
+                    <td className="min-w-[16rem] px-4 py-4 align-top">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-md bg-surface-container-high px-2 py-0.5 text-[11px] font-semibold text-foreground">
+                            {getMatterTypeDisplay(matter.type, matter.customTypeLabel)}
+                          </span>
+                          <span className="font-mono text-[11px] text-muted-foreground">
+                            {matter.code}
+                          </span>
+                        </div>
+                        <Link
+                          href={`/matters/${matter.id}`}
+                          className="interactive-link line-clamp-2 font-semibold text-foreground hover:text-primary"
                         >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40"
-                          disabled={isPending}
-                          onClick={() => handleDelete(matter)}
-                          aria-label={t("deleteMatter")}
-                          title={t("deleteMatter")}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                          {matter.title}
+                        </Link>
+                        <p className="text-xs text-muted-foreground">
+                          {t("taskCount", { count: matter._count.tasks })}
+                        </p>
                       </div>
                     </td>
-                  ) : null}
-                </tr>
-              ))}
+                    <td className="min-w-[12rem] px-4 py-4 align-top">
+                      <div className="flex items-start gap-2.5">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-muted text-[11px] font-bold text-primary">
+                          {nexusInitials(matter.client.name)}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-foreground">
+                            {matter.client.name}
+                          </p>
+                          {matter.client.city ? (
+                            <p className="truncate text-xs text-muted-foreground">
+                              {matter.client.city}
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="min-w-[10rem] px-4 py-4 align-top">
+                      <div className="flex items-center gap-2">
+                        <div className="flex -space-x-2">
+                          {team.map((person) => (
+                            <UserAvatar
+                              key={person.id}
+                              userId={person.id}
+                              name={person.name}
+                              size="sm"
+                              className="h-8 w-8 ring-2 ring-surface"
+                            />
+                          ))}
+                        </div>
+                        <span className="min-w-0 truncate text-xs text-muted-foreground">
+                          {matter.leadLawyer.name}
+                          {extraMembers > 0 ? ` +${extraMembers}` : ""}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 align-top">
+                      <MatterStatusBadge status={matter.status} />
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-4 align-top text-xs tabular-nums text-muted-foreground">
+                      {formatDateTime(matter.updatedAt)}
+                    </td>
+                    {canManage ? (
+                      <td className="px-4 py-4 text-right align-top">
+                        <div className="flex justify-end gap-1 opacity-80 transition-opacity group-hover:opacity-100">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-full"
+                            disabled={isPending || formDataLoading}
+                            onClick={() => void openEdit(matter)}
+                            aria-label={t("editMatter")}
+                            title={t("editMatter")}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-full text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40"
+                            disabled={isPending}
+                            onClick={() => handleDelete(matter)}
+                            aria-label={t("deleteMatter")}
+                            title={t("deleteMatter")}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </td>
+                    ) : null}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
+        </div>
+        <div className="flex flex-col gap-2 border-t border-border/60 bg-surface-container-low px-4 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+          <span>
+            {visibleMatters.length === matters.length
+              ? t("matterCount", { count: totalCount })
+              : t("matterCountFiltered", {
+                  visible: visibleMatters.length,
+                  total: totalCount,
+                })}
+          </span>
         </div>
       </Card>
     );
@@ -655,40 +665,54 @@ export function MattersList({
     <>
       {dialog}
       <div className="space-y-4">
-        <div className="shrink-0 border-b border-border/60 pb-3">
-          <PageToolbar
-            actions={
-              <>
-                <CreateMatterButton variant="toolbar" />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={visibleMatters.length === 0}
-                  onClick={handleExportExcel}
-                  aria-label={tCommon("exportExcel")}
-                >
-                  <FileSpreadsheet className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">{tCommon("exportExcel")}</span>
-                </Button>
-                <ListViewToggle mode={mode} onChange={setMode} size="sm" />
-              </>
-            }
-          >
-            <MattersFiltersBar
-              filters={effectiveFilters}
-              onChange={handleFiltersChange}
-              typeOptions={Object.keys(labels.matterType) as MatterType[]}
-              lawyers={filterOptions.lawyers}
-              members={filterOptions.members}
-              clients={filterOptions.clients}
-              className="min-w-0 flex-1 basis-full sm:basis-0"
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
+                {tPages("title")}
+              </h1>
+              <span className="inline-flex items-center rounded-full bg-surface-container-high px-2.5 py-0.5 text-xs font-semibold text-primary">
+                {t("matterCount", { count: totalCount })}
+              </span>
+            </div>
+            <p className="text-sm text-muted-foreground">{tPages("description")}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <ListViewToggle
+              mode={mode}
+              onChange={setMode}
+              size="sm"
+              className="rounded-full border-0 bg-surface-container p-1 shadow-inner"
             />
-          </PageToolbar>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-full"
+              disabled={visibleMatters.length === 0}
+              onClick={handleExportExcel}
+              aria-label={tCommon("exportExcel")}
+            >
+              <FileSpreadsheet className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{tCommon("exportExcel")}</span>
+            </Button>
+            <CreateMatterButton variant="toolbar" />
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-border/70 bg-surface p-3 shadow-[var(--shadow-card)] sm:p-4">
+          <MattersFiltersBar
+            filters={effectiveFilters}
+            onChange={handleFiltersChange}
+            typeOptions={Object.keys(labels.matterType) as MatterType[]}
+            lawyers={filterOptions.lawyers}
+            members={filterOptions.members}
+            clients={filterOptions.clients}
+          />
         </div>
 
         {totalCount > matters.length ? (
-          <div className="flex items-start gap-2 rounded-md border border-amber-300/60 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300">
+          <div className="flex items-start gap-2 rounded-xl border border-amber-300/60 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <p>
               {t("listTruncatedWarning", {
@@ -699,51 +723,14 @@ export function MattersList({
           </div>
         ) : null}
 
-        {activeSelectedIds.size > 0 ? (
-          <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary-muted/50 px-3 py-2 backdrop-blur-sm">
-            <span className="text-sm font-medium text-primary">
-              {t("selectedCount", { count: activeSelectedIds.size })}
-            </span>
-            <Select
-              value={bulkStatus}
-              onChange={(e) => setBulkStatus(e.target.value as MatterStatus)}
-              className="h-8 w-auto min-w-0 text-xs"
-            >
-              {BULK_STATUSES.map((status) => (
-                <option key={status} value={status}>
-                  {labels.matterStatus[status]}
-                </option>
-              ))}
-            </Select>
-            <Button
-              type="button"
-              size="sm"
-              disabled={isPending}
-              onClick={applyBulkStatus}
-            >
-              {t("applyBulkStatus")}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectedIds(new Set())}
-              className="ml-auto"
-            >
-              <X className="h-3.5 w-3.5" />
-              {tCommon("clearSelection")}
-            </Button>
-          </div>
-        ) : null}
-
         {matters.length === 0 ? (
-          <Card solid>
+          <Card solid className="rounded-2xl">
             <CardContent className="py-10 text-center text-sm text-muted-foreground">
               {t("emptyHint")}
             </CardContent>
           </Card>
         ) : visibleMatters.length === 0 ? (
-          <Card solid>
+          <Card solid className="rounded-2xl">
             <CardContent className="py-10 text-center text-sm text-muted-foreground">
               {t("noFilterMatch")}
             </CardContent>
@@ -756,7 +743,7 @@ export function MattersList({
             </div>
           </>
         ) : mode === "grid" ? (
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          <div className={nexusGridClass}>
             {visibleMatters.map((matter) => renderGridCard(matter))}
           </div>
         ) : (

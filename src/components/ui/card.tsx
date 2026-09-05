@@ -73,7 +73,7 @@ export function Badge({
 }) {
   const variants = {
     default:
-      "bg-slate-100 text-slate-700 dark:bg-muted dark:text-foreground",
+      "bg-muted text-foreground dark:bg-muted dark:text-foreground",
     success:
       "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
     warning:
@@ -102,7 +102,7 @@ export const Select = React.forwardRef<
     <select
       ref={ref}
       className={cn(
-        "flex h-9 w-full cursor-pointer rounded-md border border-border bg-surface px-3 py-0 text-sm leading-normal text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50 interactive-field [text-overflow:ellipsis]",
+        "flex h-9 w-full cursor-pointer rounded-xl border border-border bg-surface px-3 py-0 text-sm leading-normal text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50 interactive-field [text-overflow:ellipsis]",
         className,
       )}
       {...props}

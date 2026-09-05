@@ -51,16 +51,16 @@ function deadlineTime(item: UpcomingDeadlineItem) {
   return new Date(year, month - 1, day, 23, 59, 59, 999).getTime();
 }
 
-function priorityAccentClass(variant: UpcomingDeadlineItem["statusVariant"]) {
+function priorityStripeClass(variant: UpcomingDeadlineItem["statusVariant"]) {
   switch (variant) {
     case "danger":
-      return "border-l-rose-500";
+      return "before:bg-rose-500";
     case "warning":
-      return "border-l-amber-500";
+      return "before:bg-amber-500";
     case "info":
-      return "border-l-sky-500";
+      return "before:bg-sky-500";
     default:
-      return "border-l-border";
+      return "before:bg-border";
   }
 }
 
@@ -150,7 +150,7 @@ export function UpcomingDeadlineList({
   return (
     <div className="min-w-0">
       {error ? (
-        <p className="mb-3 rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
+        <p className="mb-3 rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
           {error}
         </p>
       ) : null}
@@ -173,11 +173,11 @@ export function UpcomingDeadlineList({
             <li
               key={item.key}
               className={cn(
-                "group/deadline min-w-0 rounded-[var(--radius-md)] border border-transparent border-l-[3px] bg-transparent py-2.5 pl-3 pr-2.5",
-                "transition-[background-color,border-color,box-shadow] duration-150 ease-out",
-                "hover:border-y-border hover:border-r-border hover:bg-primary-muted-hover hover:shadow-[var(--shadow-card)]",
-                "dark:hover:bg-primary-muted-hover",
-                priorityAccentClass(item.statusVariant),
+                "group/deadline relative min-w-0 overflow-hidden rounded-2xl border border-transparent bg-surface-container-low py-3 pl-4 pr-3",
+                "transition-[background-color,box-shadow] duration-150 ease-out",
+                "hover:bg-surface-container hover:shadow-sm",
+                "before:absolute before:bottom-3 before:left-0 before:top-3 before:w-1 before:rounded-r-full",
+                priorityStripeClass(item.statusVariant),
               )}
               title={
                 item.kind === "task"
@@ -264,7 +264,7 @@ export function UpcomingDeadlineList({
                           event.target.value as MatterPlanStepStatus,
                         )
                       }
-                      className="h-7 w-auto max-w-full min-w-[7.5rem] appearance-none rounded-md border-border/70 bg-transparent py-0 pl-2 pr-6 text-xs font-medium text-foreground shadow-none"
+                      className="h-7 w-auto max-w-full min-w-[7.5rem] appearance-none rounded-full border-border/70 bg-transparent py-0 pl-2 pr-6 text-xs font-medium text-foreground shadow-none"
                       aria-label={`${tMatters("status")}: ${item.title}`}
                     >
                       {planStatuses.map((status) => (

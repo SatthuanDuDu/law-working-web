@@ -5,8 +5,8 @@
   --foreground: #0f172a;
   --muted-foreground: #64748b;
   /*
-   * Cases reference: selected chips / CTAs = deep slate (#0f172a).
-   * Soft sky is NOT the brand chrome — only optional info tint via status tokens.
+   * Neutral charcoal / deep slate primary (Cases-style SaaS).
+   * Status semantic colors stay separate — not brand-washed.
    */
   --primary: #0f172a;
   --primary-foreground: #ffffff;
@@ -15,13 +15,11 @@
   --primary-muted-hover: #e2e8f0;
   --accent: #475569;
   --accent-muted: #f8fafc;
-  /* Same family as primary — filled Selected chips / main CTAs */
   --action: #0f172a;
   --action-foreground: #ffffff;
   --action-hover: #020617;
   --muted: #f1f5f9;
   --border: #e5e7eb;
-  /* Surface layers */
   --canvas: #f8f9fa;
   --surface: #ffffff;
   --surface-elevated: #ffffff;
@@ -29,43 +27,52 @@
   --glass-border: #e5e7eb;
   --field-hover-bg: #f1f5f9;
   --row-hover-bg: #f8fafc;
-  /* Sync radius: 8–12px outer / mid scale */
+  /* M3 tonal surface stack (slate neutrals — charcoal brand) */
+  --surface-container-lowest: #ffffff;
+  --surface-container-low: #f8fafc;
+  --surface-container: #f1f5f9;
+  --surface-container-high: #e2e8f0;
+  --surface-container-highest: #cbd5e1;
   --radius-sm: 0.375rem; /* 6px */
-  --radius-md: 0.5rem; /* 8px */
-  --radius-lg: 0.75rem; /* 12px */
-  --radius-xl: 0.75rem; /* 12px */
-  /* Ultra-thin SaaS shadow */
+  --radius-md: 0.75rem; /* 12px */
+  --radius-lg: 1rem; /* 16px */
+  --radius-xl: 1.5rem; /* 24px */
   --shadow-overlay: 0 4px 20px rgba(15, 23, 42, 0.06);
   --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.04);
-  /* Flat canvas — no heavy radial wash */
   --body-gradient: none;
 }
 
 .dark {
-  --background: #0b1220;
-  --foreground: #f8fafc;
-  --muted-foreground: #94a3b8;
-  --primary: #e2e8f0;
-  --primary-foreground: #0f172a;
-  --primary-hover: #ffffff;
-  --primary-muted: #1e293b;
-  --primary-muted-hover: #334155;
-  --accent: #94a3b8;
-  --accent-muted: #1e293b;
-  --action: #e2e8f0;
-  --action-foreground: #0f172a;
-  --action-hover: #ffffff;
-  --muted: #1e293b;
-  --border: #334155;
-  --canvas: #020617;
-  --surface: #0f172a;
-  --surface-elevated: #0f172a;
-  --sidebar: #0b1220;
-  --glass-border: #334155;
-  --field-hover-bg: rgb(148 163 184 / 0.12);
-  --row-hover-bg: rgb(148 163 184 / 0.08);
-  --shadow-overlay: 0 4px 20px rgba(0, 0, 0, 0.45);
-  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.35);
+  /* Soft graphite deep — darker canvas; cards still a step up */
+  --background: #121212;
+  --foreground: #e0e0e0;
+  --muted-foreground: #8f8f8f;
+  --primary: #e0e0e0;
+  --primary-foreground: #121212;
+  --primary-hover: #f5f5f5;
+  --primary-muted: #1e1e1e;
+  --primary-muted-hover: #262626;
+  --accent: #9a9a9a;
+  --accent-muted: #1e1e1e;
+  --action: #e0e0e0;
+  --action-foreground: #121212;
+  --action-hover: #f5f5f5;
+  --muted: #1e1e1e;
+  --border: #2a2a2a;
+  --canvas: #121212;
+  --surface: #1a1a1a;
+  --surface-elevated: #222222;
+  --sidebar: #0e0e0e;
+  --glass-border: #2a2a2a;
+  --field-hover-bg: rgb(255 255 255 / 0.05);
+  --row-hover-bg: rgb(255 255 255 / 0.04);
+  --surface-container-lowest: #121212;
+  --surface-container-low: #161616;
+  --surface-container: #1e1e1e;
+  --surface-container-high: #262626;
+  --surface-container-highest: #303030;
+  --shadow-overlay: 0 4px 24px rgba(0, 0, 0, 0.55);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 4px 16px rgba(0, 0, 0, 0.28);
   --body-gradient: none;
 }
 
@@ -91,6 +98,10 @@
   --color-surface: var(--surface);
   --color-surface-elevated: var(--surface-elevated);
   --color-sidebar: var(--sidebar);
+  --color-surface-container: var(--surface-container);
+  --color-surface-container-low: var(--surface-container-low);
+  --color-surface-container-high: var(--surface-container-high);
+  --color-surface-container-highest: var(--surface-container-highest);
   --font-sans: var(--font-sans-app);
 }
 
@@ -178,9 +189,9 @@ html.fab-dragging body {
   -webkit-backdrop-filter: none;
 }
 
-/* Sidebar nav — muted hover; solid primary when active */
+/* Sidebar nav — solid charcoal active pill (Cases / M3 drawer) */
 .sidebar-nav-liquid:hover {
-  background-color: var(--primary-muted) !important;
+  background-color: var(--surface-container) !important;
   background-image: none !important;
   border-color: transparent;
   box-shadow: none;
@@ -197,6 +208,11 @@ html.fab-dragging body {
 
 .sidebar-nav-liquid.is-active:hover {
   background-color: var(--primary-hover) !important;
+}
+
+.dark .sidebar-nav-liquid.is-active,
+.dark .sidebar-nav-liquid:focus-visible {
+  color: var(--primary-foreground);
 }
 
 /* Content column — flat canvas (no glow blobs) */
@@ -234,12 +250,14 @@ html.fab-dragging body {
   border-radius: 0;
   color: var(--foreground);
   padding: 12px 16px;
-  background-color: var(--surface) !important;
+  background-color: color-mix(in oklab, var(--surface) 88%, transparent) !important;
   background-image: none !important;
   border-width: 0 0 1px 0 !important;
   border-style: solid !important;
-  border-color: #e2e8f0 !important;
+  border-color: var(--border) !important;
   box-shadow: none !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .dark .page-header-panel {
@@ -390,6 +408,78 @@ html.fab-dragging body {
 .interactive-card:hover {
   border-color: color-mix(in oklab, var(--primary) 45%, var(--border));
   background-color: color-mix(in oklab, var(--primary-muted) 70%, var(--surface));
+  box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.06), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
+}
+
+/* M3 hub hero — tonal gradient (slate, not purple) */
+.dashboard-hero {
+  background: linear-gradient(
+    125deg,
+    color-mix(in oklab, var(--primary-muted) 85%, var(--surface)) 0%,
+    color-mix(in oklab, var(--surface-container) 90%, var(--surface)) 45%,
+    var(--surface) 100%
+  );
+}
+
+.command-search-trigger {
+  background-color: var(--surface-container);
+  transition:
+    background-color 0.15s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.command-search-trigger:hover,
+.command-search-trigger-open {
+  background-color: var(--surface-container-high);
+}
+
+.command-search-trigger:focus-within,
+.command-search-trigger-open:focus-within {
+  background-color: var(--surface);
+  box-shadow:
+    0 4px 6px -1px rgba(15, 23, 42, 0.06),
+    0 2px 4px -2px rgba(15, 23, 42, 0.04),
+    0 0 0 2px color-mix(in oklab, var(--primary) 35%, transparent);
+}
+
+.command-search-trigger:focus-visible {
+  background-color: var(--surface);
+  box-shadow:
+    0 4px 6px -1px rgba(15, 23, 42, 0.06),
+    0 2px 4px -2px rgba(15, 23, 42, 0.04),
+    0 0 0 2px color-mix(in oklab, var(--primary) 35%, transparent);
+  outline: none;
+}
+
+.command-search-caret {
+  animation: command-search-caret-blink 1s steps(1, end) infinite;
+}
+
+@keyframes command-search-caret-blink {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.command-search-dropdown {
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition:
+    opacity 0.16s ease,
+    transform 0.16s ease;
+}
+
+.command-search-dropdown.is-active {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
 }
 
 .interactive-chip {
@@ -402,7 +492,7 @@ html.fab-dragging body {
 
 .interactive-chip:hover {
   filter: brightness(1.08);
-  box-shadow: 0 0 0 2px rgb(15 23 42 / 0.1);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary) 18%, transparent);
 }
 
 .interactive-row {
@@ -563,6 +653,18 @@ html.fab-dragging body {
   .floating-panel,
   .todo-panel-aside {
     transition: none;
+  }
+
+  .command-search-caret {
+    animation: none;
+    opacity: 1;
+  }
+
+  .command-search-dropdown {
+    transition: none;
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
   }
 
   .overlay-backdrop,

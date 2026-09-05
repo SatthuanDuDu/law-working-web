@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 import { PageHeaderSlot } from "@/components/layout/page-header-slot";
 import { AttachmentPanel } from "@/components/attachments/attachment-panel";
 import { MatterAiSummary } from "@/components/matters/matter-ai-summary";
+import { MatterHubHeader } from "@/components/matters/matter-hub-header";
 import { MatterInfoCard } from "@/components/matters/matter-info-card";
-import { MatterOverviewExport } from "@/components/matters/matter-overview-export";
 import {
   MatterPlanOverview,
   MatterPlanProgress,
@@ -29,7 +29,7 @@ const CommentThread = dynamic(
     import("@/components/comments/comment-thread").then((m) => m.CommentThread),
   {
     loading: () => (
-      <div className="h-48 animate-pulse rounded-md bg-muted" />
+      <div className="h-48 animate-pulse rounded-2xl bg-muted" />
     ),
   },
 );
@@ -186,63 +186,70 @@ export default async function MatterHubPage({
 
   return (
     <>
-      <PageHeaderSlot title={matter.title} />
+      <PageHeaderSlot title="" />
 
-      <div className="grid min-w-0 items-start gap-5 @5xl/workspace:grid-cols-[minmax(20rem,24rem)_minmax(0,1fr)] @5xl/workspace:gap-6">
-        <aside className="order-1 min-w-0 space-y-3 self-start @5xl/workspace:sticky @5xl/workspace:top-0 @5xl/workspace:z-10">
-          <MatterInfoCard
-            matter={matter}
-            canEditStatus={canEditStatus}
-            isAdmin={isAdmin(user.role)}
-            canEditMembers={canEditMembers}
-            staffOptions={formData?.members ?? []}
-          />
-          <MatterOverviewExport matterId={matter.id} />
-        </aside>
-
-        <div className="order-2 min-w-0 space-y-4">
-          <MatterPlanProgress
-            planSteps={matter.planSteps}
-            matterCreatedAt={matter.createdAt}
-            referenceNow={new Date()}
-          />
-          <MatterPlanOverview
-            matterId={matter.id}
-            planSteps={matter.planSteps}
-            referenceNow={new Date()}
-          />
-          <MatterAiSummary matterId={matter.id} />
-        </div>
-      </div>
-
-      <div className="mt-8">
-        <AttachmentPanel
-          matterId={matter.id}
-          currentUserId={user.id}
-          canDeleteAll={canManageDocs}
-          canUpload={canManageDocs}
-          canMarkImportant={isAdmin(user.role) && !isLocked}
-          canManageAccess={canEditMembers}
-          initialAttachments={initialAttachments}
+      <div className="space-y-6">
+        <MatterHubHeader
+          matter={matter}
+          canEditStatus={canEditStatus}
+          isAdmin={isAdmin(user.role)}
+          docCount={initialAttachments.length}
+          commentCount={matterComments.length}
         />
-      </div>
 
-      <div className="mt-8">
-        <Card className="rounded-md">
-          <CardHeader>
-            <CardTitle>{tOverview("commentsTitle")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <CommentThread
-              matterId={matter.id}
-              currentUserId={user.id}
-              canDeleteAsAdmin={isAdmin(user.role)}
-              canPost={canEditContent}
-              mentionUsers={mentionUsers}
-              comments={matterComments}
+        <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-12">
+          <div className="min-w-0 space-y-5 xl:col-span-8">
+            <MatterPlanProgress
+              planSteps={matter.planSteps}
+              matterCreatedAt={matter.createdAt}
+              referenceNow={new Date()}
             />
-          </CardContent>
-        </Card>
+            <MatterPlanOverview
+              matterId={matter.id}
+              planSteps={matter.planSteps}
+              referenceNow={new Date()}
+            />
+            <MatterAiSummary matterId={matter.id} />
+          </div>
+
+          <aside className="min-w-0 space-y-4 xl:col-span-4 xl:sticky xl:top-4">
+            <MatterInfoCard
+              matter={matter}
+              canEditMembers={canEditMembers}
+              staffOptions={formData?.members ?? []}
+            />
+          </aside>
+        </div>
+
+        <div id="matter-documents">
+          <AttachmentPanel
+            matterId={matter.id}
+            currentUserId={user.id}
+            canDeleteAll={canManageDocs}
+            canUpload={canManageDocs}
+            canMarkImportant={isAdmin(user.role) && !isLocked}
+            canManageAccess={canEditMembers}
+            initialAttachments={initialAttachments}
+          />
+        </div>
+
+        <div id="matter-comments">
+          <Card className="rounded-2xl border-border/70 shadow-[var(--shadow-card)]">
+            <CardHeader>
+              <CardTitle>{tOverview("commentsTitle")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CommentThread
+                matterId={matter.id}
+                currentUserId={user.id}
+                canDeleteAsAdmin={isAdmin(user.role)}
+                canPost={canEditContent}
+                mentionUsers={mentionUsers}
+                comments={matterComments}
+              />
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </>
   );

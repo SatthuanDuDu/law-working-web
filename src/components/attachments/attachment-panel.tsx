@@ -15,6 +15,7 @@ import {
   ChevronDown,
   ChevronUp,
   Lock,
+  Info,
 } from "lucide-react";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { AttachmentViewer } from "@/components/attachments/attachment-viewer";
@@ -121,6 +122,7 @@ export function AttachmentPanel({
   const [viewerItem, setViewerItem] = useState<AttachmentItem | null>(null);
   const [accessItem, setAccessItem] = useState<AttachmentItem | null>(null);
   const [expandedVersionsId, setExpandedVersionsId] = useState<string | null>(null);
+  const [expandedDetailsId, setExpandedDetailsId] = useState<string | null>(null);
   const [versionsByAttachment, setVersionsByAttachment] = useState<
     Record<string, AttachmentVersionItem[]>
   >({});
@@ -957,30 +959,38 @@ export function AttachmentPanel({
           const versionCount = item.versionCount ?? 1;
           const versionsExpanded = expandedVersionsId === item.id;
           const versions = versionsByAttachment[item.id] ?? [];
+          const detailsExpanded = expandedDetailsId === item.id;
 
           return (
             <div
               key={item.id}
               className={cn(
-                "min-w-0",
-                compact
-                  ? cn(
-                      "border-b border-border/60 last:border-b-0",
-                      item.isImportant
-                        ? "attachment-important"
-                        : "py-2.5",
-                    )
-                  : cn(
-                      "border-b border-border/60 last:border-b-0",
-                      item.isImportant
-                        ? "attachment-important"
-                        : "py-3",
-                    ),
+                "min-w-0 rounded-2xl border border-border/70 bg-surface px-3 py-2.5 shadow-[var(--shadow-card)] sm:px-3.5",
+                item.isImportant &&
+                  "border-amber-300/80 bg-amber-50/50 shadow-none ring-1 ring-amber-200/60 dark:border-amber-800/60 dark:bg-amber-950/25 dark:ring-amber-900/40",
+                compact && "rounded-xl px-2.5 py-2 shadow-none",
               )}
             >
-              <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
-                <div className="min-w-0 flex-1 space-y-1.5">
-                  <div className="flex min-w-0 items-start gap-2">
+              <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                  <span
+                    className={cn(
+                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+                      item.isImportant
+                        ? "bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-300"
+                        : item.mimeType.includes("pdf")
+                          ? "bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300"
+                          : "bg-primary-muted text-primary",
+                    )}
+                    aria-hidden
+                  >
+                    {item.isImportant ? (
+                      <Star className="h-4 w-4 fill-current" />
+                    ) : (
+                      <Paperclip className="h-4 w-4" />
+                    )}
+                  </span>
+                  <div className="min-w-0 flex-1 space-y-1">
                     <button
                       type="button"
                       onClick={(e) => {
@@ -989,151 +999,22 @@ export function AttachmentPanel({
                       }}
                       title={item.fileName}
                       className={cn(
-                        "interactive-press min-w-0 flex-1 break-words rounded-md text-left font-medium text-primary hover:underline hover:[filter:none] active:[filter:none] sm:truncate sm:break-normal",
+                        "interactive-press block w-full truncate rounded-md text-left font-semibold text-foreground hover:text-primary hover:underline hover:[filter:none] active:[filter:none]",
                         compact ? "text-xs" : "text-sm",
                       )}
                     >
                       {item.fileName}
                     </button>
-                    {canMarkImportant ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={isPending}
-                        onClick={() => handleToggleImportant(item)}
-                        className={cn(
-                          "h-8 w-8 shrink-0 px-0 hover:bg-primary-muted hover:text-primary hover:[filter:none] active:[filter:none] sm:hidden",
-                          item.isImportant && "text-primary",
-                        )}
-                        aria-label={
-                          item.isImportant ? t("unmarkImportant") : t("markImportant")
-                        }
-                        title={item.isImportant ? t("unmarkImportant") : t("markImportant")}
-                      >
-                        <Star
-                          className={cn(
-                            "h-4 w-4",
-                            item.isImportant && "fill-current",
-                          )}
-                        />
-                      </Button>
-                    ) : null}
-                  </div>
-
-                  <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                     {item.isImportant ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-muted px-3 py-1.5 text-[11px] font-medium leading-none text-primary">
-                        <Star className="h-3 w-3 shrink-0 fill-current" aria-hidden />
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-950/50 dark:text-amber-200">
+                        <Star className="h-2.5 w-2.5 fill-current" aria-hidden />
                         {t("important")}
                       </span>
                     ) : null}
-                    {item.labelName ? (
-                      <span className="rounded-full bg-primary-muted px-2 py-0.5 text-[11px] font-medium text-primary">
-                        {item.labelName}
-                      </span>
-                    ) : null}
-                    {item.folderName ? (
-                      <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                        {item.folderName}
-                      </span>
-                    ) : null}
-                    {canVersion && versionCount > 1 ? (
-                      <button
-                        type="button"
-                        onClick={() => void toggleVersions(item)}
-                        className="interactive-press inline-flex items-center gap-1 rounded-full bg-accent-muted px-2 py-0.5 text-[11px] font-medium text-accent"
-                        title={t("versionsTitle")}
-                      >
-                        {t("versionsCount", { count: versionCount })}
-                        {versionsExpanded ? (
-                          <ChevronUp className="h-3 w-3" />
-                        ) : (
-                          <ChevronDown className="h-3 w-3" />
-                        )}
-                      </button>
-                    ) : null}
-                    {item.accessMode && item.accessMode !== "ALL_MEMBERS" ? (
-                      <span
-                        className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
-                        title={
-                          item.accessMode === "ALLOWLIST"
-                            ? t("accessModeAllow")
-                            : t("accessModeDeny")
-                        }
-                      >
-                        <Lock className="h-3 w-3" />
-                        {item.accessMode === "ALLOWLIST"
-                          ? t("accessBadgeAllow")
-                          : t("accessBadgeDeny")}
-                      </span>
-                    ) : null}
                   </div>
-
-                  {compact ? (
-                    <div className="space-y-0.5 text-[11px] text-muted-foreground">
-                      <p className="break-words">
-                        <span className="font-medium text-muted-foreground">
-                          {t("uploadedBy")}:
-                        </span>{" "}
-                        {item.uploadedBy.name}
-                        {item.origin?.kind === "comment"
-                          ? ` · ${t("commentOrigin")}`
-                          : ""}
-                      </p>
-                      <p className="break-words">
-                        <span className="font-medium text-muted-foreground">
-                          {t("date")}:
-                        </span>{" "}
-                        {formatDateTime(item.createdAt)}
-                        {" · "}
-                        {formatBytes(item.sizeBytes)}
-                        {item.version ? (
-                          <>
-                            {" · "}
-                            {t("versionLabel", { version: item.version })}
-                          </>
-                        ) : null}
-                      </p>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.currentTarget.blur();
-                        setViewerItem(item);
-                      }}
-                      className="interactive-press w-full min-w-0 space-y-1 rounded-md border-t border-border/80 pt-2 text-left text-xs text-muted-foreground hover:[filter:none] active:[filter:none]"
-                    >
-                      <p className="break-words">
-                        <span className="font-medium text-muted-foreground">{t("uploadedBy")}:</span>{" "}
-                        {item.uploadedBy.name}
-                      </p>
-                      <p className="break-words">
-                        <span className="font-medium text-muted-foreground">{t("source")}:</span>{" "}
-                        {item.origin?.label ?? t("defaultSource")}
-                      </p>
-                      {item.origin?.matterCode ? (
-                        <p className="break-all font-mono text-[11px] text-muted-foreground/90">
-                          {item.origin.matterCode}
-                        </p>
-                      ) : null}
-                      <p className="break-words">
-                        <span className="font-medium text-muted-foreground">{t("date")}:</span>{" "}
-                        {formatDateTime(item.createdAt)}
-                        {" · "}
-                        {formatBytes(item.sizeBytes)}
-                        {item.version ? (
-                          <>
-                            {" · "}
-                            {t("versionLabel", { version: item.version })}
-                          </>
-                        ) : null}
-                      </p>
-                    </button>
-                  )}
                 </div>
 
-                <div className="flex flex-wrap gap-1 sm:max-w-[12rem] sm:shrink-0 sm:justify-end lg:max-w-none">
+                <div className="flex flex-wrap gap-1 sm:shrink-0 sm:justify-end">
                   {canMarkImportant ? (
                     <Button
                       variant="ghost"
@@ -1141,9 +1022,12 @@ export function AttachmentPanel({
                       disabled={isPending}
                       onClick={() => handleToggleImportant(item)}
                       className={cn(
-                        "hidden h-8 w-8 px-0 hover:bg-primary-muted hover:text-primary hover:[filter:none] active:[filter:none] sm:inline-flex",
-                        item.isImportant && "text-primary",
+                        "interactive-press h-8 gap-1 rounded-full px-2.5 hover:[filter:none] active:[filter:none]",
+                        item.isImportant
+                          ? "bg-amber-100 text-amber-700 ring-1 ring-amber-300/80 hover:bg-amber-200/80 hover:text-amber-800 dark:bg-amber-950/50 dark:text-amber-200 dark:ring-amber-800 dark:hover:bg-amber-900/50"
+                          : "text-muted-foreground hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-950/30 dark:hover:text-amber-300",
                       )}
+                      aria-pressed={Boolean(item.isImportant)}
                       aria-label={
                         item.isImportant ? t("unmarkImportant") : t("markImportant")
                       }
@@ -1155,8 +1039,49 @@ export function AttachmentPanel({
                           item.isImportant && "fill-current",
                         )}
                       />
+                      <span className="hidden text-[11px] font-semibold sm:inline">
+                        {item.isImportant ? t("important") : t("markImportantShort")}
+                      </span>
                     </Button>
+                  ) : item.isImportant ? (
+                    <span
+                      className="inline-flex h-8 items-center gap-1 rounded-full bg-amber-100 px-2.5 text-[11px] font-semibold text-amber-800 dark:bg-amber-950/50 dark:text-amber-200"
+                      title={t("important")}
+                    >
+                      <Star className="h-3.5 w-3.5 fill-current" aria-hidden />
+                      <span className="hidden sm:inline">{t("important")}</span>
+                    </span>
                   ) : null}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={isPending}
+                    onClick={() =>
+                      setExpandedDetailsId((prev) => {
+                        if (prev === item.id) {
+                          if (expandedVersionsId === item.id) {
+                            setExpandedVersionsId(null);
+                          }
+                          return null;
+                        }
+                        return item.id;
+                      })
+                    }
+                    className={cn(
+                      "h-8 gap-1 rounded-full px-2 hover:bg-primary-muted hover:text-primary hover:[filter:none] active:[filter:none]",
+                      detailsExpanded && "bg-primary-muted text-primary",
+                    )}
+                    aria-expanded={detailsExpanded}
+                    aria-label={
+                      detailsExpanded ? t("hideDetails") : t("showDetails")
+                    }
+                    title={detailsExpanded ? t("hideDetails") : t("showDetails")}
+                  >
+                    <Info className="h-4 w-4" />
+                    <span className="hidden text-xs font-medium sm:inline">
+                      {detailsExpanded ? t("hideDetails") : t("showDetails")}
+                    </span>
+                  </Button>
                   {accessEnabled ? (
                     <Button
                       variant="ghost"
@@ -1226,7 +1151,99 @@ export function AttachmentPanel({
                 </div>
               </div>
 
-              {canVersion && versionsExpanded ? (
+              {detailsExpanded ? (
+                <div className="mt-3 space-y-2 border-t border-border/60 pt-3">
+                  <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                    {item.isImportant ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1.5 text-[11px] font-semibold leading-none text-amber-800 dark:bg-amber-950/50 dark:text-amber-200">
+                        <Star className="h-3 w-3 shrink-0 fill-current" aria-hidden />
+                        {t("important")}
+                      </span>
+                    ) : null}
+                    {item.labelName ? (
+                      <span className="rounded-full bg-primary-muted px-2 py-0.5 text-[11px] font-medium text-primary">
+                        {item.labelName}
+                      </span>
+                    ) : null}
+                    {item.folderName ? (
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                        {item.folderName}
+                      </span>
+                    ) : null}
+                    {canVersion && versionCount > 1 ? (
+                      <button
+                        type="button"
+                        onClick={() => void toggleVersions(item)}
+                        className="interactive-press inline-flex items-center gap-1 rounded-full bg-accent-muted px-2 py-0.5 text-[11px] font-medium text-accent"
+                        title={t("versionsTitle")}
+                      >
+                        {t("versionsCount", { count: versionCount })}
+                        {versionsExpanded ? (
+                          <ChevronUp className="h-3 w-3" />
+                        ) : (
+                          <ChevronDown className="h-3 w-3" />
+                        )}
+                      </button>
+                    ) : null}
+                    {item.accessMode && item.accessMode !== "ALL_MEMBERS" ? (
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
+                        title={
+                          item.accessMode === "ALLOWLIST"
+                            ? t("accessModeAllow")
+                            : t("accessModeDeny")
+                        }
+                      >
+                        <Lock className="h-3 w-3" />
+                        {item.accessMode === "ALLOWLIST"
+                          ? t("accessBadgeAllow")
+                          : t("accessBadgeDeny")}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <div className="space-y-1 text-xs text-muted-foreground">
+                    <p className="break-words">
+                      <span className="font-medium text-muted-foreground">
+                        {t("uploadedBy")}:
+                      </span>{" "}
+                      {item.uploadedBy.name}
+                      {item.origin?.kind === "comment"
+                        ? ` · ${t("commentOrigin")}`
+                        : ""}
+                    </p>
+                    {!compact ? (
+                      <p className="break-words">
+                        <span className="font-medium text-muted-foreground">
+                          {t("source")}:
+                        </span>{" "}
+                        {item.origin?.label ?? t("defaultSource")}
+                      </p>
+                    ) : null}
+                    {!compact && item.origin?.matterCode ? (
+                      <p className="break-all font-mono text-[11px] text-muted-foreground/90">
+                        {item.origin.matterCode}
+                      </p>
+                    ) : null}
+                    <p className="break-words">
+                      <span className="font-medium text-muted-foreground">
+                        {t("date")}:
+                      </span>{" "}
+                      {formatDateTime(item.createdAt)}
+                      {" · "}
+                      {formatBytes(item.sizeBytes)}
+                      {item.version ? (
+                        <>
+                          {" · "}
+                          {t("versionLabel", { version: item.version })}
+                        </>
+                      ) : null}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+
+              {canVersion && detailsExpanded && versionsExpanded ? (
                 <div className="mt-3 w-full space-y-2 border-t border-border/80 pt-3">
                   <p className="text-xs font-medium text-muted-foreground">
                     {t("versionsTitle")}

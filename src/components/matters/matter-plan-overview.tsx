@@ -49,15 +49,6 @@ const DOT_CLASS: Record<MatterPlanStepStatus, string> = {
     "border-slate-300 bg-surface text-muted-foreground dark:border-slate-600",
 };
 
-const PILL_CLASS: Record<MatterPlanStepStatus, string> = {
-  DONE: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300",
-  IN_PROGRESS:
-    "bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300",
-  BLOCKED: "bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300",
-  NOT_STARTED:
-    "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200",
-};
-
 /** Compact progress strip — no CTA (CTA lives on timeline header only). */
 export async function MatterPlanProgress({
   planSteps,
@@ -116,12 +107,12 @@ export async function MatterPlanProgress({
   ];
 
   return (
-    <Card className="rounded-md">
+    <Card className="rounded-2xl border-border/70 shadow-[var(--shadow-card)]">
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-2">
-        <CardTitle className="text-base">{t("progressTitle")}</CardTitle>
+        <CardTitle className="text-[15px] font-bold">{t("progressTitle")}</CardTitle>
         {total > 0 ? (
-          <span className="text-sm font-medium text-muted-foreground">
-            {t("completedPercent", { percent })}
+          <span className="text-xl font-black tabular-nums text-primary">
+            {percent}%
           </span>
         ) : null}
       </CardHeader>
@@ -129,7 +120,7 @@ export async function MatterPlanProgress({
         {total > 0 ? (
           <>
             <div
-              className="flex h-2.5 overflow-hidden rounded-full bg-muted"
+              className="flex h-3 overflow-hidden rounded-full bg-surface-container"
               role="progressbar"
               aria-valuenow={percent}
               aria-valuemin={0}
@@ -147,25 +138,35 @@ export async function MatterPlanProgress({
               )}
             </div>
 
-            <ul
-              className="flex flex-wrap gap-1.5"
-              aria-label={t("statusBreakdownAria")}
-            >
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {statusPills.map(({ status, count, label }) => (
-                <li key={status}>
-                  <span
+                <div
+                  key={status}
+                  className={cn(
+                    "rounded-xl bg-surface-container-low p-2 text-center",
+                    status === "BLOCKED" && count > 0 && "bg-rose-50 dark:bg-rose-950/30",
+                  )}
+                >
+                  <div className="text-[11px] text-muted-foreground">{label}</div>
+                  <div
                     className={cn(
-                      "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
-                      PILL_CLASS[status],
-                      count === 0 && "opacity-45",
+                      "text-base font-bold tabular-nums text-foreground",
+                      status === "DONE" && "text-emerald-700 dark:text-emerald-300",
+                      status === "IN_PROGRESS" && "text-primary",
+                      status === "BLOCKED" && count > 0 && "text-rose-600",
                     )}
                   >
-                    <span className="tabular-nums font-semibold">{count}</span>
-                    <span>{label}</span>
-                  </span>
-                </li>
+                    {count}
+                  </div>
+                </div>
               ))}
-            </ul>
+            </div>
+
+            {overdueCount > 0 ? (
+              <div className="rounded-xl bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
+                {t("overdueCount", { count: overdueCount })}
+              </div>
+            ) : null}
 
             <ol
               className="flex flex-wrap items-center gap-1.5"
@@ -203,12 +204,6 @@ export async function MatterPlanProgress({
             </>
           ) : null}
         </p>
-
-        {overdueCount > 0 ? (
-          <p className="text-sm font-medium text-rose-600 dark:text-rose-400">
-            {t("overdueCount", { count: overdueCount })}
-          </p>
-        ) : null}
       </CardContent>
     </Card>
   );
@@ -247,22 +242,26 @@ export async function MatterPlanOverview({
   }));
 
   return (
-    <Card className="rounded-md">
-      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-2">
-        <CardTitle className="text-base">{t("timelineTitle")}</CardTitle>
-        <Link
-          href={`/matters/${matterId}/plan`}
-          className="interactive-press text-sm font-medium text-primary hover:text-primary-hover"
-        >
-          {t("openPlan")} →
-        </Link>
+    <Card className="rounded-2xl border-border/70 shadow-[var(--shadow-card)]">
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0 pb-2">
+        <div className="min-w-0 space-y-0.5">
+          <CardTitle className="text-lg font-bold">{t("timelineTitle")}</CardTitle>
+          <p className="text-[13px] font-normal text-muted-foreground">
+            {t("timelineHint")}
+          </p>
+        </div>
+        <Button asChild size="sm" className="rounded-full">
+          <Link href={`/matters/${matterId}/plan`}>
+            {t("openPlan")} →
+          </Link>
+        </Button>
       </CardHeader>
       <CardContent>
         {cards.length === 0 ? (
           <EmptyState
             action={
               <Link href={`/matters/${matterId}/plan`}>
-                <Button type="button" size="sm" className="interactive-press mt-1">
+                <Button type="button" size="sm" className="interactive-press mt-1 rounded-full">
                   {t("addFirstStep")}
                 </Button>
               </Link>
@@ -271,7 +270,7 @@ export async function MatterPlanOverview({
             {t("noSteps")}
           </EmptyState>
         ) : (
-          <ol className="relative space-y-2.5">
+          <ol className="relative space-y-3">
             {cards.map((step) => (
               <MatterPlanOverviewStepCard
                 key={step.id}

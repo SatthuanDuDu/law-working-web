@@ -5,13 +5,20 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import {
+  Building2,
   FileSpreadsheet,
+  Mail,
+  MapPin,
   Pencil,
+  Phone,
   Search,
   Trash2,
   X,
 } from "lucide-react";
-import { deleteClientAction, restoreClientAction, bulkDeleteClientsAction } from "@/lib/actions";
+import {
+  deleteClientAction,
+  restoreClientAction,
+} from "@/lib/actions";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { useListViewMode } from "@/hooks/use-list-view-mode";
 import { CreateClientButton } from "@/components/clients/create-client-button";
@@ -24,12 +31,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ListViewToggle } from "@/components/ui/list-view-toggle";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
-import { PageToolbar } from "@/components/layout/page-toolbar";
 import { UndoToast } from "@/components/ui/undo-toast";
 import { useLabelMaps } from "@/i18n/use-label-maps";
+import {
+  nexusAvatarTone,
+  nexusGridCardClass,
+  nexusGridClass,
+  nexusInitials,
+} from "@/lib/list-surface";
 import { downloadExcel } from "@/lib/export-excel";
-import { cn } from "@/lib/utils";
-import type { ClientBusinessType } from "@prisma/client";
+import { cn, formatDateTime } from "@/lib/utils";
+import type { ClientBusinessType, MatterStatus } from "@prisma/client";
 
 export type ClientListItem = {
   id: string;
@@ -41,7 +53,10 @@ export type ClientListItem = {
   city: string | null;
   businessType: ClientBusinessType | null;
   notes: string | null;
+  updatedAt: string;
   _count: { matters: number };
+  openMatters: { id: string; title: string; status: MatterStatus }[];
+  leadLawyers: { id: string; name: string }[];
 };
 
 type ClientsSortBy = "name" | "city" | "businessType" | "matters";
@@ -167,7 +182,6 @@ export function ClientsList({
   const [editOpen, setEditOpen] = useState(false);
   const [editClient, setEditClient] = useState<ClientFormInitial | null>(null);
   const { mode, setMode } = useListViewMode("clients");
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [undoToast, setUndoToast] = useState<{
     key: string;
     clientId: string;
@@ -229,7 +243,11 @@ export function ClientsList({
 
   const cityOptions = useMemo(
     () =>
-      [...new Set(clients.map((client) => client.city).filter(Boolean) as string[])]
+      [
+        ...new Set(
+          clients.map((client) => client.city).filter(Boolean) as string[],
+        ),
+      ]
         .sort((a, b) => a.localeCompare(b, locale))
         .map((city) => ({ value: city, label: city })),
     [clients, locale],
@@ -247,75 +265,10 @@ export function ClientsList({
   );
 
   const visibleClients = useMemo(
-    () => applyClientFilters(clients, filters, labels.clientBusinessType, locale),
+    () =>
+      applyClientFilters(clients, filters, labels.clientBusinessType, locale),
     [clients, filters, labels.clientBusinessType, locale],
   );
-
-  const selectableVisibleIds = useMemo(
-    () => (canManage ? visibleClients.map((client) => client.id) : []),
-    [visibleClients, canManage],
-  );
-
-  const activeSelectedIds = useMemo(() => {
-    const visibleIdSet = new Set(visibleClients.map((client) => client.id));
-    return new Set([...selectedIds].filter((id) => visibleIdSet.has(id)));
-  }, [selectedIds, visibleClients]);
-
-  function toggleSelected(id: string) {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
-  function toggleSelectAllVisible() {
-    setSelectedIds((prev) => {
-      const allSelected = selectableVisibleIds.every((id) => prev.has(id));
-      if (allSelected) return new Set();
-      return new Set(selectableVisibleIds);
-    });
-  }
-
-  function handleBulkDelete() {
-    const ids = [...activeSelectedIds];
-    if (ids.length === 0 || !canManage) return;
-    confirm({
-      title: t("confirmBulkDeleteTitle"),
-      message: t("confirmBulkDeleteMessage", { count: ids.length }),
-      confirmLabel: t("deleteConfirmLabel"),
-      cancelLabel: tCommon("cancel"),
-      variant: "destructive",
-      onConfirm: () => {
-        startTransition(async () => {
-          const result = await bulkDeleteClientsAction(ids);
-          if (result.error) {
-            confirm({
-              title: tCommon("cannotDelete"),
-              message: result.error,
-              confirmLabel: tCommon("close"),
-              onConfirm: () => undefined,
-            });
-            return;
-          }
-          setSelectedIds(new Set());
-          if (result.skipped && result.skipped > 0) {
-            confirm({
-              title: tCommon("cannotDelete"),
-              message: t("bulkDeletePartial", {
-                deleted: result.deleted ?? 0,
-                skipped: result.skipped,
-              }),
-              confirmLabel: tCommon("close"),
-              onConfirm: () => undefined,
-            });
-          }
-          router.refresh();
-        });
-      },
-    });
-  }
 
   function handleExportExcel() {
     void downloadExcel(
@@ -343,217 +296,352 @@ export function ClientsList({
     filters.cities.length > 0 ||
     filters.businessTypes.length > 0;
 
-  function MatterCountChip({ client }: { client: ClientListItem }) {
-    const count = client._count.matters;
-    const label = t("fieldMatters", { count });
-    if (count <= 0) {
-      return (
-        <span
-          className="rounded-full bg-muted px-2 py-0 text-[10px] font-medium tabular-nums text-muted-foreground"
-          title={t("noRelatedMatters")}
-          aria-disabled
-        >
-          {label}
-        </span>
-      );
-    }
+  function MatterSnapshot({ client }: { client: ClientListItem }) {
+    const openCount = client.openMatters.length;
+    const total = client._count.matters;
+    const preview = client.openMatters.map((m) => m.title).join(" • ");
+
     return (
-      <Link
-        href={`/matters?clientId=${encodeURIComponent(client.id)}`}
-        className="interactive-press rounded-full bg-primary/10 px-2 py-0 text-[10px] font-semibold tabular-nums text-primary hover:bg-primary/15"
-        title={t("viewRelatedMatters", { count })}
-        aria-label={t("viewRelatedMatters", { count })}
-      >
-        {label}
-      </Link>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-2 text-xs">
+          <span className="text-muted-foreground">{t("cardOpenMatters")}</span>
+          {total > 0 ? (
+            <Link
+              href={`/matters?clientId=${encodeURIComponent(client.id)}`}
+              className="interactive-press font-semibold text-primary hover:underline"
+            >
+              {openCount > 0
+                ? t("cardOpenMattersCount", { count: openCount })
+                : t("fieldMatters", { count: total })}
+            </Link>
+          ) : (
+            <span className="font-medium text-muted-foreground">
+              {t("noRelatedMatters")}
+            </span>
+          )}
+        </div>
+        {preview ? (
+          <p className="line-clamp-2 rounded-lg bg-surface-container px-2.5 py-1.5 text-[11px] text-foreground/90">
+            {preview}
+          </p>
+        ) : null}
+        {client.leadLawyers.length > 0 ? (
+          <div className="flex items-center justify-between gap-2 text-xs">
+            <span className="shrink-0 text-muted-foreground">
+              {t("cardLeadLawyers")}
+            </span>
+            <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
+              {client.leadLawyers.slice(0, 2).map((lawyer) => (
+                <span
+                  key={lawyer.id}
+                  className="inline-flex max-w-full items-center gap-1.5 font-medium text-foreground"
+                >
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">
+                    {nexusInitials(lawyer.name)}
+                  </span>
+                  <span className="truncate">{lawyer.name}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
     );
   }
 
-  function ClientActions({ client }: { client: ClientListItem }) {
-    if (!canManage) return null;
+  function ClientCard({ client }: { client: ClientListItem }) {
+    const industryLine = [
+      client.businessType
+        ? labels.clientBusinessType[client.businessType]
+        : null,
+      client.city,
+    ]
+      .filter(Boolean)
+      .join(" • ");
+
     return (
-      <div className="flex flex-wrap items-center gap-1.5 sm:shrink-0 sm:justify-end">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={isPending}
-          onClick={() => openEdit(client)}
-          className="h-8 px-2.5"
-          aria-label={t("editClient")}
-        >
-          <Pencil className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">{tCommon("edit")}</span>
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={isPending}
-          onClick={() => handleDelete(client)}
-          className="h-8 px-2 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40"
-          aria-label={`${tCommon("delete")} ${client.name}`}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </div>
+      <article
+        className={nexusGridCardClass}
+      >
+        <div className="min-w-0">
+          <div className="mb-3.5 flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <div
+                className={cn(
+                  "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-base font-bold shadow-sm",
+                  nexusAvatarTone(client.id),
+                )}
+              >
+                {nexusInitials(client.name)}
+              </div>
+              <div className="min-w-0">
+                <span className="font-mono text-[11px] font-medium text-muted-foreground">
+                  {client.code}
+                </span>
+                {client.businessType ? (
+                  <span className="mt-0.5 inline-flex w-fit items-center rounded-full bg-primary-muted px-2.5 py-0.5 text-[11px] font-semibold text-primary">
+                    {labels.clientBusinessType[client.businessType]}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          <h3 className="line-clamp-1 text-lg font-bold tracking-tight text-foreground transition-colors group-hover:text-primary">
+            {client.name}
+          </h3>
+          {industryLine ? (
+            <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Building2 className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+              <span className="truncate">{industryLine}</span>
+            </div>
+          ) : null}
+          {client.address ? (
+            <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <MapPin className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+              <span className="truncate">{client.address}</span>
+            </div>
+          ) : null}
+
+          {(client.phone || client.email) && (
+            <div className="mt-3.5 space-y-1 rounded-xl bg-surface-container px-3 py-2.5 text-xs">
+              {client.phone ? (
+                <a
+                  href={`tel:${client.phone}`}
+                  className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
+                >
+                  <Phone className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{client.phone}</span>
+                </a>
+              ) : null}
+              {client.email ? (
+                <a
+                  href={`mailto:${client.email}`}
+                  className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
+                >
+                  <Mail className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{client.email}</span>
+                </a>
+              ) : null}
+            </div>
+          )}
+
+          <div className="mt-3.5">
+            <MatterSnapshot client={client} />
+          </div>
+          {client.notes ? (
+            <p className="mt-2 line-clamp-2 text-[11px] text-muted-foreground">
+              {client.notes}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="mt-4 flex items-center justify-between gap-2 border-t border-border/60 pt-3.5">
+          <p className="min-w-0 truncate text-[11px] text-muted-foreground">
+            {t("cardUpdated", { date: formatDateTime(client.updatedAt) })}
+          </p>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {client.phone ? (
+              <a
+                href={`tel:${client.phone}`}
+                className="interactive-press flex h-7 w-7 items-center justify-center rounded-full bg-surface-container text-foreground hover:bg-surface-container-high"
+                title={t("phone")}
+                aria-label={t("phone")}
+              >
+                <Phone className="h-3.5 w-3.5" />
+              </a>
+            ) : null}
+            {client.email ? (
+              <a
+                href={`mailto:${client.email}`}
+                className="interactive-press flex h-7 w-7 items-center justify-center rounded-full bg-surface-container text-foreground hover:bg-surface-container-high"
+                title={t("email")}
+                aria-label={t("email")}
+              >
+                <Mail className="h-3.5 w-3.5" />
+              </a>
+            ) : null}
+            {canManage ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isPending}
+                  onClick={() => openEdit(client)}
+                  className="h-7 rounded-full px-2.5"
+                  aria-label={t("editClient")}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={isPending}
+                  onClick={() => handleDelete(client)}
+                  className="h-7 rounded-full px-2 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40"
+                  aria-label={`${tCommon("delete")} ${client.name}`}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </>
+            ) : null}
+            {client._count.matters > 0 ? (
+              <Link
+                href={`/matters?clientId=${encodeURIComponent(client.id)}`}
+                className="interactive-press inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary-hover"
+              >
+                {t("viewProfile")}
+              </Link>
+            ) : canManage ? null : (
+              <span className="rounded-full bg-surface-container px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                {t("noRelatedMatters")}
+              </span>
+            )}
+          </div>
+        </div>
+      </article>
     );
   }
 
   return (
     <>
       {dialog}
-      <div className="flex min-h-0 min-w-0 flex-col gap-4">
-        <div className="shrink-0 space-y-2.5 border-b border-border/60 pb-3">
+      <div className="flex min-h-0 min-w-0 flex-col gap-5">
+        <section className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+          <div className="min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
+                {tPages("title")}
+              </h1>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-muted px-3 py-0.5 text-xs font-semibold text-primary">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+                {t("activeBadge", { count: clients.length })}
+              </span>
+            </div>
+            <p className="text-sm text-muted-foreground">{tPages("description")}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <ListViewToggle
+              mode={mode}
+              onChange={setMode}
+              size="sm"
+              showTable={false}
+              className="rounded-full border-0 bg-surface-container p-1 shadow-inner"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={visibleClients.length === 0}
+              onClick={handleExportExcel}
+              aria-label={tCommon("exportExcel")}
+              className="rounded-full"
+            >
+              <FileSpreadsheet className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{tCommon("exportExcel")}</span>
+            </Button>
+            <CreateClientButton />
+          </div>
+        </section>
+
+        <section className="flex flex-col gap-3.5 rounded-2xl border border-border/70 bg-surface p-4 shadow-[var(--shadow-card)]">
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
               value={filters.query}
-              onChange={(event) => setFilters({ ...filters, query: event.target.value })}
+              onChange={(event) =>
+                setFilters({ ...filters, query: event.target.value })
+              }
               placeholder={t("searchPlaceholder")}
               aria-label={t("searchPlaceholder")}
-              className="h-10 pl-9"
+              className="h-11 rounded-xl border-0 bg-surface-container pl-10 shadow-none focus-visible:ring-primary/30"
             />
           </div>
-          <PageToolbar
-            actions={
-              <>
-                <CreateClientButton />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={visibleClients.length === 0}
-                  onClick={handleExportExcel}
-                  aria-label={tCommon("exportExcel")}
-                >
-                  <FileSpreadsheet className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">{tCommon("exportExcel")}</span>
-                </Button>
-                <ListViewToggle
-                  mode={mode}
-                  onChange={setMode}
-                  size="sm"
-                  showTable={false}
-                />
-              </>
-            }
-          >
-            <div className="flex min-w-0 flex-1 items-end gap-2 overflow-x-auto pb-0.5">
-              <div className="min-w-[9.5rem] flex-1">
-                <MultiSelectFilter
-                  label={t("filterName")}
-                  emptyLabel={tCommon("all")}
-                  values={filters.names}
-                  onChange={(names) => setFilters({ ...filters, names })}
-                  options={nameOptions}
-                  sortActive={filters.sortBy === "name"}
-                  sortDir={filters.sortDir}
-                  onToggleSort={() => setFilters(toggleSort(filters, "name"))}
-                />
-              </div>
-              <div className="min-w-[8rem] flex-1">
-                <MultiSelectFilter
-                  label={t("filterCity")}
-                  emptyLabel={tCommon("all")}
-                  values={filters.cities}
-                  onChange={(cities) => setFilters({ ...filters, cities })}
-                  options={cityOptions}
-                  sortActive={filters.sortBy === "city"}
-                  sortDir={filters.sortDir}
-                  onToggleSort={() => setFilters(toggleSort(filters, "city"))}
-                />
-              </div>
-              <div className="min-w-[9rem] flex-1">
-                <MultiSelectFilter
-                  label={t("filterBusinessType")}
-                  emptyLabel={tCommon("all")}
-                  values={filters.businessTypes}
-                  onChange={(businessTypes) =>
-                    setFilters({
-                      ...filters,
-                      businessTypes: businessTypes as ClientBusinessType[],
-                    })
-                  }
-                  options={businessTypeOptions}
-                  sortActive={filters.sortBy === "businessType"}
-                  sortDir={filters.sortDir}
-                  onToggleSort={() =>
-                    setFilters(toggleSort(filters, "businessType"))
-                  }
-                />
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                tabIndex={hasActiveFilters ? 0 : -1}
-                aria-hidden={!hasActiveFilters}
-                aria-disabled={!hasActiveFilters}
-                aria-label={tFilters("clearFilters")}
-                className={cn(
-                  "h-10 shrink-0 text-red-600 transition-opacity duration-500 ease-out hover:bg-red-50 hover:text-red-700",
-                  hasActiveFilters
-                    ? "opacity-100"
-                    : "pointer-events-none opacity-0",
-                )}
-                onClick={() => {
-                  if (!hasActiveFilters) return;
-                  setFilters({
-                    ...DEFAULT_FILTERS,
-                    sortBy: filters.sortBy,
-                    sortDir: filters.sortDir,
-                  });
-                }}
-              >
-                <X className="h-3.5 w-3.5" />
-                {tFilters("clearFilters")}
-              </Button>
+          <div className="flex min-w-0 flex-wrap items-end gap-2">
+            <div className="min-w-[9.5rem] flex-1">
+              <MultiSelectFilter
+                label={t("filterName")}
+                emptyLabel={tCommon("all")}
+                values={filters.names}
+                onChange={(names) => setFilters({ ...filters, names })}
+                options={nameOptions}
+                sortActive={filters.sortBy === "name"}
+                sortDir={filters.sortDir}
+                onToggleSort={() => setFilters(toggleSort(filters, "name"))}
+              />
             </div>
-          </PageToolbar>
-        </div>
-
-        {canManage && activeSelectedIds.size > 0 ? (
-          <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary-muted/50 px-3 py-2 backdrop-blur-sm">
-            <span className="text-sm font-medium text-primary">
-              {t("selectedCount", { count: activeSelectedIds.size })}
-            </span>
-            {selectableVisibleIds.length > 0 ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={toggleSelectAllVisible}
-              >
-                {tCommon("selectAll")}
-              </Button>
-            ) : null}
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={isPending}
-              onClick={handleBulkDelete}
-              className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              {t("bulkDelete")}
-            </Button>
+            <div className="min-w-[8rem] flex-1">
+              <MultiSelectFilter
+                label={t("filterCity")}
+                emptyLabel={tCommon("all")}
+                values={filters.cities}
+                onChange={(cities) => setFilters({ ...filters, cities })}
+                options={cityOptions}
+                sortActive={filters.sortBy === "city"}
+                sortDir={filters.sortDir}
+                onToggleSort={() => setFilters(toggleSort(filters, "city"))}
+              />
+            </div>
+            <div className="min-w-[9rem] flex-1">
+              <MultiSelectFilter
+                label={t("filterBusinessType")}
+                emptyLabel={tCommon("all")}
+                values={filters.businessTypes}
+                onChange={(businessTypes) =>
+                  setFilters({
+                    ...filters,
+                    businessTypes: businessTypes as ClientBusinessType[],
+                  })
+                }
+                options={businessTypeOptions}
+                sortActive={filters.sortBy === "businessType"}
+                sortDir={filters.sortDir}
+                onToggleSort={() =>
+                  setFilters(toggleSort(filters, "businessType"))
+                }
+              />
+            </div>
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              onClick={() => setSelectedIds(new Set())}
-              className="ml-auto"
+              tabIndex={hasActiveFilters ? 0 : -1}
+              aria-hidden={!hasActiveFilters}
+              aria-disabled={!hasActiveFilters}
+              aria-label={tFilters("clearFilters")}
+              className={cn(
+                "mb-0.5 h-10 shrink-0 rounded-full text-primary transition-opacity duration-500 ease-out hover:bg-primary-muted",
+                hasActiveFilters
+                  ? "opacity-100"
+                  : "pointer-events-none opacity-0",
+              )}
+              onClick={() => {
+                if (!hasActiveFilters) return;
+                setFilters({
+                  ...DEFAULT_FILTERS,
+                  sortBy: filters.sortBy,
+                  sortDir: filters.sortDir,
+                });
+              }}
             >
               <X className="h-3.5 w-3.5" />
-              {tCommon("clearSelection")}
+              {tFilters("clearFilters")}
             </Button>
           </div>
-        ) : null}
+          {hasActiveFilters ? (
+            <p className="text-xs text-muted-foreground">
+              {t("clientCountFiltered", {
+                visible: visibleClients.length,
+                total: clients.length,
+              })}
+            </p>
+          ) : null}
+        </section>
 
-        <div className="min-h-0 flex-1 space-y-2">
+        <div className="min-h-0 flex-1">
           {clients.length === 0 ? (
             <Card solid>
               <CardContent className="py-10 text-center text-sm text-muted-foreground">
@@ -567,63 +655,13 @@ export function ClientsList({
               </CardContent>
             </Card>
           ) : mode === "grid" ? (
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-              {visibleClients.map((client) => {
-                const meta = [
-                  client.phone,
-                  client.email,
-                  client.city,
-                  client.address,
-                ]
-                  .filter(Boolean)
-                  .join(" · ");
-
-                return (
-                  <Card key={client.id} solid className="rounded-md border-border/50">
-                    <CardContent className="flex flex-col gap-2 p-3">
-                      <div className="min-w-0 space-y-1">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          {canManage ? (
-                            <input
-                              type="checkbox"
-                              checked={activeSelectedIds.has(client.id)}
-                              onChange={() => toggleSelected(client.id)}
-                              aria-label={client.name}
-                              className="h-4 w-4 shrink-0 cursor-pointer rounded border-border accent-primary"
-                            />
-                          ) : null}
-                          <span className="rounded-md bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-primary">
-                            {client.code}
-                          </span>
-                          {client.businessType ? (
-                            <span className="rounded-full bg-primary-muted px-2 py-0 text-[10px] font-semibold text-primary">
-                              {labels.clientBusinessType[client.businessType]}
-                            </span>
-                          ) : null}
-                          <MatterCountChip client={client} />
-                        </div>
-                        <h3 className="truncate text-sm font-semibold text-foreground">
-                          {client.name}
-                        </h3>
-                        <p className="line-clamp-1 text-xs text-muted-foreground sm:line-clamp-2">
-                          {meta || "—"}
-                        </p>
-                        {client.notes ? (
-                          <p className="hidden line-clamp-2 text-xs text-foreground/80 sm:block">
-                            {client.notes}
-                          </p>
-                        ) : null}
-                      </div>
-                      <div>
-                        <ClientActions client={client} />
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+            <div className={nexusGridClass}>
+              {visibleClients.map((client) => (
+                <ClientCard key={client.id} client={client} />
+              ))}
             </div>
           ) : (
-            <Card solid className="rounded-md border-border/50">
+            <Card solid className="overflow-hidden rounded-2xl border-border/70">
               <CardContent className="divide-y divide-border/60 p-0">
                 {visibleClients.map((client) => {
                   const meta = [
@@ -636,21 +674,23 @@ export function ClientsList({
                     .join(" · ");
 
                   return (
-                    <div key={client.id} className="px-3 py-2.5 sm:px-5 sm:py-3">
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-                        <div className="flex min-w-0 flex-1 items-start gap-2">
-                          {canManage ? (
-                            <input
-                              type="checkbox"
-                              checked={activeSelectedIds.has(client.id)}
-                              onChange={() => toggleSelected(client.id)}
-                              aria-label={client.name}
-                              className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-border accent-primary"
-                            />
-                          ) : null}
+                    <div
+                      key={client.id}
+                      className="px-3 py-3 sm:px-5 sm:py-3.5"
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                        <div className="flex min-w-0 flex-1 items-start gap-3">
+                          <div
+                            className={cn(
+                              "mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold",
+                              nexusAvatarTone(client.id),
+                            )}
+                          >
+                            {nexusInitials(client.name)}
+                          </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="rounded-md bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-primary">
+                              <span className="font-mono text-[10px] font-semibold text-muted-foreground">
                                 {client.code}
                               </span>
                               <h3 className="truncate text-sm font-semibold text-foreground">
@@ -658,22 +698,64 @@ export function ClientsList({
                               </h3>
                               {client.businessType ? (
                                 <span className="rounded-full bg-primary-muted px-2 py-0 text-[10px] font-semibold text-primary">
-                                  {labels.clientBusinessType[client.businessType]}
+                                  {
+                                    labels.clientBusinessType[
+                                      client.businessType
+                                    ]
+                                  }
                                 </span>
                               ) : null}
-                              <MatterCountChip client={client} />
+                              {client._count.matters > 0 ? (
+                                <Link
+                                  href={`/matters?clientId=${encodeURIComponent(client.id)}`}
+                                  className="rounded-full bg-primary/10 px-2 py-0 text-[10px] font-semibold tabular-nums text-primary hover:bg-primary/15"
+                                >
+                                  {t("fieldMatters", {
+                                    count: client._count.matters,
+                                  })}
+                                </Link>
+                              ) : (
+                                <span className="rounded-full bg-muted px-2 py-0 text-[10px] font-medium text-muted-foreground">
+                                  {t("fieldMatters", { count: 0 })}
+                                </span>
+                              )}
                             </div>
                             <p className="mt-0.5 truncate text-xs text-muted-foreground">
                               {meta || "—"}
                             </p>
-                            {client.notes ? (
-                              <p className="mt-0.5 line-clamp-1 text-xs text-foreground/80 sm:mt-1">
-                                {client.notes}
-                              </p>
-                            ) : null}
                           </div>
                         </div>
-                        <ClientActions client={client} />
+                        <div className="flex flex-wrap items-center gap-1.5 sm:shrink-0 sm:justify-end">
+                          {canManage ? (
+                            <>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={isPending}
+                                onClick={() => openEdit(client)}
+                                className="h-8 rounded-full px-2.5"
+                                aria-label={t("editClient")}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                                <span className="hidden sm:inline">
+                                  {tCommon("edit")}
+                                </span>
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                disabled={isPending}
+                                onClick={() => handleDelete(client)}
+                                className="h-8 rounded-full px-2 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40"
+                                aria-label={`${tCommon("delete")} ${client.name}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          ) : null}
+                        </div>
                       </div>
                     </div>
                   );
@@ -718,4 +800,3 @@ export function ClientsList({
     </>
   );
 }
-

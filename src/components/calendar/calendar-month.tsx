@@ -24,12 +24,13 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Check, Circle, CircleDot, Ban, Clock, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/card";
 import {
   CalendarAddPlanDialog,
   type CalendarMatterOption,
   type CalendarWorkTypeOption,
 } from "@/components/calendar/calendar-add-plan-dialog";
+import { CalendarSideRail } from "@/components/calendar/calendar-side-rail";
+import { CalendarWeekGrid } from "@/components/calendar/calendar-week-grid";
 import { useLabelMaps } from "@/i18n/use-label-maps";
 import { cn } from "@/lib/utils";
 import { liquidPanelClass } from "@/lib/liquid-panel";
@@ -60,13 +61,21 @@ function useNowMs(intervalMs = 30_000) {
 }
 
 const CALENDAR_CHIP_BASE =
-  "interactive-press flex w-full min-w-0 items-center gap-0.5 rounded px-1 py-0.5 text-left text-[10px] font-medium sm:gap-1 sm:px-1.5 sm:text-[11px]";
+  "interactive-press flex w-full min-w-0 items-center gap-0.5 rounded-md px-1 py-0.5 text-left text-[10px] font-medium sm:gap-1 sm:rounded-lg sm:px-1.5 sm:text-[11px]";
 /** Week-row floor so a day cell can show the date header + at least 4 chips. */
 const MONTH_WEEK_ROW_MIN = "10.75rem";
-const CALENDAR_CHIP_NORMAL =
-  "bg-primary text-primary-foreground hover:bg-primary-hover";
+/** Task due — tonal charcoal (brand primary), not solid fill. */
+const CALENDAR_CHIP_TASK =
+  "border border-primary/15 bg-primary-muted text-primary hover:bg-primary-muted/80";
+/** Plan step due — sky tonal (semantic schedule, not brand purple). */
+const CALENDAR_CHIP_PLAN =
+  "border border-sky-200/80 bg-sky-50 text-sky-950 hover:bg-sky-100/80 dark:border-sky-800/50 dark:bg-sky-950/40 dark:text-sky-100 dark:hover:bg-sky-950/60";
 const CALENDAR_CHIP_URGENT =
-  "bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600";
+  "border border-rose-300/80 bg-rose-600 text-white hover:bg-rose-700 dark:border-rose-500/50 dark:bg-rose-700 dark:hover:bg-rose-600";
+const SEGMENT_TRACK =
+  "inline-flex items-center rounded-full border-0 bg-surface-container p-1 shadow-inner";
+const SEGMENT_BTN =
+  "h-8 rounded-full px-3 text-xs font-medium sm:px-3.5 sm:text-[13px]";
 
 /**
  * Mobile ghost-click guard: after opening/dismissing a chip sheet, ignore day-cell
@@ -129,51 +138,66 @@ function chipStatusFromPlan(status: MatterPlanStepStatus): ChipStatusKind {
 
 const CHIP_STATUS_MARK: Record<
   ChipStatusKind,
-  { Icon: typeof Check; markClass: string }
+  { Icon: typeof Check; markClass: string; urgentMarkClass: string }
 > = {
   todo: {
     Icon: Circle,
-    markClass: "bg-white/20 text-white ring-1 ring-inset ring-white/80",
+    markClass: "bg-primary/10 text-primary ring-1 ring-inset ring-primary/35",
+    urgentMarkClass: "bg-white/20 text-white ring-1 ring-inset ring-white/80",
   },
   progress: {
     Icon: CircleDot,
-    markClass: "bg-sky-300 text-sky-950",
+    markClass: "bg-sky-200 text-sky-950 dark:bg-sky-800 dark:text-sky-50",
+    urgentMarkClass: "bg-sky-300 text-sky-950",
   },
   done: {
     Icon: Check,
-    markClass: "bg-emerald-400 text-emerald-950",
+    markClass:
+      "bg-emerald-200 text-emerald-950 dark:bg-emerald-800 dark:text-emerald-50",
+    urgentMarkClass: "bg-emerald-400 text-emerald-950",
   },
   blocked: {
     Icon: Ban,
-    markClass: "bg-amber-300 text-amber-950",
+    markClass:
+      "bg-amber-200 text-amber-950 dark:bg-amber-800 dark:text-amber-50",
+    urgentMarkClass: "bg-amber-300 text-amber-950",
   },
   cancelled: {
     Icon: X,
-    markClass: "bg-slate-300 text-slate-800",
+    markClass: "bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-100",
+    urgentMarkClass: "bg-slate-300 text-slate-800",
   },
 };
 
 function CalendarChipLabel({
   title,
+  timeLabel,
   urgent,
   statusKind,
   statusLabel,
+  kindDotClass,
 }: {
   title: string;
+  timeLabel?: string;
   urgent: boolean;
   statusKind: ChipStatusKind;
   statusLabel: string;
+  kindDotClass: string;
 }) {
-  const { Icon, markClass } = CHIP_STATUS_MARK[statusKind];
+  const { Icon, markClass, urgentMarkClass } = CHIP_STATUS_MARK[statusKind];
 
   return (
     <>
+      <span
+        className={cn("h-1.5 w-1.5 shrink-0 rounded-full", kindDotClass)}
+        aria-hidden
+      />
       <span
         title={statusLabel}
         aria-label={statusLabel}
         className={cn(
           "flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px]",
-          markClass,
+          urgent ? urgentMarkClass : markClass,
         )}
       >
         <Icon className="h-2.5 w-2.5" strokeWidth={3} aria-hidden />
@@ -181,7 +205,15 @@ function CalendarChipLabel({
       {urgent ? (
         <Clock className="h-3 w-3 shrink-0 opacity-95" aria-hidden />
       ) : null}
-      <span className="min-w-0 truncate">{title}</span>
+      <span className="min-w-0 truncate">
+        {timeLabel ? (
+          <>
+            <span className="tabular-nums opacity-90">{timeLabel}</span>
+            <span className="opacity-60"> · </span>
+          </>
+        ) : null}
+        {title}
+      </span>
     </>
   );
 }
@@ -808,15 +840,17 @@ function TaskPreviewChip({ task }: { task: CalendarTask }) {
   const href = task.matterId ? `/matters/${task.matterId}` : null;
   const chipClass = cn(
     CALENDAR_CHIP_BASE,
-    urgent ? CALENDAR_CHIP_URGENT : CALENDAR_CHIP_NORMAL,
+    urgent ? CALENDAR_CHIP_URGENT : CALENDAR_CHIP_TASK,
   );
   const statusKind = chipStatusFromTask(task.status);
   const label = (
     <CalendarChipLabel
       title={task.title}
+      timeLabel={format(new Date(task.dueDate), "HH:mm")}
       urgent={urgent}
       statusKind={statusKind}
       statusLabel={labels.taskStatus[task.status]}
+      kindDotClass={urgent ? "bg-white" : "bg-primary"}
     />
   );
 
@@ -920,15 +954,17 @@ function PlanPreviewChip({ step }: { step: CalendarPlanStep }) {
 
   const chipClass = cn(
     CALENDAR_CHIP_BASE,
-    urgent ? CALENDAR_CHIP_URGENT : CALENDAR_CHIP_NORMAL,
+    urgent ? CALENDAR_CHIP_URGENT : CALENDAR_CHIP_PLAN,
   );
   const statusKind = chipStatusFromPlan(step.status);
   const label = (
     <CalendarChipLabel
       title={step.title}
+      timeLabel={format(new Date(step.dueAt), "HH:mm")}
       urgent={urgent}
       statusKind={statusKind}
       statusLabel={labels.planStepStatus[step.status]}
+      kindDotClass={urgent ? "bg-white" : "bg-sky-600 dark:bg-sky-400"}
     />
   );
 
@@ -1011,143 +1047,6 @@ function PlanPreviewChip({ step }: { step: CalendarPlanStep }) {
           )
         : null}
     </>
-  );
-}
-
-function WeekActionRow({
-  item,
-}: {
-  item:
-    | { kind: "task"; task: CalendarTask }
-    | { kind: "plan"; step: CalendarPlanStep };
-}) {
-  const t = useTranslations("calendar");
-  const labels = useLabelMaps();
-
-  if (item.kind === "plan") {
-    const { step } = item;
-    return (
-      <Link
-        href={`/matters/${step.matterId}/plan`}
-        className="interactive-press block min-w-0 px-1 py-2.5 hover:bg-primary-muted/40 hover:[filter:none] active:[filter:none]"
-      >
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <Badge>{t("kindPlan")}</Badge>
-              <Badge variant="info">
-                {labels.planStepStatus[step.status]}
-              </Badge>
-              <Badge variant="warning">
-                {labels.taskPriority[step.priority]}
-              </Badge>
-            </div>
-            <p className="mt-1.5 break-words text-sm font-semibold leading-snug text-foreground">
-              {step.title}
-            </p>
-          </div>
-          <span className="flex shrink-0 items-center gap-1 text-xs font-medium tabular-nums text-muted-foreground">
-            <Clock className="h-3.5 w-3.5" aria-hidden />
-            {format(new Date(step.dueAt), "HH:mm")}
-          </span>
-        </div>
-        <div className="mt-1.5 grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
-          <p className="min-w-0 break-words">
-            <span className="font-medium text-foreground/80">
-              {t("taskMatter")}:{" "}
-            </span>
-            {step.matterCode} · {step.matterTitle}
-          </p>
-          <p>
-            <span className="font-medium text-foreground/80">
-              {t("taskSchedule")}:{" "}
-            </span>
-            {format(new Date(step.dueAt), "dd/MM/yyyy HH:mm")}
-          </p>
-          <p className="min-w-0 break-words sm:col-span-2">
-            <span className="font-medium text-foreground/80">
-              {t("assignee")}:{" "}
-            </span>
-            {step.assigneeName ?? "—"}
-          </p>
-        </div>
-      </Link>
-    );
-  }
-
-  const { task } = item;
-  const href = task.matterId ? `/matters/${task.matterId}` : "/tasks";
-  const matterLine = task.matterCode
-    ? `${task.matterCode}${task.matterTitle ? ` · ${task.matterTitle}` : ""}`
-    : "—";
-
-  return (
-    <Link
-      href={href}
-      className="interactive-press block min-w-0 px-1 py-2.5 hover:bg-primary-muted/40 hover:[filter:none] active:[filter:none]"
-    >
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <Badge>{t("kindTask")}</Badge>
-            <Badge variant="info">{labels.taskStatus[task.status]}</Badge>
-            <Badge variant="warning">
-              {labels.taskPriority[task.priority]}
-            </Badge>
-          </div>
-          <p className="mt-2 break-words text-sm font-semibold leading-snug text-foreground">
-            {task.title}
-          </p>
-          {task.description ? (
-            <p className="mt-1 whitespace-pre-wrap break-words text-xs leading-relaxed text-muted-foreground">
-              {task.description}
-            </p>
-          ) : null}
-        </div>
-        <span className="flex shrink-0 items-center gap-1 text-xs font-medium tabular-nums text-muted-foreground">
-          <Clock className="h-3.5 w-3.5" aria-hidden />
-          {format(new Date(task.dueDate), "HH:mm")}
-        </span>
-      </div>
-      <div className="mt-2 grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
-        <p className="min-w-0 break-words">
-          <span className="font-medium text-foreground/80">
-            {t("taskMatter")}:{" "}
-          </span>
-          {matterLine}
-        </p>
-        <p>
-          <span className="font-medium text-foreground/80">
-            {t("assignee")}:{" "}
-          </span>
-          {task.assigneeName}
-        </p>
-        {task.clientName ? (
-          <p>
-            <span className="font-medium text-foreground/80">
-              {t("taskClient")}:{" "}
-            </span>
-            {task.clientName}
-          </p>
-        ) : null}
-        {task.leadLawyerName ? (
-          <p>
-            <span className="font-medium text-foreground/80">
-              {t("leadLawyer")}:{" "}
-            </span>
-            {task.leadLawyerName}
-          </p>
-        ) : null}
-        {task.collaboratorNames?.length ? (
-          <p className="sm:col-span-2">
-            <span className="font-medium text-foreground/80">
-              {t("collaborators")}:{" "}
-            </span>
-            {task.collaboratorNames.join(", ")}
-          </p>
-        ) : null}
-      </div>
-    </Link>
   );
 }
 
@@ -1405,13 +1304,18 @@ function MonthYearPicker({
   );
 }
 
-const AGENDA_PAD_DEFAULT = 4;
-const AGENDA_PAD_MAX = 26;
-const AGENDA_PAD_STEP = 2;
-const AGENDA_EDGE_PX = 140;
 
-function mondayIndex(day: Date) {
-  return (day.getDay() + 6) % 7;
+function isUrgentDeadline(
+  dueIso: string,
+  priority: TaskPriority,
+  nowMs: number,
+) {
+  const due = new Date(dueIso).getTime();
+  if (Number.isNaN(due) || due < nowMs) return false;
+  const withinWeek = due <= nowMs + 7 * 24 * 60 * 60 * 1000;
+  if (!withinWeek) return false;
+  if (priority === "URGENT" || priority === "HIGH") return true;
+  return due <= nowMs + 2 * 24 * 60 * 60 * 1000;
 }
 
 export function CalendarMonth({
@@ -1433,24 +1337,17 @@ export function CalendarMonth({
 }) {
   const router = useRouter();
   const t = useTranslations("calendar");
+  const tPages = useTranslations("pages.calendar");
   const [viewMode, setViewMode] = useState<"week" | "month">("week");
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
   const [weekAnchor, setWeekAnchor] = useState(() =>
     startOfWeek(new Date(), { weekStartsOn: 1 }),
   );
-  const [agendaPivot, setAgendaPivot] = useState(() =>
-    startOfWeek(new Date(), { weekStartsOn: 1 }),
-  );
-  const [agendaPadWeeks, setAgendaPadWeeks] = useState(AGENDA_PAD_DEFAULT);
   const [addPlanDay, setAddPlanDay] = useState<Date | null>(null);
-  const weekScrollerRef = useRef<HTMLDivElement>(null);
-  const suppressWeekSyncRef = useRef(false);
-  const pendingScrollDayRef = useRef<string | null>(
-    format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd"),
-  );
-  const expandFromTopRef = useRef(false);
-  const prevScrollHeightRef = useRef(0);
-  const expandingRef = useRef(false);
+  const [selectedDay, setSelectedDay] = useState<Date | null>(() => new Date());
+  const [showTasks, setShowTasks] = useState(true);
+  const [showPlans, setShowPlans] = useState(true);
+  const nowMs = useNowMs(60_000);
 
   const weekdayLabels = [
     t("weekdayMon"),
@@ -1461,23 +1358,11 @@ export function CalendarMonth({
     t("weekdaySat"),
     t("weekdaySun"),
   ];
+  const weekdayShort = weekdayLabels;
 
   const weekEnd = useMemo(
     () => endOfWeek(weekAnchor, { weekStartsOn: 1 }),
     [weekAnchor],
-  );
-
-  const agendaStart = useMemo(
-    () => startOfWeek(subWeeks(agendaPivot, agendaPadWeeks), { weekStartsOn: 1 }),
-    [agendaPivot, agendaPadWeeks],
-  );
-  const agendaEnd = useMemo(
-    () => endOfWeek(addWeeks(agendaPivot, agendaPadWeeks), { weekStartsOn: 1 }),
-    [agendaPivot, agendaPadWeeks],
-  );
-  const agendaDays = useMemo(
-    () => eachDayOfInterval({ start: agendaStart, end: agendaEnd }),
-    [agendaStart, agendaEnd],
   );
 
   const monthDays = useMemo(() => {
@@ -1487,22 +1372,28 @@ export function CalendarMonth({
   }, [month]);
   const monthWeekCount = Math.max(4, Math.ceil(monthDays.length / 7));
 
-  const filteredTasks = tasks;
-  const filteredPlans = planSteps;
+  const filteredTasks = useMemo(
+    () => (showTasks ? tasks : []),
+    [showTasks, tasks],
+  );
+  const filteredPlans = useMemo(
+    () => (showPlans ? planSteps : []),
+    [showPlans, planSteps],
+  );
 
   const gridStart = useMemo(
     () =>
       viewMode === "week"
-        ? agendaStart
+        ? weekAnchor
         : startOfWeek(startOfMonth(month), { weekStartsOn: 1 }),
-    [viewMode, agendaStart, month],
+    [viewMode, weekAnchor, month],
   );
   const gridEnd = useMemo(
     () =>
       viewMode === "week"
-        ? agendaEnd
+        ? weekEnd
         : endOfWeek(endOfMonth(month), { weekStartsOn: 1 }),
-    [viewMode, agendaEnd, month],
+    [viewMode, weekEnd, month],
   );
 
   const tasksByDay = useMemo(() => {
@@ -1531,119 +1422,107 @@ export function CalendarMonth({
     return map;
   }, [filteredPlans, gridStart, gridEnd]);
 
+  const urgentCount = useMemo(() => {
+    let n = 0;
+    for (const task of tasks) {
+      if (isUrgentDeadline(task.dueDate, task.priority, nowMs)) n += 1;
+    }
+    for (const step of planSteps) {
+      if (isUrgentDeadline(step.dueAt, step.priority, nowMs)) n += 1;
+    }
+    return n;
+  }, [tasks, planSteps, nowMs]);
+
+  const urgentRailItems = useMemo(() => {
+    type Row = {
+      id: string;
+      kind: "task" | "plan";
+      title: string;
+      whenLabel: string;
+      matterLabel: string;
+      href: string;
+      sortAt: number;
+    };
+    const rows: Row[] = [];
+    for (const task of tasks) {
+      if (!isUrgentDeadline(task.dueDate, task.priority, nowMs)) continue;
+      const due = new Date(task.dueDate);
+      rows.push({
+        id: `task-${task.id}`,
+        kind: "task",
+        title: task.title,
+        whenLabel: format(due, "dd/MM/yyyy HH:mm"),
+        matterLabel: task.matterTitle
+          ? `${task.matterCode ?? ""} · ${task.matterTitle}`.replace(/^ · /, "")
+          : (task.clientName ?? "—"),
+        href: task.matterId ? `/matters/${task.matterId}` : "/tasks",
+        sortAt: due.getTime(),
+      });
+    }
+    for (const step of planSteps) {
+      if (!isUrgentDeadline(step.dueAt, step.priority, nowMs)) continue;
+      const due = new Date(step.dueAt);
+      rows.push({
+        id: `plan-${step.id}`,
+        kind: "plan",
+        title: step.title,
+        whenLabel: format(due, "dd/MM/yyyy HH:mm"),
+        matterLabel: `${step.matterCode} · ${step.matterTitle}`,
+        href: `/matters/${step.matterId}/plan`,
+        sortAt: due.getTime(),
+      });
+    }
+    return rows.sort((a, b) => a.sortAt - b.sortAt);
+  }, [tasks, planSteps, nowMs]);
+
+  const selectedFocus = useMemo(() => {
+    if (!selectedDay) return null;
+    const key = format(selectedDay, "yyyy-MM-dd");
+    const dayTasks = tasksByDay.get(key) ?? [];
+    const dayPlans = plansByDay.get(key) ?? [];
+    const events = [
+      ...dayPlans.map((step) => ({
+        kind: "plan" as const,
+        sortAt: new Date(step.dueAt).getTime(),
+        title: step.title,
+        time: format(new Date(step.dueAt), "HH:mm"),
+        meta: `${step.matterCode} · ${step.matterTitle}`,
+        href: `/matters/${step.matterId}/plan`,
+        assignee: step.assigneeName,
+      })),
+      ...dayTasks.map((task) => ({
+        kind: "task" as const,
+        sortAt: new Date(task.dueDate).getTime(),
+        title: task.title,
+        time: format(new Date(task.dueDate), "HH:mm"),
+        meta: task.matterTitle
+          ? `${task.matterCode ?? ""} · ${task.matterTitle}`.replace(/^ · /, "")
+          : (task.clientName ?? task.assigneeName),
+        href: task.matterId ? `/matters/${task.matterId}` : "/tasks",
+        assignee: task.assigneeName,
+      })),
+    ].sort((a, b) => a.sortAt - b.sortAt);
+    return { key, events };
+  }, [selectedDay, tasksByDay, plansByDay]);
+
   const weekRangeLabel = t("weekRange", {
     start: format(weekAnchor, "dd/MM"),
     end: format(weekEnd, "dd/MM/yyyy"),
   });
 
-  const jumpToWeek = useCallback((target: Date) => {
-    const monday = startOfWeek(target, { weekStartsOn: 1 });
-    suppressWeekSyncRef.current = true;
-    pendingScrollDayRef.current = format(monday, "yyyy-MM-dd");
-    setWeekAnchor(monday);
-    setAgendaPivot(monday);
-    setAgendaPadWeeks(AGENDA_PAD_DEFAULT);
-  }, []);
+  function jumpToWeek(target: Date) {
+    setWeekAnchor(startOfWeek(target, { weekStartsOn: 1 }));
+  }
 
   function goToToday() {
     const now = new Date();
     jumpToWeek(now);
     setMonth(startOfMonth(now));
+    setSelectedDay(now);
   }
-
-  function expandAgenda(fromTop: boolean) {
-    if (expandingRef.current) return;
-    if (agendaPadWeeks >= AGENDA_PAD_MAX) return;
-    const el = weekScrollerRef.current;
-    if (fromTop && el) {
-      expandFromTopRef.current = true;
-      prevScrollHeightRef.current = el.scrollHeight;
-    }
-    expandingRef.current = true;
-    setAgendaPadWeeks((pad) => Math.min(AGENDA_PAD_MAX, pad + AGENDA_PAD_STEP));
-  }
-
-  function handleWeekScroll(event: UIEvent<HTMLDivElement>) {
-    const el = event.currentTarget;
-    if (el.scrollTop < AGENDA_EDGE_PX) {
-      expandAgenda(true);
-    } else if (el.scrollHeight - el.scrollTop - el.clientHeight < AGENDA_EDGE_PX) {
-      expandAgenda(false);
-    }
-  }
-
-  useLayoutEffect(() => {
-    if (viewMode !== "week") return;
-    const el = weekScrollerRef.current;
-    if (!el) return;
-
-    if (expandFromTopRef.current) {
-      const delta = el.scrollHeight - prevScrollHeightRef.current;
-      if (delta > 0) el.scrollTop += delta;
-      expandFromTopRef.current = false;
-    }
-
-    if (pendingScrollDayRef.current) {
-      const node = el.querySelector<HTMLElement>(
-        `[data-day="${pendingScrollDayRef.current}"]`,
-      );
-      node?.scrollIntoView({ block: "start" });
-      pendingScrollDayRef.current = null;
-      requestAnimationFrame(() => {
-        suppressWeekSyncRef.current = false;
-      });
-    }
-
-    expandingRef.current = false;
-  }, [agendaDays, viewMode]);
-
-  useEffect(() => {
-    if (viewMode !== "week") return;
-    const root = weekScrollerRef.current;
-    if (!root) return;
-
-    const ratios = new Map<string, number>();
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          const key = (entry.target as HTMLElement).dataset.day;
-          if (!key) continue;
-          if (entry.isIntersecting) {
-            ratios.set(key, entry.intersectionRatio);
-          } else {
-            ratios.delete(key);
-          }
-        }
-        if (suppressWeekSyncRef.current || ratios.size === 0) return;
-        let bestKey = "";
-        let bestRatio = 0;
-        for (const [key, ratio] of ratios) {
-          if (ratio > bestRatio) {
-            bestRatio = ratio;
-            bestKey = key;
-          }
-        }
-        if (!bestKey) return;
-        const monday = startOfWeek(new Date(`${bestKey}T12:00:00`), {
-          weekStartsOn: 1,
-        });
-        setWeekAnchor((prev) =>
-          isSameDay(prev, monday) ? prev : monday,
-        );
-      },
-      {
-        root,
-        threshold: [0.15, 0.35, 0.55, 0.75],
-      },
-    );
-
-    const nodes = root.querySelectorAll<HTMLElement>("[data-day]");
-    nodes.forEach((node) => observer.observe(node));
-    return () => observer.disconnect();
-  }, [agendaDays, viewMode]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden overscroll-none sm:gap-3">
+    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden overscroll-none sm:gap-4">
       <CalendarAddPlanDialog
         open={!!addPlanDay}
         day={addPlanDay}
@@ -1653,133 +1532,154 @@ export function CalendarMonth({
         onClose={() => setAddPlanDay(null)}
       />
 
-      {/* Toolbar fixed in layout — does not move with wheel scroll */}
-      <div className="shrink-0 -mx-3 min-w-0 bg-canvas px-3 pt-2 sm:-mx-5 sm:px-5 sm:pt-2.5 lg:-mx-6 lg:px-6">
-        <div
-          className={cn(liquidPanelClass, "min-w-0 rounded-md p-2 sm:p-2.5")}
-        >
-          <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-2">
-            <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
-              {viewMode === "week" ? (
-                <>
-                  <div
-                    data-calendar-date-cluster
-                    className="inline-flex items-center gap-1"
-                  >
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8 shrink-0 sm:h-9 sm:w-9"
-                      aria-label={t("prevWeek")}
-                      onClick={() => jumpToWeek(subWeeks(weekAnchor, 1))}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span
-                      data-calendar-date-label
-                      className="whitespace-nowrap px-0.5 text-sm font-semibold tabular-nums text-foreground sm:text-base"
-                    >
-                      {weekRangeLabel}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8 shrink-0 sm:h-9 sm:w-9"
-                      aria-label={t("nextWeek")}
-                      onClick={() => jumpToWeek(addWeeks(weekAnchor, 1))}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 shrink-0 sm:h-9"
-                    onClick={goToToday}
-                  >
-                    {t("today")}
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <div
-                    data-calendar-date-cluster
-                    className="inline-flex items-center gap-1"
-                  >
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8 shrink-0 sm:h-9 sm:w-9"
-                      aria-label={t("prevMonth")}
-                      onClick={() => setMonth(subMonths(month, 1))}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span data-calendar-date-label className="inline-flex">
-                      <MonthYearPicker value={month} onChange={setMonth} />
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8 shrink-0 sm:h-9 sm:w-9"
-                      aria-label={t("nextMonth")}
-                      onClick={() => setMonth(addMonths(month, 1))}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 shrink-0 sm:h-9"
-                    onClick={goToToday}
-                  >
-                    {t("today")}
-                  </Button>
-                </>
-              )}
-            </div>
-
-            <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">
-              <div className="flex rounded-md border border-border p-0.5">
-                <Button
-                  size="sm"
-                  className="h-8"
-                  variant={viewMode === "week" ? "default" : "ghost"}
-                  onClick={() => setViewMode("week")}
-                >
-                  {t("week")}
-                </Button>
-                <Button
-                  size="sm"
-                  className="h-8"
-                  variant={viewMode === "month" ? "default" : "ghost"}
-                  onClick={() => setViewMode("month")}
-                >
-                  {t("month")}
-                </Button>
-              </div>
-              {showAllFilter ? (
-                <div className="flex rounded-md border border-border p-0.5">
-                  <Button
-                    size="sm"
-                    className="h-8"
-                    variant={scope === "mine" ? "default" : "ghost"}
-                    onClick={() => router.push("/calendar?scope=mine")}
-                  >
-                    {t("scopeMine")}
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="h-8"
-                    variant={scope === "all" ? "default" : "ghost"}
-                    onClick={() => router.push("/calendar?scope=all")}
-                  >
-                    {t("scopeAll")}
-                  </Button>
-                </div>
+      {/* Page hero — Nexus calendar chrome */}
+      <div className="shrink-0 -mx-3 space-y-3 px-3 sm:-mx-5 sm:px-5 lg:-mx-6 lg:px-6">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span className="inline-block h-6 w-1.5 shrink-0 rounded-full bg-primary" />
+              <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
+                {tPages("title")}
+              </h1>
+              {urgentCount > 0 ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-rose-600" />
+                  {t("urgentBadge", { count: urgentCount })}
+                </span>
               ) : null}
             </div>
+            <p className="max-w-2xl text-sm text-muted-foreground">
+              {tPages("description")}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className={SEGMENT_TRACK} role="group" aria-label={t("monthGrid")}>
+              <Button
+                size="sm"
+                className={SEGMENT_BTN}
+                variant={viewMode === "week" ? "default" : "ghost"}
+                onClick={() => setViewMode("week")}
+              >
+                {t("week")}
+              </Button>
+              <Button
+                size="sm"
+                className={SEGMENT_BTN}
+                variant={viewMode === "month" ? "default" : "ghost"}
+                onClick={() => setViewMode("month")}
+              >
+                {t("month")}
+              </Button>
+            </div>
+            {showAllFilter ? (
+              <div className={SEGMENT_TRACK} role="group" aria-label={t("scopeMine")}>
+                <Button
+                  size="sm"
+                  className={SEGMENT_BTN}
+                  variant={scope === "mine" ? "default" : "ghost"}
+                  onClick={() => router.push("/calendar?scope=mine")}
+                >
+                  {t("scopeMine")}
+                </Button>
+                <Button
+                  size="sm"
+                  className={SEGMENT_BTN}
+                  variant={scope === "all" ? "default" : "ghost"}
+                  onClick={() => router.push("/calendar?scope=all")}
+                >
+                  {t("scopeAll")}
+                </Button>
+              </div>
+            ) : null}
+            <Button
+              type="button"
+              size="sm"
+              className="h-8 rounded-full sm:h-9"
+              onClick={() => setAddPlanDay(selectedDay ?? new Date())}
+            >
+              <Plus className="h-3.5 w-3.5" aria-hidden />
+              {t("addPlan")}
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-surface p-3 shadow-[var(--shadow-card)] sm:flex-row sm:items-center sm:justify-between sm:p-3.5">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            {viewMode === "week" ? (
+              <>
+                <div className="inline-flex items-center gap-0.5 rounded-full bg-surface-container p-0.5">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-full"
+                    aria-label={t("prevWeek")}
+                    onClick={() => jumpToWeek(subWeeks(weekAnchor, 1))}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="px-2 text-sm font-semibold tabular-nums sm:text-base">
+                    {weekRangeLabel}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-full"
+                    aria-label={t("nextWeek")}
+                    onClick={() => jumpToWeek(addWeeks(weekAnchor, 1))}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="inline-flex items-center gap-0.5 rounded-full bg-surface-container p-0.5">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-full"
+                    aria-label={t("prevMonth")}
+                    onClick={() => setMonth(subMonths(month, 1))}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="inline-flex px-1">
+                    <MonthYearPicker value={month} onChange={setMonth} />
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-full"
+                    aria-label={t("nextMonth")}
+                    onClick={() => setMonth(addMonths(month, 1))}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 rounded-full"
+              onClick={goToToday}
+            >
+              {t("today")}
+            </Button>
+          </div>
+          <div className="hidden items-center gap-3 text-xs text-muted-foreground md:flex">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-primary" />
+              {t("legendTask")}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-sky-600" />
+              {t("legendPlan")}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-rose-600" />
+              {t("legendUrgent")}
+            </span>
           </div>
         </div>
       </div>
@@ -1789,192 +1689,90 @@ export function CalendarMonth({
           aria-label={t("weekAgenda")}
           className={cn(
             liquidPanelClass,
-            "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-md shadow-[var(--shadow-overlay)]",
+            "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl",
           )}
         >
-          <div
-            ref={weekScrollerRef}
-            onScroll={handleWeekScroll}
-            onWheel={(event) => event.stopPropagation()}
-            className="min-h-0 flex-1 snap-y snap-proximity space-y-3.5 overflow-y-auto overscroll-contain px-3 py-3 scroll-smooth sm:space-y-4 sm:px-4"
-          >
-            {agendaDays.map((day) => {
-              const key = format(day, "yyyy-MM-dd");
-              const weekdayLabel = weekdayLabels[mondayIndex(day)];
-              const isMonday = day.getDay() === 1;
-              const dayTasks = [...(tasksByDay.get(key) ?? [])].sort(
-                (a, b) =>
-                  new Date(a.dueDate).getTime() -
-                    new Date(b.dueDate).getTime() ||
-                  a.title.localeCompare(b.title),
-              );
-              const dayPlans = [...(plansByDay.get(key) ?? [])].sort(
-                (a, b) =>
-                  new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime() ||
-                  a.title.localeCompare(b.title),
-              );
-              const dayActions = [
-                ...dayTasks.map((task) => ({
-                  kind: "task" as const,
-                  sortAt: new Date(task.dueDate).getTime(),
-                  task,
-                })),
-                ...dayPlans.map((step) => ({
-                  kind: "plan" as const,
-                  sortAt: new Date(step.dueAt).getTime(),
-                  step,
-                })),
-              ].sort(
-                (a, b) =>
-                  a.sortAt - b.sortAt ||
-                  (a.kind === "task" ? a.task.title : a.step.title).localeCompare(
-                    b.kind === "task" ? b.task.title : b.step.title,
-                  ),
-              );
-              const isToday = isSameDay(day, new Date());
-              const hasItems = dayActions.length > 0;
-
-              return (
-                <div key={key} className="space-y-2">
-                  {isMonday ? (
-                    <p className="px-0.5 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      {t("weekRange", {
-                        start: format(day, "dd/MM"),
-                        end: format(
-                          endOfWeek(day, { weekStartsOn: 1 }),
-                          "dd/MM/yyyy",
-                        ),
-                      })}
-                    </p>
-                  ) : null}
-                  <div
-                    data-day={key}
-                    className={cn(
-                      "group/day snap-start scroll-mt-3 overflow-hidden rounded-md border border-border/70",
-                      "transition-[border-color,box-shadow] duration-200 ease-out",
-                      "hover:border-primary/40 hover:shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_18%,transparent)]",
-                      isToday && "border-primary/45 ring-1 ring-primary/30",
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        "flex items-center justify-between gap-2 border-b border-border/60 px-3 py-2",
-                        "transition-colors duration-200 ease-out",
-                        isToday
-                          ? "bg-primary-muted/55"
-                          : "bg-muted/45 group-hover/day:bg-primary-muted/40",
-                      )}
-                    >
-                      <div className="min-w-0">
-                        <p className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                          <span
-                            className={cn(
-                              "text-sm font-semibold tracking-tight",
-                              isToday ? "text-primary" : "text-foreground",
-                            )}
-                          >
-                            {weekdayLabel}
-                          </span>
-                          <span
-                            className={cn(
-                              "text-xs tabular-nums",
-                              isToday
-                                ? "font-medium text-primary/85"
-                                : "text-muted-foreground",
-                            )}
-                          >
-                            {format(day, "dd/MM/yyyy")}
-                          </span>
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        aria-label={t("addPlan")}
-                        onClick={() => setAddPlanDay(day)}
-                        className={cn(
-                          "group/add h-8 shrink-0 gap-0 overflow-hidden rounded-full p-0",
-                          "transition-[padding,gap,border-color,background-color] duration-300 ease-out",
-                          "hover:gap-1.5 hover:border-primary/45 hover:bg-muted hover:pr-3",
-                          "focus-visible:gap-1.5 focus-visible:pr-3",
-                          "motion-reduce:gap-1.5 motion-reduce:pr-3",
-                        )}
-                      >
-                        <span className="inline-flex size-8 shrink-0 items-center justify-center">
-                          <Plus className="h-3.5 w-3.5" aria-hidden />
-                        </span>
-                        <span
-                          className={cn(
-                            "inline-block max-w-0 overflow-hidden whitespace-nowrap text-xs font-medium opacity-0",
-                            "transition-[max-width,opacity] duration-300 ease-out",
-                            "group-hover/add:max-w-[9rem] group-hover/add:opacity-100",
-                            "group-focus-visible/add:max-w-[9rem] group-focus-visible/add:opacity-100",
-                            "motion-reduce:max-w-[9rem] motion-reduce:opacity-100",
-                          )}
-                        >
-                          {t("addPlan")}
-                        </span>
-                      </Button>
-                    </div>
-
-                    <div className="px-3 py-2.5">
-                      {hasItems ? (
-                        <div className="min-w-0 divide-y divide-border/50">
-                          {dayActions.map((item) =>
-                            item.kind === "task" ? (
-                              <WeekActionRow
-                                key={`task-${item.task.id}`}
-                                item={{ kind: "task", task: item.task }}
-                              />
-                            ) : (
-                              <WeekActionRow
-                                key={`plan-${item.step.id}`}
-                                item={{ kind: "plan", step: item.step }}
-                              />
-                            ),
-                          )}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">
-                          {t("noEvents")}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <CalendarWeekGrid
+            weekAnchor={weekAnchor}
+            weekdayLabels={weekdayLabels}
+            tasksByDay={tasksByDay}
+            plansByDay={plansByDay}
+            todayLabel={t("todayBadge")}
+            allDayLabel={t("allDay")}
+            timezoneLabel={t("timezone")}
+          />
         </section>
       ) : (
-        <section
-          aria-label={t("monthGrid")}
-          className={cn(
-            liquidPanelClass,
-            "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-md p-2 shadow-[var(--shadow-overlay)] sm:p-3",
-          )}
-        >
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-            <div className="grid min-w-0 shrink-0 grid-cols-7 gap-0.5 px-px text-center text-[10px] font-semibold uppercase text-muted-foreground sm:gap-2 sm:px-0.5 sm:text-xs">
-                {weekdayLabels.map((d) => (
-                  <div key={d} className="py-1 sm:py-2">
-                    {d}
-                  </div>
-                ))}
-              </div>
-              <div className="mt-1 min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain p-px sm:mt-0 sm:p-0.5">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden lg:flex-row lg:items-stretch">
+          <div className="shrink-0 overflow-y-auto overscroll-contain lg:max-h-full">
+            <CalendarSideRail
+              month={month}
+              onMonthChange={setMonth}
+              selectedDay={selectedDay}
+              onSelectDay={setSelectedDay}
+              showTasks={showTasks}
+              showPlans={showPlans}
+              onToggleTasks={() => setShowTasks((v) => !v)}
+              onTogglePlans={() => setShowPlans((v) => !v)}
+              urgentItems={urgentRailItems}
+              weekdayShort={weekdayShort}
+              labels={{
+                miniMonth: t("miniMonth", {
+                  month: format(month, "M"),
+                  year: format(month, "yyyy"),
+                }),
+                categories: t("categories"),
+                selectAll: t("selectAll"),
+                kindTask: t("kindTask"),
+                kindPlan: t("kindPlan"),
+                urgentTitle: t("urgentRailTitle"),
+                viewDetail: t("viewDetail"),
+              }}
+            />
+          </div>
+
+          <section
+            aria-label={t("monthGrid")}
+            className={cn(
+              liquidPanelClass,
+              "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl",
+            )}
+          >
+            <div className="grid min-w-0 shrink-0 grid-cols-7 gap-px bg-surface-container text-center text-[10px] font-semibold sm:text-xs">
+              {weekdayLabels.map((d, idx) => (
                 <div
-                  data-calendar-month-grid
-                  className="grid min-h-full min-w-0 grid-cols-7 gap-0.5 sm:gap-2"
-                  style={{
-                    gridTemplateRows: `repeat(${monthWeekCount}, minmax(${MONTH_WEEK_ROW_MIN}, 1fr))`,
-                  }}
+                  key={d}
+                  className={cn(
+                    "py-2.5",
+                    idx === 5 && "bg-primary/5 font-bold text-primary",
+                    idx === 6 &&
+                      "bg-rose-500/5 font-bold text-rose-700 dark:text-rose-400",
+                    idx < 5 && "text-muted-foreground",
+                  )}
                 >
+                  {d}
+                </div>
+              ))}
+            </div>
+            <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain">
+              <div
+                data-calendar-month-grid
+                className="grid min-h-full min-w-0 grid-cols-7 gap-px bg-border/60"
+                style={{
+                  gridTemplateRows: `repeat(${monthWeekCount}, minmax(${MONTH_WEEK_ROW_MIN}, 1fr))`,
+                }}
+              >
                 {monthDays.map((day) => {
                   const key = format(day, "yyyy-MM-dd");
                   const dayTasks = tasksByDay.get(key) ?? [];
                   const dayPlans = plansByDay.get(key) ?? [];
                   const inMonth = isSameMonth(day, month);
+                  const isToday = isSameDay(day, new Date());
+                  const isSelected = selectedDay
+                    ? isSameDay(day, selectedDay)
+                    : false;
+                  const dow = day.getDay();
+                  const isWeekend = dow === 0 || dow === 6;
 
                   return (
                     <div
@@ -1990,31 +1788,63 @@ export function CalendarMonth({
                         ) {
                           return;
                         }
+                        setSelectedDay(day);
+                        // second click on empty area opens add
+                        if (isSelected && dayTasks.length + dayPlans.length === 0) {
+                          setAddPlanDay(day);
+                        }
+                      }}
+                      onDoubleClick={() => {
+                        if (isDayAddClickSuppressed()) return;
                         setAddPlanDay(day);
                       }}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          if (isDayAddClickSuppressed()) return;
-                          setAddPlanDay(day);
+                          setSelectedDay(day);
                         }
                       }}
                       className={cn(
-                        "interactive-press flex h-full min-h-0 cursor-pointer flex-col overflow-hidden rounded-md border p-0.5 text-left transition-colors duration-200 sm:rounded-lg sm:p-2.5",
+                        "interactive-press flex h-full min-h-0 cursor-pointer flex-col overflow-hidden p-1 text-left transition-colors duration-200 sm:p-2",
                         inMonth
-                          ? "border-border bg-surface/80 hover:border-primary/30 hover:bg-primary-muted-hover"
-                          : "border-border/50 bg-muted/40 text-muted-foreground hover:bg-primary-muted/40",
-                        isSameDay(day, new Date()) &&
-                          "ring-2 ring-inset ring-primary/40",
+                          ? isWeekend
+                            ? "bg-surface-container-low/50 hover:bg-primary-muted/40"
+                            : "bg-surface hover:bg-primary-muted/45"
+                          : "bg-muted/35 text-muted-foreground hover:bg-muted/50",
+                        isToday && !isSelected && "ring-2 ring-inset ring-primary/35",
+                        isSelected && "bg-primary/5 ring-2 ring-inset ring-primary",
                       )}
                     >
                       <div className="flex shrink-0 items-center justify-between gap-1">
-                        <p className="text-[10px] font-semibold sm:text-xs">
-                          {format(day, "d")}
-                        </p>
+                        <div className="flex min-w-0 items-center gap-1">
+                          <p
+                            className={cn(
+                              "text-[10px] font-semibold sm:text-xs",
+                              isToday &&
+                                "flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground shadow-sm sm:h-7 sm:w-7",
+                              !isToday &&
+                                inMonth &&
+                                dow === 0 &&
+                                "text-rose-700 dark:text-rose-400",
+                              !isToday && inMonth && dow === 6 && "text-primary",
+                            )}
+                          >
+                            {format(day, "d")}
+                          </p>
+                          {isToday ? (
+                            <span className="hidden text-[9px] font-bold uppercase tracking-wide text-primary sm:inline">
+                              {t("todayBadge")}
+                            </span>
+                          ) : null}
+                          {isSelected && !isToday ? (
+                            <span className="hidden rounded bg-primary px-1 py-px text-[8px] font-bold uppercase text-primary-foreground sm:inline">
+                              {t("selectedBadge")}
+                            </span>
+                          ) : null}
+                        </div>
                         <button
                           type="button"
-                          className="interactive-press inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-primary-muted hover:text-primary"
+                          className="interactive-press inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-primary-muted hover:text-primary"
                           aria-label={t("addPlan")}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -2022,10 +1852,7 @@ export function CalendarMonth({
                             setAddPlanDay(day);
                           }}
                         >
-                          <Plus
-                            className="h-3 w-3 sm:h-3.5 sm:w-3.5"
-                            aria-hidden
-                          />
+                          <Plus className="h-3 w-3 sm:h-3.5 sm:w-3.5" aria-hidden />
                         </button>
                       </div>
                       {dayPlans.length > 0 || dayTasks.length > 0 ? (
@@ -2043,11 +1870,64 @@ export function CalendarMonth({
                     </div>
                   );
                 })}
-                </div>
               </div>
-          </div>
-        </section>
+            </div>
+          </section>
+        </div>
       )}
+
+      {/* Day focus flyout — real events only */}
+      {viewMode === "month" && selectedFocus && selectedFocus.events[0] ? (
+        <div className="pointer-events-none fixed bottom-5 right-5 z-30 hidden max-w-sm md:block">
+          <div className="pointer-events-auto rounded-2xl border border-border/70 bg-surface p-4 shadow-[var(--shadow-overlay)]">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-primary">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
+                {t("dayFocus", { date: format(selectedDay!, "dd/MM/yyyy") })}
+              </p>
+              <button
+                type="button"
+                className="rounded-full p-1 text-muted-foreground hover:bg-surface-container hover:text-foreground"
+                aria-label={t("today")}
+                onClick={() => setSelectedDay(null)}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <div className="space-y-2">
+              {selectedFocus.events.slice(0, 2).map((ev) => (
+                <div key={`${ev.kind}-${ev.title}-${ev.time}`} className="min-w-0">
+                  <p className="truncate text-[13px] font-bold text-foreground">
+                    {ev.title}
+                  </p>
+                  <p className="truncate text-[11px] text-muted-foreground">
+                    {ev.meta}
+                    {ev.assignee ? ` · ${ev.assignee}` : ""}
+                  </p>
+                  <div className="mt-1.5 flex items-center gap-2">
+                    <span
+                      className={cn(
+                        "rounded-full px-2 py-0.5 text-[10px] font-bold",
+                        ev.kind === "plan"
+                          ? "bg-sky-100 text-sky-900 dark:bg-sky-950/50 dark:text-sky-100"
+                          : "bg-primary-muted text-primary",
+                      )}
+                    >
+                      {ev.time}
+                    </span>
+                    <Link
+                      href={ev.href}
+                      className="ml-auto text-[11px] font-medium text-primary hover:underline"
+                    >
+                      {t("viewDetail")}
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

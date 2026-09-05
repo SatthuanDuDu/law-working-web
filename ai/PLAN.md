@@ -3,12 +3,21 @@
 Quy tắc: một slice = một việc end-to-end nhỏ. Chỉ một slice active.
 
 ## Active
-- _(không có)_
+- _(không có — chọn slice tiếp theo)_
 
 ## Next
 - _(trống)_
 
 ## Done
+- [x] M3 Nexus UI — Workflows `/workflows` restyle — `ai/docs/m3-nexus-workflows.md`
+- [x] M3 Nexus UI — Wallet `/wallet` restyle — `ai/docs/m3-nexus-wallet.md`
+- [x] M3 Nexus UI — Calendar month/week chrome (no scorecards) — `ai/docs/m3-nexus-calendar.md`
+- [x] M3 Nexus UI — Matter hub dossier restyle — `ai/docs/m3-nexus-matter-hub.md`
+- [x] M3 Nexus UI — Grid cards pass (matters / tasks / users) — `ai/docs/m3-nexus-grid-cards.md`
+- [x] M3 Nexus UI — Clients list restyle (KPI + filter bar + rich cards) — `ai/docs/m3-nexus-clients-list.md`
+- [x] M3 Nexus UI — Slice 1: tokens + chrome shell — `ai/docs/m3-nexus-chrome.md`
+- [x] M3 Nexus UI — Slice 2: dashboard + matter hub density — `ai/docs/dashboard-overview-baseline.md`
+- [x] M3 Nexus UI — Slice 3: full-app visual pass — `ai/docs/m3-nexus-full-pass.md`
 - [x] Workflow UI flow redesign — list pipeline + modal rail + apply dialog — `ai/docs/workflow-templates.md`
 - [x] Workflow mẫu — tab `/workflows` (Manager+), chọn khi tạo vụ việc + popup customize — `ai/docs/workflow-templates.md`
 - [x] Matter hub overview — timeline + tiến độ trên tab vụ việc; bỏ report page + task liên quan — `ai/docs/matter-hub-overview.md`

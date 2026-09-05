@@ -7,11 +7,9 @@ import { listWalletTransactionsAction } from "@/lib/wallet-actions";
 import { listMoneyConfirmationsAction } from "@/lib/money-confirmation-actions";
 import { listPackagesAction } from "@/lib/budget-package-actions";
 import { packageRemainingVnd } from "@/lib/budget-package";
-import { getTranslations } from "next-intl/server";
 
 export default async function WalletPage() {
   const user = await requireAuth();
-  const tPages = await getTranslations("pages.wallet");
   const wallet = await ensureStaffWallet(prisma, user.id);
   const [{ transactions }, { confirmations }, packagesRes, clientCashAgg] =
     await Promise.all([
@@ -46,8 +44,8 @@ export default async function WalletPage() {
   );
 
   return (
-    <div className="space-y-4">
-      <PageHeaderSlot title={tPages("title")} />
+    <div>
+      <PageHeaderSlot title="" />
       <WalletView
         balanceVnd={wallet.balanceVnd.toString()}
         packageRemainingSumVnd={packageRemainingSum.toString()}

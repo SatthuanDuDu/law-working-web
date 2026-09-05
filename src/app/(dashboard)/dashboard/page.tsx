@@ -6,22 +6,16 @@ import { formatDate, cn } from "@/lib/utils";
 import { endOfVietnamDayPlus } from "@/lib/datetime";
 import type { ReactNode } from "react";
 import {
-  AlertTriangle,
   ArrowUpRight,
   Briefcase,
   CalendarClock,
-  CheckCircle2,
   ListTodo,
   ListChecks,
 } from "lucide-react";
-import {
-  ExpandableStatCard,
-  type DashboardTaskItem,
-} from "@/components/dashboard/expandable-stat-card";
-import {
-  ExpandableMattersCard,
-  type DashboardMatterItem,
-} from "@/components/dashboard/expandable-matters-card";
+import { DashboardHero } from "@/components/dashboard/dashboard-hero";
+import { DashboardMetricCard } from "@/components/dashboard/dashboard-metric-card";
+import { DashboardPriorityTasks } from "@/components/dashboard/dashboard-priority-tasks";
+import { type DashboardTaskItem } from "@/components/dashboard/expandable-stat-card";
 import { Badge } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SectionPanel } from "@/components/ui/section-panel";
@@ -31,10 +25,7 @@ import {
 } from "@/components/dashboard/upcoming-deadline-list";
 import { MatterStatusBadge } from "@/components/matters/matter-status-control";
 import { OpenPersonalTodoButton } from "@/components/personal-todo/open-personal-todo-button";
-import {
-  listDivideClass,
-  listRowClass,
-} from "@/lib/list-surface";
+import { listDivideClass, listRowClass } from "@/lib/list-surface";
 import { getLabelMaps } from "@/i18n/server-labels";
 import { getTranslations } from "next-intl/server";
 import { getAccessibleMatterIds } from "@/lib/access";
@@ -161,7 +152,6 @@ export default async function DashboardPage() {
     openTasks,
     overdueTasks,
     openTasksList,
-    openMattersList,
     matters,
     recentTasks,
     upcomingDeadlines,
@@ -181,38 +171,6 @@ export default async function DashboardPage() {
       include: { matter: { select: matterSelect } },
       orderBy: [{ dueDate: "asc" }, { updatedAt: "desc" }],
       take: 8,
-    }),
-    prisma.matter.findMany({
-      where: {
-        ...matterWhere,
-        status: { in: [...OPEN_MATTER_STATUSES] },
-      },
-      select: {
-        id: true,
-        code: true,
-        title: true,
-        status: true,
-        client: { select: { name: true } },
-        leadLawyer: { select: { id: true, name: true, avatarKey: true } },
-        planSteps: {
-          where: { status: { not: "DONE" } },
-          orderBy: { sortOrder: "asc" },
-          select: {
-            id: true,
-            title: true,
-            status: true,
-            dueAt: true,
-            sortOrder: true,
-            assignees: {
-              select: {
-                user: { select: { id: true, name: true, avatarKey: true } },
-              },
-            },
-          },
-        },
-      },
-      orderBy: { updatedAt: "desc" },
-      take: 30,
     }),
     prisma.matter.findMany({
       where: matterWhere,
@@ -301,36 +259,6 @@ export default async function DashboardPage() {
     .reduce((sum, item) => sum + item.count, 0);
 
   const openItems = openTasksList.map(serializeTask);
-  const openMatterItems: DashboardMatterItem[] = openMattersList.map((matter) => ({
-    id: matter.id,
-    code: matter.code,
-    title: matter.title,
-    status: matter.status,
-    clientName: matter.client?.name ?? null,
-    leadLawyer: matter.leadLawyer
-      ? {
-          id: matter.leadLawyer.id,
-          name: matter.leadLawyer.name,
-          avatarKey: matter.leadLawyer.avatarKey,
-        }
-      : null,
-    planSteps: matter.planSteps.map((step) => ({
-      id: step.id,
-      title: step.title,
-      status: step.status,
-      dueAt: step.dueAt?.toISOString() ?? null,
-      sortOrder: step.sortOrder,
-      assignees: step.assignees.map((row) => ({
-        id: row.user.id,
-        name: row.user.name,
-        avatarKey: row.user.avatarKey,
-      })),
-    })),
-  }));
-  const openPlanStepsTotal = openMatterItems.reduce(
-    (sum, matter) => sum + matter.planSteps.length,
-    0,
-  );
 
   type UpcomingItem = Omit<UpcomingDeadlineItem, "dueAt"> & { dueAt: Date };
 
@@ -403,57 +331,81 @@ export default async function DashboardPage() {
     }),
   );
 
+  const onTrackPercent =
+    openTasks > 0
+      ? Math.round(((openTasks - overdueTasks) / openTasks) * 100)
+      : 100;
+  const openTodoCount = personalTodos.length;
+
   return (
-    <div className="relative min-w-0 max-w-full space-y-4">
-      <div className="grid min-w-0 gap-3 sm:grid-cols-2">
-        <ExpandableStatCard
+    <div className="relative min-w-0 max-w-full space-y-4 pb-2 sm:space-y-5">
+      {/* 1. Greeting + quick actions */}
+      <DashboardHero
+        userName={user.name}
+        openTasks={openTasks}
+        upcomingCount={upcomingListItems.length}
+      />
+
+      {/* 2. Glance metrics — equal height scorecards */}
+      <div className="grid min-w-0 auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <DashboardMetricCard
           label={t("openTasks")}
-          value={String(openTasks)}
+          value={openTasks}
+          icon={<ListTodo className="h-4 w-4" />}
+          progress={onTrackPercent}
+          progressLabel={t("onTrackPercent", { percent: onTrackPercent })}
           sub={
             overdueTasks > 0 ? (
-              <span className="inline-flex min-w-0 items-center gap-1 font-medium text-rose-600">
-                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                <span className="min-w-0 break-words">
-                  {overdueTasks === openTasks
-                    ? t("overdueLabel")
-                    : t("overdueCount", { count: overdueTasks })}
-                </span>
+              <span className="font-medium text-rose-600">
+                {t("overdueCount", { count: overdueTasks })}
               </span>
             ) : (
-              <span className="inline-flex min-w-0 items-center gap-1 font-medium text-emerald-600">
-                <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-                <span className="min-w-0 break-words">{t("onTrack")}</span>
-              </span>
+              <span className="font-medium text-emerald-600">{t("onTrack")}</span>
             )
           }
-          icon={<ListTodo className="h-4 w-4" />}
-          tone="primary"
-          items={openItems}
-          emptyLabel={t("openTasksEmpty")}
+          href="/tasks"
         />
-        <ExpandableMattersCard
+        <DashboardMetricCard
           label={t("activeMatters")}
-          value={String(activeMatters)}
-          sub={
-            openPlanStepsTotal > 0 ? (
-              <span className="min-w-0 break-words font-medium text-sky-700 dark:text-sky-300">
-                {t("openPlanStepCount", { count: openPlanStepsTotal })}
-              </span>
-            ) : null
-          }
+          value={activeMatters}
+          suffix={`/ ${totalMatters}`}
           icon={<Briefcase className="h-4 w-4" />}
-          tone="sky"
-          matters={openMatterItems}
-          emptyLabel={t("activeMattersEmpty")}
+          progress={
+            totalMatters > 0
+              ? Math.round((activeMatters / totalMatters) * 100)
+              : 0
+          }
+          sub={t("metricMattersRatio")}
+          href="/matters"
+        />
+        <DashboardMetricCard
+          label={t("metricUpcoming")}
+          value={upcomingListItems.length}
+          icon={<CalendarClock className="h-4 w-4" />}
+          iconClassName="bg-sky-100 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300"
+          sub={t("metricUpcomingSub")}
+          href="/calendar"
+        />
+        <DashboardMetricCard
+          label={t("metricTodos")}
+          value={openTodoCount}
+          icon={<ListChecks className="h-4 w-4" />}
+          iconClassName="bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"
+          sub={t("metricTodosSub")}
         />
       </div>
 
-      <div className="grid min-w-0 gap-3 lg:grid-cols-3">
+      {/* 3. Focus today — stretch equal columns */}
+      <div className="grid min-w-0 items-stretch gap-4 lg:grid-cols-2">
+        <DashboardPriorityTasks
+          items={openItems}
+          emptyLabel={t("openTasksEmpty")}
+        />
         <SectionPanel
           title={t("upcoming")}
           icon={<CalendarClock className="h-4 w-4" />}
           action={<ActionLink href="/calendar">{t("viewCalendar")}</ActionLink>}
-          className="min-w-0 lg:col-span-2"
+          className="h-full"
         >
           {upcomingListItems.length === 0 ? (
             <EmptyState
@@ -464,74 +416,25 @@ export default async function DashboardPage() {
               {t("noUpcoming3Days")}
             </EmptyState>
           ) : (
-            <UpcomingDeadlineList items={upcomingListItems} />
-          )}
-        </SectionPanel>
-
-        <SectionPanel
-          title={t("statusDistribution")}
-          icon={<Briefcase className="h-4 w-4" />}
-          action={
-            <span className="text-sm font-medium text-muted-foreground">
-              {t("activeOpen", { count: activeMatters })}
-            </span>
-          }
-          className="min-w-0"
-        >
-          {totalMatters === 0 ? (
-            <EmptyState>{t("noMattersYet")}</EmptyState>
-          ) : (
-            <div className="min-w-0 space-y-3">
-              <div className="min-w-0">
-                <p className="text-3xl font-bold tabular-nums text-foreground">
-                  {totalMatters}
-                </p>
-                <p className="text-sm text-muted-foreground">{t("totalMattersLabel")}</p>
-              </div>
-              <div className="min-w-0 space-y-2.5">
-                {statusCounts.map(({ status, count }) => {
-                  const pct = totalMatters
-                    ? Math.round((count / totalMatters) * 100)
-                    : 0;
-                  return (
-                    <div key={status} className="min-w-0">
-                      <div className="mb-1 flex min-w-0 items-center justify-between gap-2 text-sm">
-                        <span className="min-w-0 truncate text-muted-foreground">
-                          {labels.matterStatus[status]}
-                        </span>
-                        <span className="shrink-0 font-medium tabular-nums text-foreground">
-                          {count}
-                        </span>
-                      </div>
-                      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                        <div
-                          className={cn(
-                            "h-full rounded-full transition-all duration-500",
-                            STATUS_BAR_CLASS[status],
-                          )}
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+            <div className="max-h-[22rem] overflow-y-auto pr-0.5">
+              <UpcomingDeadlineList items={upcomingListItems} />
             </div>
           )}
         </SectionPanel>
       </div>
 
-      <div className="grid min-w-0 gap-3 lg:grid-cols-3">
+      {/* 4. Matters + status — stretch */}
+      <div className="grid min-w-0 items-stretch gap-4 lg:grid-cols-2">
         <SectionPanel
           title={t("myMatters")}
           icon={<Briefcase className="h-4 w-4" />}
           action={<ActionLink href="/matters">{tCommon("all")}</ActionLink>}
-          className="min-w-0"
+          className="h-full"
         >
           {matters.length === 0 ? (
             <EmptyState>{t("noMyMatters")}</EmptyState>
           ) : (
-            <div className={listDivideClass}>
+            <div className={cn(listDivideClass, "max-h-[22rem] overflow-y-auto")}>
               {matters.map((matter) => (
                 <Link
                   key={matter.id}
@@ -564,15 +467,72 @@ export default async function DashboardPage() {
         </SectionPanel>
 
         <SectionPanel
+          title={t("statusDistribution")}
+          icon={<Briefcase className="h-4 w-4" />}
+          action={
+            <span className="text-sm font-medium text-muted-foreground">
+              {t("activeOpen", { count: activeMatters })}
+            </span>
+          }
+          className="h-full"
+        >
+          {totalMatters === 0 ? (
+            <EmptyState>{t("noMattersYet")}</EmptyState>
+          ) : (
+            <div className="flex h-full min-w-0 flex-col justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-3xl font-bold tabular-nums text-foreground">
+                  {totalMatters}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {t("totalMattersLabel")}
+                </p>
+              </div>
+              <div className="min-w-0 space-y-2.5">
+                {statusCounts.map(({ status, count }) => {
+                  const pct = totalMatters
+                    ? Math.round((count / totalMatters) * 100)
+                    : 0;
+                  return (
+                    <div key={status} className="min-w-0">
+                      <div className="mb-1 flex min-w-0 items-center justify-between gap-2 text-sm">
+                        <span className="min-w-0 truncate text-muted-foreground">
+                          {labels.matterStatus[status]}
+                        </span>
+                        <span className="shrink-0 font-medium tabular-nums text-foreground">
+                          {count}
+                        </span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-surface-container-highest">
+                        <div
+                          className={cn(
+                            "h-full rounded-full transition-all duration-500",
+                            STATUS_BAR_CLASS[status],
+                          )}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </SectionPanel>
+      </div>
+
+      {/* 5. Secondary lists — stretch */}
+      <div className="grid min-w-0 items-stretch gap-4 lg:grid-cols-2">
+        <SectionPanel
           title={t("recentTasks")}
           icon={<ListTodo className="h-4 w-4" />}
           action={<ActionLink href="/tasks">{tCommon("all")}</ActionLink>}
-          className="min-w-0"
+          className="h-full"
         >
           {recentTasks.length === 0 ? (
             <EmptyState>{t("noRecentTasks")}</EmptyState>
           ) : (
-            <div className={listDivideClass}>
+            <div className={cn(listDivideClass, "max-h-[18rem] overflow-y-auto")}>
               {recentTasks.map((task) => (
                 <Link
                   key={task.id}
@@ -589,9 +549,7 @@ export default async function DashboardPage() {
                   </div>
                   <p className="mt-1 truncate text-sm text-muted-foreground">
                     {t("updatedAt", { date: formatDate(task.updatedAt) })}
-                    {task.matter
-                      ? ` · ${shortenCode(task.matter.code)}`
-                      : ""}
+                    {task.matter ? ` · ${shortenCode(task.matter.code)}` : ""}
                   </p>
                 </Link>
               ))}
@@ -605,7 +563,7 @@ export default async function DashboardPage() {
           action={
             <OpenPersonalTodoButton>{tCommon("all")}</OpenPersonalTodoButton>
           }
-          className="min-w-0"
+          className="h-full"
         >
           {personalTodos.length === 0 ? (
             <EmptyState
@@ -616,7 +574,7 @@ export default async function DashboardPage() {
               {t("noPersonalTodos")}
             </EmptyState>
           ) : (
-            <div className={listDivideClass}>
+            <div className={cn(listDivideClass, "max-h-[18rem] overflow-y-auto")}>
               {personalTodos.map((todo) => (
                 <OpenPersonalTodoButton
                   key={todo.id}

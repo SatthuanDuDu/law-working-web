@@ -14,9 +14,11 @@ import { cn } from "@/lib/utils";
 export function MatterOverviewExport({
   matterId,
   className,
+  variant = "panel",
 }: {
   matterId: string;
   className?: string;
+  variant?: "panel" | "inline";
 }) {
   const t = useTranslations("matters.overviewExport");
   const [pending, startTransition] = useTransition();
@@ -43,10 +45,40 @@ export function MatterOverviewExport({
     });
   }
 
+  if (variant === "inline") {
+    return (
+      <div className={cn("flex flex-wrap items-center gap-2", className)}>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={pending}
+          className="interactive-press rounded-full"
+          onClick={() => run("pdf")}
+        >
+          <FileDown className="h-3.5 w-3.5" aria-hidden />
+          {t("exportPdf")}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={pending}
+          className="interactive-press rounded-full"
+          onClick={() => run("docx")}
+        >
+          <FileText className="h-3.5 w-3.5" aria-hidden />
+          {t("exportWord")}
+        </Button>
+        {error ? <p className="w-full text-sm text-destructive">{error}</p> : null}
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(
-        "space-y-2 rounded-md border border-primary/15 bg-primary-muted/80 p-2.5 sm:p-3",
+        "space-y-2 rounded-2xl border border-border/70 bg-surface p-3 shadow-[var(--shadow-card)] sm:p-3.5",
         className,
       )}
     >
@@ -57,9 +89,9 @@ export function MatterOverviewExport({
         <Button
           type="button"
           size="sm"
-          variant="default"
+          variant="outline"
           disabled={pending}
-          className="interactive-press h-9 min-w-[7.5rem] flex-1 gap-1.5 px-3 text-sm sm:flex-none"
+          className="interactive-press h-9 min-w-[7.5rem] flex-1 gap-1.5 rounded-full px-3 text-sm sm:flex-none"
           onClick={() => run("pdf")}
         >
           <FileDown className="h-4 w-4 shrink-0" aria-hidden />
@@ -68,9 +100,9 @@ export function MatterOverviewExport({
         <Button
           type="button"
           size="sm"
-          variant="default"
+          variant="outline"
           disabled={pending}
-          className="interactive-press h-9 min-w-[7.5rem] flex-1 gap-1.5 px-3 text-sm sm:flex-none"
+          className="interactive-press h-9 min-w-[7.5rem] flex-1 gap-1.5 rounded-full px-3 text-sm sm:flex-none"
           onClick={() => run("docx")}
         >
           <FileText className="h-4 w-4 shrink-0" aria-hidden />

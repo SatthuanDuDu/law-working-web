@@ -78,7 +78,7 @@ export function MatterPlanOverviewStepCard({
     <li>
       <div
         className={cn(
-          "rounded-md border border-border",
+          "rounded-2xl border border-border/70 bg-surface shadow-[var(--shadow-card)]",
           step.isOverdue &&
             "border-rose-200 bg-rose-50/50 dark:border-rose-900/50 dark:bg-rose-950/20",
         )}
@@ -172,7 +172,7 @@ export function MatterPlanOverviewStepCard({
 
           <button
             type="button"
-            className="interactive-press mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="interactive-press mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
             aria-expanded={expanded}
             aria-label={expanded ? t("collapseStep") : t("expandStep")}
             onClick={() => setExpanded((open) => !open)}

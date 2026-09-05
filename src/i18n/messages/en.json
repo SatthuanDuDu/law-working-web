@@ -66,6 +66,7 @@
     "brandSubtitle": "Internal management",
     "closeMenu": "Close menu",
     "openMenu": "Open menu",
+    "sectionMain": "Main workspace",
     "sectionManager": "Management",
     "sectionAdmin": "Administration"
   },
@@ -108,11 +109,11 @@
     },
     "matters": {
       "title": "Matters",
-      "description": "Manage matters and participating members"
+      "description": "Manage legal matters & case files"
     },
     "clients": {
-      "title": "Clients",
-      "description": "Manage client information"
+      "title": "Client management",
+      "description": "Legal partners, business clients, and matter-linked profiles in NSLAW Workspace"
     },
     "chat": {
       "title": "Chat",
@@ -124,7 +125,7 @@
     },
     "calendar": {
       "title": "Calendar & deadlines",
-      "description": "Track task deadlines, plan due dates, and add steps from the calendar"
+      "description": "Track task due dates, plan steps, and add new steps from the calendar"
     },
     "settings": {
       "title": "Settings",
@@ -135,16 +136,16 @@
       "description": "Work distribution by staff and department"
     },
     "workflows": {
-      "title": "Workflow",
-      "description": "Design reusable plan templates for new matters"
+      "title": "Process & template roadmaps",
+      "description": "Standardize matter roadmaps, step assignment, and deadlines when opening a new file."
     },
     "expenses": {
       "title": "Internal cashflow",
       "description": "Allocate budget, wallet balances, and company transactions"
     },
     "wallet": {
-      "title": "Imprest wallet",
-      "description": "Balance, credit history, and spend logging"
+      "title": "Imprest wallet & expense settlement",
+      "description": "Manage advances, client cash, budget packages, and internal cashflow history."
     },
     "spendCategories": {
       "title": "Spend categories",
@@ -369,6 +370,8 @@
     "deleteMatter": "Delete matter",
     "setupPlan": "Plan",
     "setupPlanLong": "Set up plan",
+    "viewHub": "View matter",
+    "tasksLabel": "Tasks",
     "emptyHint": "No matters yet. Click \"Create matter\" in the top-right corner to get started.",
     "noFilterMatch": "No matters match the current filters.",
     "matterCount": "{count, plural, one {# matter} other {# matters}}",
@@ -377,6 +380,17 @@
     "fieldLeadLawyer": "Lead lawyer",
     "fieldMembers": "Members",
     "fieldCreatedAt": "Created",
+    "fieldUpdatedAt": "Updated",
+    "metrics": {
+      "active": "Active matters",
+      "activeSub": "Of {total} total matters",
+      "inProgress": "In progress",
+      "inProgressSub": "Plan underway",
+      "onHold": "On hold",
+      "onHoldSub": "Paused / waiting",
+      "new": "Newly opened",
+      "newSub": "Not yet in progress"
+    },
     "fieldDescription": "Description",
     "taskCount": "{count, plural, one {# task} other {# tasks}}",
     "fieldTaskCount": "Tasks",
@@ -457,7 +471,8 @@
     },
     "overview": {
       "timelineTitle": "Execution roadmap",
-      "progressTitle": "Progress",
+      "timelineHint": "Track deadlines, assignments, and documents per step.",
+      "progressTitle": "Overall matter progress",
       "startLabel": "Started",
       "dueLabel": "Due",
       "expectedEnd": "Expected end",
@@ -480,7 +495,16 @@
       "stepSequenceAria": "Step sequence by status",
       "commentsTitle": "Discussion / Comments",
       "planFallback": "Plan",
-      "completedPercent": "{percent}% complete"
+      "completedPercent": "{percent}% complete",
+      "hubNavAria": "Matter dossier navigation",
+      "hubTabOverview": "Overview & roadmap",
+      "hubTabPlan": "Plan details",
+      "hubTabDocs": "Documents",
+      "hubTabComments": "Discussion",
+      "clientCardTitle": "Client profile",
+      "teamCardTitle": "Counsel & team",
+      "leadBadge": "Lead",
+      "memberBadge": "Member"
     }
   },
   "filters": {
@@ -597,6 +621,7 @@
   "clients": {
     "create": "Add client",
     "createShort": "Add",
+    "createNew": "+ Add new client",
     "code": "Client code",
     "codeAutoHint": "Leave blank to auto-generate",
     "name": "Client name",
@@ -607,7 +632,7 @@
     "address": "Address",
     "taxCode": "Tax code",
     "noClients": "No clients yet",
-    "searchPlaceholder": "Search clients...",
+    "searchPlaceholder": "Search by name, code, address, phone, email...",
     "deleteTitle": "Delete client",
     "deleteConfirm": "Are you sure you want to delete client \"{name}\"? You can undo right after deleting.",
     "deleteConfirmLabel": "Delete client",
@@ -632,7 +657,7 @@
     "filterMatterCount": "Matter count",
     "clientCount": "{count} clients",
     "clientCountFiltered": "{visible}/{total} clients",
-    "emptyHint": "No clients yet. Click \"+ New client\" above to add one.",
+    "emptyHint": "No clients yet. Click \"+ Add new client\" above to add one.",
     "noFilterMatch": "No clients match the current filters.",
     "fieldMatters": "{count, plural, one {# matter} other {# matters}}",
     "viewRelatedMatters": "View {count, plural, one {# related matter} other {# related matters}}",
@@ -643,7 +668,23 @@
     "bulkDelete": "Delete selected",
     "confirmBulkDeleteTitle": "Delete selected clients",
     "confirmBulkDeleteMessage": "Are you sure you want to delete {count} selected clients? Only clients with no related matters can be deleted. This cannot be undone.",
-    "bulkDeletePartial": "Deleted {deleted} clients. Skipped {skipped} clients that still have related matters."
+    "bulkDeletePartial": "Deleted {deleted} clients. Skipped {skipped} clients that still have related matters.",
+    "activeBadge": "{count} clients",
+    "cardOpenMatters": "Active matters",
+    "cardOpenMattersCount": "{count} open",
+    "cardLeadLawyers": "Lead lawyer",
+    "cardUpdated": "Updated {date}",
+    "viewProfile": "View matters",
+    "metrics": {
+      "total": "Total clients",
+      "totalSub": "{business} businesses · {individual} individuals",
+      "business": "Businesses",
+      "businessSub": "{individual} individual clients",
+      "openMatters": "Open matters",
+      "openMattersSub": "{clients} clients with active work",
+      "withoutMatters": "No matters yet",
+      "withoutMattersSub": "Profiles not linked to a matter"
+    }
   },
   "calendar": {
     "title": "Calendar & deadlines",
@@ -677,6 +718,20 @@
     "dragSheet": "Swipe down to close",
     "kindTask": "Task",
     "kindPlan": "Plan",
+    "legendTask": "Tasks",
+    "legendPlan": "Plan steps",
+    "legendUrgent": "Due soon",
+    "todayBadge": "Today",
+    "selectedBadge": "Selected",
+    "urgentBadge": "{count} urgent deadlines",
+    "urgentRailTitle": "Urgent deadlines",
+    "allDay": "All day",
+    "timezone": "GMT+7",
+    "miniMonth": "Month {month}/{year}",
+    "categories": "Event types",
+    "selectAll": "Select all",
+    "viewDetail": "Details",
+    "dayFocus": "Focus · {date}",
     "dueSoon": "Due soon",
     "viewPlan": "View plan",
     "scrollMore": "Scroll for more",
@@ -758,7 +813,18 @@
     "collapseCard": "Collapse {label}",
     "personalTodos": "To-do",
     "noPersonalTodos": "No open to-dos.",
-    "personalTodoDoneCount": "{done}/{total} items"
+    "personalTodoDoneCount": "{done}/{total} items",
+    "heroWorkspace": "NSLAW Workspace",
+    "heroSummary": "You have <strong>{tasks} open tasks</strong> and <strong>{deadlines} upcoming deadlines</strong> in the next 3 days.",
+    "priorityToday": "Priority for today",
+    "prioritySubtitle": "Focus on the highest-impact items first",
+    "viewAllTasks": "View all",
+    "metricUpcoming": "Upcoming",
+    "metricUpcomingSub": "Within 3 days",
+    "metricTodos": "Personal to-do",
+    "metricTodosSub": "Not completed",
+    "metricMattersRatio": "active",
+    "onTrackPercent": "{percent}% on track"
   },
   "workload": {
     "openWork": "Open tasks",
@@ -1082,6 +1148,7 @@
     "empty": "No documents yet",
     "delete": "Delete document",
     "important": "Important",
+    "markImportantShort": "Star",
     "loadListFailed": "Could not load file list",
     "loadFileFailed": "Could not download file",
     "uploadSessionFailed": "Could not start upload session",
@@ -1093,6 +1160,8 @@
     "uploadedBy": "Uploaded by",
     "source": "Source",
     "date": "Date",
+    "showDetails": "Details",
+    "hideDetails": "Hide details",
     "defaultSource": "Document",
     "commentOrigin": "Comment",
     "markImportant": "Mark as important",
@@ -1283,14 +1352,23 @@
   },
   "wallet": {
     "title": "Imprest wallet",
-    "balance": "Current balance",
+    "balance": "Available wallet balance",
+    "balanceHint": "Ready for court fees, travel advances, and matter spend.",
     "packageBalance": "Package balance (spendable)",
     "packageRemainingHint": "Sum of remaining on your open packages",
     "clientCashHeld": "Client cash held",
-    "clientCashHeldHint": "Not spendable via packages — handoff only",
-    "myPackages": "My budget packages",
+    "clientCashHeldHint": "Not pooled into office package budgets — handoff only.",
+    "pendingConfirm": "Pending confirm & approval",
+    "pendingConfirmHint": "{count, plural, =0 {No pending items} one {# pending transaction} other {# pending transactions}}",
+    "monthSpend": "Spend this month",
+    "myPackages": "Open packages & limits",
+    "myPackagesHint": "Approved limits so you can disburse without waiting.",
+    "pkgUsed": "Used",
+    "pkgRemaining": "Remaining",
+    "pkgBudget": "Approved budget",
     "filterPackage": "Package",
-    "history": "Transaction history",
+    "history": "Cash journal & transaction history",
+    "historyHint": "Reconcile advances, spend, and invoice approvals.",
     "credits": "Budget credit history",
     "spend": "Record spend",
     "filterDirection": "Direction",
@@ -1299,10 +1377,10 @@
     "all": "All",
     "credit": "Budget credit",
     "debit": "Spend",
-    "newest": "Newest",
-    "oldest": "Oldest",
-    "amountDesc": "Amount high → low",
-    "amountAsc": "Amount low → high",
+    "newest": "Newest first",
+    "oldest": "Oldest first",
+    "amountDesc": "Largest amount",
+    "amountAsc": "Smallest amount",
     "empty": "No transactions yet",
     "allocatedBy": "Allocated by",
     "legacy": "Legacy data",
@@ -1576,6 +1654,13 @@
   "commandPalette": {
     "placeholder": "Search matters, clients, tasks...",
     "openHint": "Quick search",
+    "typewriter": {
+      "everything": "Search everything in the workspace…",
+      "matter": "Create a new matter…",
+      "client": "Create a client…",
+      "task": "Create a task…",
+      "calendar": "Open calendar & deadlines…"
+    },
     "matters": "Matters",
     "clients": "Clients",
     "tasks": "Tasks",
@@ -1596,6 +1681,9 @@
   },
   "moneyConfirm": {
     "title": "Pending money confirmations",
+    "actionNeeded": "Action needed",
+    "actionHint": "Confirm receipt so funds are credited to the wallet",
+    "flow": "Flow",
     "empty": "No pending confirmations.",
     "kindBudget": "Budget allocate",
     "kindClient": "Client cash",
@@ -1604,13 +1692,13 @@
     "approveSettle": "Approve settle",
     "rejectSettle": "Reject settle",
     "status": {
-      "PENDING_RECIPIENT": "Awaiting recipient",
+      "PENDING_RECIPIENT": "Awaiting recipient confirm",
       "PENDING_ALLOCATOR": "Awaiting allocator confirm",
       "CONFIRMED": "Confirmed",
       "REJECTED": "Rejected",
       "DISPUTED": "Amount disputed"
     },
-    "accept": "Received",
+    "accept": "Confirm received",
     "reject": "Reject",
     "dispute": "Wrong amount",
     "disputeNote": "Dispute note",
@@ -1778,8 +1866,27 @@
     "doneHidden": "Completed ({count})"
   },
   "workflows": {
-    "addTitle": "Add workflow",
+    "addTitle": "Add new workflow",
     "listTitle": "Workflow list",
+    "templatesBadge": "Templates",
+    "statTotal": "Total templates",
+    "statTotalUnit": "Templates",
+    "statActiveCount": "{count} active",
+    "statInactiveCount": "{count} inactive",
+    "statActive": "Active",
+    "statActiveHint": "Available when creating a new matter",
+    "statInactive": "Inactive",
+    "statInactiveHint": "Hidden from the matter create picker",
+    "statAvgSteps": "Average steps",
+    "statAvgStepsUnit": "steps / template",
+    "statAvgStepsHint": "Typical length of current templates",
+    "sortUpdated": "Recently updated",
+    "sortName": "Name A→Z",
+    "sortSteps": "Step count (ascending)",
+    "sortLabel": "Sort",
+    "editRoute": "Edit roadmap",
+    "author": "Author",
+    "updatedAt": "Updated",
     "nameLabel": "Workflow name",
     "namePlaceholder": "e.g. Basic civil dispute",
     "descriptionLabel": "Description",
@@ -1800,7 +1907,7 @@
     "confirmCreateTitle": "Confirm create workflow",
     "confirmCreateMessage": "Create workflow \"{name}\"?",
     "created": "Workflow created",
-    "searchPlaceholder": "Search workflows...",
+    "searchPlaceholder": "Search by name or step…",
     "filterAll": "All",
     "filterActive": "Active",
     "filterInactive": "Inactive",
@@ -1812,7 +1919,7 @@
     "endMarker": "End",
     "insertStep": "Insert step",
     "expandStep": "Expand step {number}",
-    "stepCount": "{count} steps",
+    "stepCount": "{count} standard steps",
     "activeBadge": "Active",
     "inactiveBadge": "Inactive",
     "deactivate": "Deactivate",

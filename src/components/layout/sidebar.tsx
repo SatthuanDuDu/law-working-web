@@ -281,8 +281,8 @@ function NavLink({
         aria-label={ariaLabel || label}
         data-active={active ? "true" : undefined}
         className={cn(
-          "sidebar-nav-liquid group/nav interactive-press flex min-h-10 items-center rounded-md border border-transparent text-sm transition-[background-color,color] duration-150",
-          collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2.5",
+          "sidebar-nav-liquid group/nav interactive-press flex min-h-11 items-center rounded-full border border-transparent text-sm transition-[background-color,color] duration-150",
+          collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-4 py-3",
           active
             ? "is-active font-medium text-primary-foreground"
             : "text-muted-foreground hover:text-foreground",
@@ -555,7 +555,7 @@ function AccountMenu({
           onClick={toggleMenu}
           data-active={open ? "true" : undefined}
           className={cn(
-            "sidebar-nav-liquid interactive-press flex w-full items-center rounded-md border border-transparent transition-[background-color,color] duration-150",
+            "sidebar-nav-liquid interactive-press flex w-full items-center rounded-full border border-transparent transition-[background-color,color] duration-150",
             collapsed
               ? "justify-center px-2 py-2.5 text-muted-foreground hover:text-foreground"
               : "gap-3 px-3 py-3 text-left text-foreground hover:text-foreground",
@@ -665,7 +665,7 @@ export function Sidebar({
       <aside
         className={cn(
           "relative flex h-full flex-col overflow-visible border-r border-border bg-sidebar text-foreground transition-all duration-300 ease-in-out",
-          collapsed ? "w-[4.75rem]" : "w-56",
+          collapsed ? "w-[4.75rem]" : "w-[17.5rem]",
         )}
       >
         <SidebarContent
@@ -737,7 +737,12 @@ function SidebarContent({
         )}
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto px-2.5 py-3">
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+        {!collapsed ? (
+          <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+            {tAccount("sectionMain")}
+          </p>
+        ) : null}
         {NAV_ITEMS.map((item) => {
           const active = isNavHrefActive(pathname, item.href, allNavHrefs);
           const label = tNav(item.labelKey);

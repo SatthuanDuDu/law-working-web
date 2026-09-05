@@ -6,7 +6,6 @@ import {
   listMyOpenPackagesAction,
 } from "@/lib/budget-package-actions";
 import { requireAuth } from "@/lib/session";
-import { getTranslations } from "next-intl/server";
 
 export default async function PackageDetailPage({
   params,
@@ -15,7 +14,6 @@ export default async function PackageDetailPage({
 }) {
   const user = await requireAuth();
   const { id } = await params;
-  const t = await getTranslations("budgetPackage");
   const detail = await getPackageDetailAction(id);
 
   if (detail.error || !detail.package) {
@@ -34,7 +32,7 @@ export default async function PackageDetailPage({
 
   return (
     <div className="space-y-4">
-      <PageHeaderSlot title={t("detailTitle")} />
+      <PageHeaderSlot title="" />
       <PackageDetailView
         pkg={pkg}
         transactions={detail.transactions ?? []}

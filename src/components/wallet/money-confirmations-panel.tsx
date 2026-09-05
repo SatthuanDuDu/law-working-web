@@ -3,11 +3,10 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { CheckCircle2, Inbox } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/card";
-import { SectionPanel } from "@/components/ui/section-panel";
-import { EmptyState } from "@/components/ui/empty-state";
 import {
   finalizeMoneyConfirmationAction,
   respondMoneyConfirmationAction,
@@ -15,8 +14,6 @@ import {
 } from "@/lib/money-confirmation-actions";
 import { decideSettlePackageAction } from "@/lib/budget-package-actions";
 import { formatVndDigits } from "@/lib/wallet";
-import { listDivideClass, listRowClass } from "@/lib/list-surface";
-import { cn } from "@/lib/utils";
 
 function formatWhen(iso: string) {
   try {
@@ -45,7 +42,10 @@ export function MoneyConfirmationsPanel({
   const [error, setError] = useState("");
   const [, startTransition] = useTransition();
 
-  function runAction(confirmationId: string, fn: () => Promise<{ error?: string }>) {
+  function runAction(
+    confirmationId: string,
+    fn: () => Promise<{ error?: string }>,
+  ) {
     setError("");
     setPendingId(confirmationId);
     startTransition(async () => {
@@ -61,59 +61,107 @@ export function MoneyConfirmationsPanel({
     });
   }
 
+  if (confirmations.length === 0) {
+    return null;
+  }
+
   return (
-    <div id={id}>
-      <SectionPanel title={t("title")}>
-      {error ? <p className="mb-2 text-sm text-destructive">{error}</p> : null}
-      {confirmations.length === 0 ? (
-        <EmptyState>{t("empty")}</EmptyState>
-      ) : (
-        <ul className={cn(listDivideClass, "rounded-md border border-border")}>
-          {confirmations.map((c) => {
-            const busy = pendingId === c.id;
-            return (
-              <li key={c.id} className={cn(listRowClass, "flex flex-col gap-2")}>
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className="text-sm font-medium">
-                    {c.kind === "BUDGET_ALLOCATE"
-                      ? t("kindBudget")
-                      : c.kind === "BUDGET_TOPUP"
-                        ? t("kindTopup")
-                        : c.kind === "PACKAGE_SETTLE"
-                          ? t("kindSettle")
-                          : t("kindClient")}
-                    {" · "}
-                    {t(`status.${c.status}`)}
-                    {c.budgetPackageName ? ` · ${c.budgetPackageName}` : ""}
-                  </span>
-                  <span className="text-sm font-semibold tabular-nums">
-                    {formatVndDigits(c.amountVnd)} ₫
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {formatWhen(c.createdAt)}
-                  {" · "}
-                  {c.fromUserName} → {c.toUserName}
-                  {c.matterCode
-                    ? ` · ${c.matterCode}${c.planStepTitle ? ` / ${c.planStepTitle}` : ""}`
-                    : ""}
-                </p>
-                {c.note ? (
-                  <p className="text-sm text-foreground/90">{c.note}</p>
-                ) : null}
-                {c.disputeNote ? (
-                  <p className="text-sm text-rose-700">
-                    {t("disputeNote")}: {c.disputeNote}
+    <section
+      id={id}
+      className="space-y-4 rounded-2xl border border-border/70 bg-surface p-4 shadow-[var(--shadow-card)] sm:p-5"
+    >
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-rose-600" />
+          <h2 className="text-base font-semibold text-foreground sm:text-lg">
+            {t("title")}
+            <span className="ml-1.5 font-normal text-muted-foreground">
+              ({confirmations.length})
+            </span>
+          </h2>
+          <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-[11px] font-semibold text-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
+            {t("actionNeeded")}
+          </span>
+        </div>
+        <p className="text-sm text-muted-foreground">{t("actionHint")}</p>
+      </div>
+
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+
+      <div className="space-y-3">
+        {confirmations.map((c) => {
+          const busy = pendingId === c.id;
+          const kindLabel =
+            c.kind === "BUDGET_ALLOCATE"
+              ? t("kindBudget")
+              : c.kind === "BUDGET_TOPUP"
+                ? t("kindTopup")
+                : c.kind === "PACKAGE_SETTLE"
+                  ? t("kindSettle")
+                  : t("kindClient");
+
+          return (
+            <article
+              key={c.id}
+              className="flex flex-col gap-3 rounded-xl bg-surface-container-low p-3.5 transition-colors hover:bg-surface-container sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-4"
+            >
+              <div className="flex min-w-0 items-start gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-container text-foreground">
+                  <Inbox className="h-4 w-4" aria-hidden />
+                </span>
+                <div className="min-w-0 space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-semibold text-foreground">
+                      {kindLabel} · {t(`status.${c.status}`)}
+                    </span>
+                    {c.budgetPackageName ? (
+                      <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-medium text-sky-900 dark:bg-sky-950/50 dark:text-sky-100">
+                        {c.budgetPackageName}
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+                    <span className="tabular-nums">{formatWhen(c.createdAt)}</span>
+                    <span aria-hidden>•</span>
+                    <span>
+                      {t("flow")}:{" "}
+                      <strong className="font-medium text-foreground">
+                        {c.fromUserName} → {c.toUserName}
+                      </strong>
+                    </span>
+                    {c.matterCode ? (
+                      <>
+                        <span aria-hidden>•</span>
+                        <span className="rounded bg-surface-container-high px-1.5 py-0.5 font-mono text-[11px]">
+                          {c.matterCode}
+                          {c.planStepTitle ? ` / ${c.planStepTitle}` : ""}
+                        </span>
+                      </>
+                    ) : null}
                   </p>
-                ) : null}
+                  {c.note ? (
+                    <p className="text-sm text-foreground/90">{c.note}</p>
+                  ) : null}
+                  {c.disputeNote ? (
+                    <p className="text-sm text-rose-700">
+                      {t("disputeNote")}: {c.disputeNote}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="flex shrink-0 flex-col gap-2 sm:items-end">
+                <p className="text-lg font-bold tabular-nums text-primary sm:text-right">
+                  +{formatVndDigits(c.amountVnd)} ₫
+                </p>
 
                 {c.myAction === "recipient" ? (
                   <div className="flex flex-col gap-2">
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2 sm:justify-end">
                       <Button
                         type="button"
                         size="sm"
-                        className="interactive-press"
+                        className="interactive-press rounded-full"
                         disabled={busy}
                         onClick={() =>
                           runAction(c.id, async () => {
@@ -124,13 +172,14 @@ export function MoneyConfirmationsPanel({
                           })
                         }
                       >
+                        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
                         {t("accept")}
                       </Button>
                       <Button
                         type="button"
                         size="sm"
                         variant="outline"
-                        className="interactive-press"
+                        className="interactive-press rounded-full"
                         disabled={busy}
                         onClick={() =>
                           runAction(c.id, async () => {
@@ -147,7 +196,7 @@ export function MoneyConfirmationsPanel({
                         type="button"
                         size="sm"
                         variant="ghost"
-                        className="interactive-press"
+                        className="interactive-press rounded-full"
                         disabled={busy}
                         onClick={() =>
                           setDisputeId(disputeId === c.id ? null : c.id)
@@ -157,8 +206,10 @@ export function MoneyConfirmationsPanel({
                       </Button>
                     </div>
                     {disputeId === c.id ? (
-                      <div className="space-y-2 rounded-md border border-border bg-muted/30 p-2">
-                        <Label htmlFor={`dispute-${c.id}`}>{t("disputeNote")}</Label>
+                      <div className="space-y-2 rounded-xl border border-border bg-surface p-2.5">
+                        <Label htmlFor={`dispute-${c.id}`}>
+                          {t("disputeNote")}
+                        </Label>
                         <Input
                           id={`dispute-${c.id}`}
                           value={disputeNote}
@@ -169,7 +220,7 @@ export function MoneyConfirmationsPanel({
                           type="button"
                           size="sm"
                           variant="destructive"
-                          className="interactive-press"
+                          className="interactive-press rounded-full"
                           disabled={busy || !disputeNote.trim()}
                           onClick={() =>
                             runAction(c.id, async () => {
@@ -189,31 +240,29 @@ export function MoneyConfirmationsPanel({
                 ) : null}
 
                 {c.myAction === "allocator" ? (
-                  <div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="interactive-press"
-                      disabled={busy}
-                      onClick={() =>
-                        runAction(c.id, async () => {
-                          const fd = new FormData();
-                          fd.set("confirmationId", c.id);
-                          return finalizeMoneyConfirmationAction(fd);
-                        })
-                      }
-                    >
-                      {t("finalize")}
-                    </Button>
-                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="interactive-press rounded-full"
+                    disabled={busy}
+                    onClick={() =>
+                      runAction(c.id, async () => {
+                        const fd = new FormData();
+                        fd.set("confirmationId", c.id);
+                        return finalizeMoneyConfirmationAction(fd);
+                      })
+                    }
+                  >
+                    {t("finalize")}
+                  </Button>
                 ) : null}
 
                 {c.myAction === "settle_approver" ? (
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 sm:justify-end">
                     <Button
                       type="button"
                       size="sm"
-                      className="interactive-press"
+                      className="interactive-press rounded-full"
                       disabled={busy}
                       onClick={() =>
                         runAction(c.id, async () => {
@@ -230,7 +279,7 @@ export function MoneyConfirmationsPanel({
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="interactive-press"
+                      className="interactive-press rounded-full"
                       disabled={busy}
                       onClick={() =>
                         runAction(c.id, async () => {
@@ -245,12 +294,11 @@ export function MoneyConfirmationsPanel({
                     </Button>
                   </div>
                 ) : null}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-      </SectionPanel>
-    </div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
   );
 }

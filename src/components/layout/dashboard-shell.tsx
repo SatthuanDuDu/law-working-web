@@ -3,7 +3,9 @@
 import { Sidebar } from "@/components/layout/sidebar";
 import { PageHeader } from "@/components/layout/page-header";
 import { UtilitySpeedDial } from "@/components/layout/utility-speed-dial";
-import { CommandPalette } from "@/components/layout/command-palette";
+import {
+  CommandPaletteProvider,
+} from "@/components/layout/command-palette";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 import { NotificationToastHost } from "@/components/notifications/notification-toast-host";
 import {
@@ -65,9 +67,9 @@ export function DashboardShell({
   const tPages = useTranslations("pages");
   const clientMeta = useMemo(() => getPageMeta(pathname, tPages), [pathname, tPages]);
   const initialMeta = serverMeta ?? clientMeta;
-  // Sticky toolbars under page header — no main top padding (calendar + website CMS).
-  const flushTopUnderHeader =
-    pathname.startsWith("/calendar") || pathname.startsWith("/website");
+  // Sticky toolbars under page header — no main top padding (website CMS).
+  // Calendar keeps normal top padding so the page hero isn't flush against the shell.
+  const flushTopUnderHeader = pathname.startsWith("/website");
   // Calendar: lock main scroll so toolbar + grid stay fixed; only inner panels scroll.
   const lockMainToViewport = pathname.startsWith("/calendar");
 
@@ -77,6 +79,7 @@ export function DashboardShell({
         <ShellAlertsProvider>
           <Suspense fallback={null}>
           <PersonalTodoPanelProvider>
+            <CommandPaletteProvider>
             <ServerMetaSync meta={serverMeta} />
             <PathnameMetaSync />
             <ServiceWorkerRegister />
@@ -106,8 +109,8 @@ export function DashboardShell({
               </div>
               <UtilitySpeedDial />
               <NotificationToastHost />
-              <CommandPalette />
             </div>
+            </CommandPaletteProvider>
           </PersonalTodoPanelProvider>
           </Suspense>
         </ShellAlertsProvider>

@@ -6,7 +6,6 @@ import { requireAuth } from "@/lib/session";
 import { getAccessibleMatterIds } from "@/lib/access";
 import { getCachedWorkTypes } from "@/lib/cached-lookups";
 import { isManagerOrAbove } from "@/lib/permissions";
-import { getTranslations } from "next-intl/server";
 
 const CALENDAR_TAKE = 2000;
 
@@ -16,7 +15,6 @@ export default async function CalendarPage({
   searchParams: Promise<{ scope?: string }>;
 }) {
   const user = await requireAuth();
-  const tPages = await getTranslations("pages.calendar");
   const params = await searchParams;
   const canViewAll = isManagerOrAbove(user.role);
   const scope = canViewAll && params.scope === "all" ? "all" : "mine";
@@ -143,7 +141,8 @@ export default async function CalendarPage({
 
   return (
     <>
-      <PageHeaderSlot title={tPages("title")} />
+      {/* Title lives in CalendarMonth hero — avoid dup with shell h1 */}
+      <PageHeaderSlot title="" />
       <CalendarMonth
         tasks={serialized}
         planSteps={serializedPlans}

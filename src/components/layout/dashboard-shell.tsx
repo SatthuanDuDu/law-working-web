@@ -104,7 +104,7 @@ export function DashboardShell({
                   >
                     {children}
                   </main>
-                  <PersonalTodoPanel />
+                  <PersonalTodoPanel ownerName={user.name} />
                 </div>
               </div>
               <UtilitySpeedDial />

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { CalendarDays, X } from "lucide-react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { PersonalTodoList } from "@/components/personal-todo/personal-todo-list";
@@ -13,10 +14,14 @@ import {
 } from "@/lib/personal-todo-actions";
 import { cn } from "@/lib/utils";
 
-function PanelBody({
+const PANEL_WIDTH_CLASS = "lg:w-[26rem] lg:min-w-[26rem]";
+
+function PanelShell({
   onClose,
+  ownerName,
 }: {
   onClose: () => void;
+  ownerName: string;
 }) {
   const t = useTranslations("personalTodo");
   const tCommon = useTranslations("common");
@@ -33,38 +38,53 @@ function PanelBody({
   }, []);
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-surface">
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2.5">
-        <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
-            {t("panelTitle")}
-          </p>
-        </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="interactive-press h-8 w-8 shrink-0"
-          onClick={onClose}
-          aria-label={tCommon("close")}
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto">
+    <div className="flex h-full min-h-0 flex-col bg-[color-mix(in_oklab,var(--canvas)_40%,var(--surface))]">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {todos ? (
-          <PersonalTodoList initialTodos={todos} embedded />
+          <PersonalTodoList
+            initialTodos={todos}
+            embedded
+            ownerName={ownerName}
+            onClose={onClose}
+          />
         ) : (
-          <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-            {tCommon("loading")}
-          </p>
+          <>
+            <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-surface px-4 py-3">
+              <p className="text-sm font-semibold text-foreground">
+                {t("panelHeading")}
+              </p>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="interactive-press h-8 w-8"
+                onClick={onClose}
+                aria-label={tCommon("close")}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+              {tCommon("loading")}
+            </p>
+          </>
         )}
       </div>
+      <footer className="shrink-0 border-t border-border bg-surface p-3">
+        <Link
+          href="/calendar"
+          onClick={onClose}
+          className="interactive-press interactive-link flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary-muted px-3 py-2 text-xs font-semibold text-primary hover:bg-primary-muted-hover"
+        >
+          <CalendarDays className="h-3.5 w-3.5" aria-hidden />
+          {t("myCalendar")}
+        </Link>
+      </footer>
     </div>
   );
 }
 
-export function PersonalTodoPanel() {
+export function PersonalTodoPanel({ ownerName = "" }: { ownerName?: string }) {
   const { open, close } = usePersonalTodoPanel();
   const t = useTranslations("personalTodo");
   const { mounted, active } = useOverlayAnimation(open, 280);
@@ -87,14 +107,23 @@ export function PersonalTodoPanel() {
         aria-label={t("panelTitle")}
         className={cn(
           "todo-panel-aside z-50 flex min-h-0 flex-col overflow-hidden bg-surface",
-          "fixed inset-y-0 right-0 w-[min(20rem,100vw)] translate-x-full shadow-[var(--shadow-overlay)]",
+          "fixed inset-y-0 right-0 w-[min(26rem,100vw)] translate-x-full shadow-[var(--shadow-overlay)]",
           "lg:static lg:z-0 lg:h-full lg:w-0 lg:min-w-0 lg:translate-x-0 lg:border-l-0 lg:shadow-none",
           active &&
-            "translate-x-0 border-l border-border lg:w-80 lg:min-w-[18rem] lg:border-l",
+            cn(
+              "translate-x-0 border-l border-border",
+              PANEL_WIDTH_CLASS,
+              "lg:border-l",
+            ),
         )}
       >
-        <div className="flex h-full w-full min-w-0 flex-col lg:w-80 lg:min-w-[18rem]">
-          <PanelBody onClose={close} />
+        <div
+          className={cn(
+            "flex h-full w-full min-w-0 flex-col",
+            PANEL_WIDTH_CLASS,
+          )}
+        >
+          <PanelShell onClose={close} ownerName={ownerName} />
         </div>
       </aside>
     </>

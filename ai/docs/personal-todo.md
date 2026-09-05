@@ -18,8 +18,11 @@ Checklist riêng tư cho từng nhân viên — tách khỏi hệ giao việc (`
 
 ## UI
 - Nút checklist trên header; desktop đẩy `main` (width animate); mobile sheet trượt
+- Panel ~26rem: tiến độ hôm nay, filter Hôm nay/Sắp tới/Ghi chú/Tất cả, nhóm theo khung giờ khi có `dueDate+hasTime`
 - Composer: tiêu đề, chi tiết, chip Hôm nay/Ngày mai, lịch/giờ/lặp lại
-- Tick hoàn thành: ẩn khỏi list; nếu đang lặp → tạo bản sao hạn lần sau
+- Card mở rộng: checklist (`PersonalTodoItem`) + sửa/xoá
+- Tick hoàn thành: ẩn khỏi list; nếu đang lặp → tạo bản sao hạn lần sau; mục “Đã hoàn thành hôm nay” + Khôi phục
+- Footer: link `/calendar`
 - `/my-work` redirect → `/tasks`
 - Widget dashboard mở panel
 
@@ -30,3 +33,4 @@ Checklist riêng tư cho từng nhân viên — tách khỏi hệ giao việc (`
 ## Không làm
 - Không merge với `Task`
 - Không time-range từ–đến; không yearly / every-N
+- Không Pomodoro / Focus timer / sync Google Calendar (mock-only)

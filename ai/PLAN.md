@@ -9,6 +9,7 @@ Quy tắc: một slice = một việc end-to-end nhỏ. Chỉ một slice active
 - _(trống)_
 
 ## Done
+- [x] To-do panel productivity restyle (time-box groups + checklist UI, no fake pomodoro) — `ai/docs/personal-todo-panel-restyle.md`
 - [x] M3 Nexus UI — Workflows `/workflows` restyle — `ai/docs/m3-nexus-workflows.md`
 - [x] M3 Nexus UI — Wallet `/wallet` restyle — `ai/docs/m3-nexus-wallet.md`
 - [x] M3 Nexus UI — Calendar month/week chrome (no scorecards) — `ai/docs/m3-nexus-calendar.md`

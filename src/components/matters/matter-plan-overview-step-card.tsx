@@ -37,6 +37,15 @@ export type OverviewStepCardData = {
   isOverdue: boolean;
 };
 
+const INDEX_BADGE: Record<MatterPlanStepStatus, string> = {
+  DONE: "border-emerald-500 bg-emerald-500 text-white",
+  IN_PROGRESS:
+    "border-sky-500 bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-200",
+  BLOCKED:
+    "border-rose-500 bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-200",
+  NOT_STARTED: "border-border bg-surface text-muted-foreground",
+};
+
 export function MatterPlanOverviewStepCard({
   matterId,
   step,
@@ -66,39 +75,27 @@ export function MatterPlanOverviewStepCard({
     detailText.length > 0 && detailText !== step.title.trim();
 
   return (
-    <li className="relative flex gap-3 pb-3 last:pb-0">
-      <span
-        className={cn(
-          "relative z-[1] mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border-2 bg-surface text-[10px] font-bold tabular-nums",
-          step.status === "DONE"
-            ? "border-emerald-500 text-emerald-700"
-            : step.status === "IN_PROGRESS"
-              ? "border-amber-500 text-amber-700"
-              : step.status === "BLOCKED"
-                ? "border-rose-500 text-rose-700"
-                : "border-border text-muted-foreground",
-        )}
-      >
-        {step.index}
-      </span>
-
+    <li>
       <div
         className={cn(
-          "min-w-0 flex-1 rounded-md border border-border",
+          "rounded-md border border-border",
           step.isOverdue &&
             "border-rose-200 bg-rose-50/50 dark:border-rose-900/50 dark:bg-rose-950/20",
         )}
       >
         <div className="flex min-w-0 items-start gap-1 px-3 py-2.5">
           <div className="min-w-0 flex-1 space-y-1.5">
-            <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
-              <Link
-                href={`/matters/${matterId}/plan?step=${step.id}`}
-                className="interactive-press min-w-0 flex-1 break-words font-medium leading-snug text-foreground hover:text-primary hover:underline hover:underline-offset-2"
-                aria-label={t("openStepAria", { title: step.title })}
+            {/* Step # + status in one cluster — scan once, no left/right split */}
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <span
+                className={cn(
+                  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-[10px] font-bold tabular-nums",
+                  INDEX_BADGE[step.status],
+                )}
+                aria-hidden
               >
-                {step.title}
-              </Link>
+                {step.index}
+              </span>
               <span
                 className={cn(
                   planStepStatusChipClass(step.status),
@@ -108,6 +105,14 @@ export function MatterPlanOverviewStepCard({
                 {planStepStatus[step.status]}
               </span>
             </div>
+
+            <Link
+              href={`/matters/${matterId}/plan?step=${step.id}`}
+              className="interactive-press block min-w-0 break-words font-medium leading-snug text-foreground hover:text-primary hover:underline hover:underline-offset-2"
+              aria-label={t("openStepAria", { title: step.title })}
+            >
+              {step.title}
+            </Link>
 
             <p className="text-xs text-muted-foreground">
               {workLabel}

@@ -475,6 +475,9 @@
       "inProgress": "In progress",
       "done": "Done",
       "blocked": "Waiting",
+      "notStarted": "Not started",
+      "statusBreakdownAria": "Plan step status breakdown",
+      "stepSequenceAria": "Step sequence by status",
       "commentsTitle": "Discussion / Comments",
       "planFallback": "Plan",
       "completedPercent": "{percent}% complete"

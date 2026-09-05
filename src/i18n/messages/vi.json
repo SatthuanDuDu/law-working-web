@@ -475,6 +475,9 @@
       "inProgress": "Đang thực hiện",
       "done": "Hoàn thành",
       "blocked": "Đang chờ",
+      "notStarted": "Chưa bắt đầu",
+      "statusBreakdownAria": "Phân bố trạng thái bước kế hoạch",
+      "stepSequenceAria": "Thứ tự bước theo trạng thái",
       "commentsTitle": "Trao đổi / Bình luận",
       "planFallback": "Kế hoạch",
       "completedPercent": "{percent}% hoàn thành"

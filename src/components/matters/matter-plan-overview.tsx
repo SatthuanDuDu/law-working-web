@@ -32,6 +32,32 @@ export type MatterPlanOverviewStep = {
   _count: { attachments: number; comments: number };
 };
 
+const SEGMENT_CLASS: Record<MatterPlanStepStatus, string> = {
+  DONE: "bg-emerald-500",
+  IN_PROGRESS: "bg-sky-500",
+  BLOCKED: "bg-rose-500",
+  NOT_STARTED: "bg-slate-300 dark:bg-slate-600",
+};
+
+const DOT_CLASS: Record<MatterPlanStepStatus, string> = {
+  DONE: "border-emerald-500 bg-emerald-500 text-white",
+  IN_PROGRESS:
+    "border-sky-500 bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-200",
+  BLOCKED:
+    "border-rose-500 bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-200",
+  NOT_STARTED:
+    "border-slate-300 bg-surface text-muted-foreground dark:border-slate-600",
+};
+
+const PILL_CLASS: Record<MatterPlanStepStatus, string> = {
+  DONE: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300",
+  IN_PROGRESS:
+    "bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300",
+  BLOCKED: "bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300",
+  NOT_STARTED:
+    "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200",
+};
+
 /** Compact progress strip — no CTA (CTA lives on timeline header only). */
 export async function MatterPlanProgress({
   planSteps,
@@ -48,6 +74,7 @@ export async function MatterPlanProgress({
   const inProgress = planSteps.filter((s) => s.status === "IN_PROGRESS").length;
   const done = planSteps.filter((s) => s.status === "DONE").length;
   const blocked = planSteps.filter((s) => s.status === "BLOCKED").length;
+  const notStarted = planSteps.filter((s) => s.status === "NOT_STARTED").length;
   const percent = total > 0 ? Math.round((done / total) * 100) : 0;
   const now = referenceNow.getTime();
   const overdueCount = planSteps.filter(
@@ -70,7 +97,23 @@ export async function MatterPlanProgress({
       ? new Date(Math.max(...dueDates.map((d) => d.getTime())))
       : null;
 
-  const showStatGrid = total >= 3;
+  const segments: { status: MatterPlanStepStatus; count: number }[] = [
+    { status: "DONE", count: done },
+    { status: "IN_PROGRESS", count: inProgress },
+    { status: "BLOCKED", count: blocked },
+    { status: "NOT_STARTED", count: notStarted },
+  ];
+
+  const statusPills: {
+    status: MatterPlanStepStatus;
+    count: number;
+    label: string;
+  }[] = [
+    { status: "DONE", count: done, label: t("done") },
+    { status: "IN_PROGRESS", count: inProgress, label: t("inProgress") },
+    { status: "BLOCKED", count: blocked, label: t("blocked") },
+    { status: "NOT_STARTED", count: notStarted, label: t("notStarted") },
+  ];
 
   return (
     <Card className="rounded-md">
@@ -84,40 +127,71 @@ export async function MatterPlanProgress({
       </CardHeader>
       <CardContent className="space-y-3">
         {total > 0 ? (
-          <div
-            className="h-2 overflow-hidden rounded-full bg-muted"
-            role="progressbar"
-            aria-valuenow={percent}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label={t("completedPercent", { percent })}
-          >
+          <>
             <div
-              className={cn(
-                "h-full rounded-full transition-all",
-                overdueCount > 0 && percent < 100 ? "bg-amber-500" : "bg-emerald-500",
+              className="flex h-2.5 overflow-hidden rounded-full bg-muted"
+              role="progressbar"
+              aria-valuenow={percent}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={t("completedPercent", { percent })}
+            >
+              {segments.map(({ status, count }) =>
+                count > 0 ? (
+                  <div
+                    key={status}
+                    className={cn("h-full min-w-0 transition-all", SEGMENT_CLASS[status])}
+                    style={{ width: `${(count / total) * 100}%` }}
+                  />
+                ) : null,
               )}
-              style={{ width: `${percent}%` }}
-            />
-          </div>
-        ) : null}
+            </div>
 
-        {showStatGrid ? (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <StatCell label={t("planSteps")} value={total} />
-            <StatCell label={t("inProgress")} value={inProgress} tone="sky" />
-            <StatCell label={t("done")} value={done} tone="emerald" />
-            <StatCell label={t("blocked")} value={blocked} tone="rose" />
-          </div>
-        ) : total > 0 ? (
-          <p className="text-sm text-muted-foreground">
-            {t("stepSummary", {
-              total,
-              done,
-              inProgress,
-              waiting: blocked,
-            })}
-          </p>
+            <ul
+              className="flex flex-wrap gap-1.5"
+              aria-label={t("statusBreakdownAria")}
+            >
+              {statusPills.map(({ status, count, label }) => (
+                <li key={status}>
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
+                      PILL_CLASS[status],
+                      count === 0 && "opacity-45",
+                    )}
+                  >
+                    <span className="tabular-nums font-semibold">{count}</span>
+                    <span>{label}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+
+            <ol
+              className="flex flex-wrap items-center gap-1.5"
+              aria-label={t("stepSequenceAria")}
+            >
+              {planSteps.map((step, index) => (
+                <li key={step.id} className="flex items-center gap-1.5">
+                  {index > 0 ? (
+                    <span
+                      className="h-px w-2.5 shrink-0 bg-border sm:w-3.5"
+                      aria-hidden
+                    />
+                  ) : null}
+                  <span
+                    className={cn(
+                      "flex h-6 w-6 items-center justify-center rounded-full border text-[10px] font-bold tabular-nums",
+                      DOT_CLASS[step.status],
+                    )}
+                    title={`${index + 1}. ${step.title}`}
+                  >
+                    {index + 1}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </>
         ) : null}
 
         <p className="text-sm text-muted-foreground">
@@ -137,36 +211,6 @@ export async function MatterPlanProgress({
         ) : null}
       </CardContent>
     </Card>
-  );
-}
-
-function StatCell({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone?: "sky" | "emerald" | "rose";
-}) {
-  const valueClass =
-    tone === "sky"
-      ? "text-sky-600"
-      : tone === "emerald"
-        ? "text-emerald-600"
-        : tone === "rose"
-          ? "text-rose-600"
-          : "text-foreground";
-
-  return (
-    <div className="rounded-md border border-border p-2.5 sm:p-3">
-      <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground sm:text-xs">
-        {label}
-      </p>
-      <p className={cn("mt-0.5 text-xl font-semibold tabular-nums sm:text-2xl", valueClass)}>
-        {value}
-      </p>
-    </div>
   );
 }
 
@@ -227,7 +271,7 @@ export async function MatterPlanOverview({
             {t("noSteps")}
           </EmptyState>
         ) : (
-          <ol className="relative space-y-0">
+          <ol className="relative space-y-2.5">
             {cards.map((step) => (
               <MatterPlanOverviewStepCard
                 key={step.id}
